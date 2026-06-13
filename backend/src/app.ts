@@ -11,7 +11,9 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
 // ── Security headers ─────────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
 
 // ── CORS — restrict to known origins ─────────────────────────────────────────
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
