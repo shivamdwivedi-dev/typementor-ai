@@ -1,0 +1,144 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  passwordHash      String?
+  googleId          String?           @unique
+  name              String
+  avatar            String?
+  level             Int               @default(1)
+  xp                Int               @default(0)
+  streak            Int               @default(0)
+  longestStreak     Int               @default(0)
+  lastActiveAt      DateTime          @default(now())
+  totalCharacters   Int               @default(0)
+  lifetimeWpm       Float             @default(0)
+  lifetimeAccuracy  Float             @default(0)
+  practiceHours     Float             @default(0)
+  typingDna         String?           @db.Text
+  lastActivity      String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  sessions          TypingSession[]
+  achievements      UserAchievement[]
+  challenges        UserChallengeProgress[]
+  mistakes          MistakeSummary[]
+  recoveryHistory   RecoveryHistory[]
+}
+
+model TypingSession {
+  id                 String         @id @default(uuid())
+  userId             String
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode               String         // "English", "Python", "JavaScript", "Java", "SQL"
+  difficulty         Int            // Smart Difficulty Level (1 to 5)
+  wpm                Float
+  rawWpm             Float
+  accuracy           Float
+  consistency        Float
+  focusScore         Float
+  duration           Float          // in seconds
+  backspaceCount     Int
+  correctionCount    Int
+  predictionAccuracy Float?
+  createdAt          DateTime       @default(now())
+
+  keystrokes         KeystrokeLog[]
+}
+
+model KeystrokeLog {
+  id            String        @id @default(uuid())
+  sessionId     String
+  session       TypingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  expectedKey   String
+  actualKey     String
+  reactionTime  Int           // in milliseconds
+  holdTime      Int           // in milliseconds
+  pauseDuration Int           // in milliseconds
+  wordIndex     Int
+  previousKey   String?
+  nextKey       String?
+  isMistake     Boolean
+  timestamp     DateTime      @default(now())
+}
+
+model MistakeSummary {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expectedKey String
+  pressedKey  String
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, expectedKey, pressedKey])
+}
+
+model Achievement {
+  id          String            @id @default(uuid())
+  code        String            @unique // e.g. "STREAK_7", "WPM_80", "CHARS_10000"
+  name        String
+  description String
+  icon        String
+  category    String
+  xpReward    Int
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+}
+
+model Challenge {
+  id           String                  @id @default(uuid())
+  type         String                  // "DAILY", "WEEKLY"
+  title        String
+  description  String
+  criteriaType String                  // "WPM", "ACCURACY", "CHARS", "SESSIONS"
+  targetValue  Float
+  xpReward     Int
+  expiresAt    DateTime
+  createdAt    DateTime                @default(now())
+  userProgress UserChallengeProgress[]
+}
+
+model UserChallengeProgress {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  currentValue Float     @default(0)
+  isCompleted Boolean   @default(false)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, challengeId])
+}
+
+model RecoveryHistory {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mostMistypedKey   String
+  confusionKey      String?
+  accuracyLoss      Float
+  predictedWpmGain  Float
+  recoveryScore     Float    @default(0)
+  createdAt         DateTime @default(now())
+}
