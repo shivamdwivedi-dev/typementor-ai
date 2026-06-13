@@ -224,6 +224,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 import { verifyGoogleToken } from '../services/oauth.service';
 
 export const googleLogin = async (req: Request, res: Response) => {
+  console.log('[Google Auth] Starting login flow...');
   try {
     const { idToken } = req.body;
     if (!idToken) {
@@ -231,6 +232,7 @@ export const googleLogin = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Google login failed. Please try again.' });
     }
 
+    console.log('[Google Auth] Verifying ID token with Google API...');
     let payload;
     try {
       payload = await verifyGoogleToken(idToken);
@@ -244,6 +246,9 @@ export const googleLogin = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'This Google email is not verified.' });
     }
 
+    console.log('[Google Auth] Token verified successfully. Email:', payload.email);
+    console.log('[Google Auth] Querying database for user...');
+
     // Find user by Google ID or by verified Email
     let user = await prisma.user.findFirst({
       where: {
@@ -253,6 +258,7 @@ export const googleLogin = async (req: Request, res: Response) => {
         ]
       }
     });
+    console.log('[Google Auth] Database query finished. User found:', !!user);
 
     let isNewUser = false;
 
@@ -329,6 +335,7 @@ export const googleLogin = async (req: Request, res: Response) => {
       }
     }
 
+    console.log('[Google Auth] Generating JWT token and returning response...');
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
