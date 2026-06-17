@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTypingStore } from '../store/TypingStore';
-import { Play, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Play, RotateCcw, ShieldAlert, Timer } from 'lucide-react';
 import SessionResults from './SessionResults';
 import { soundEngine } from '../utils/soundEngine';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
@@ -104,13 +104,56 @@ export default function TypingEngine({
     startSession,
     recordKeystroke,
     handleBackspace,
+    pauseSession,
+    resumeSession,
   } = useTypingStore();
 
   const [cheatDetected, setCheatDetected] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // AI Coach Pulse Hook integration
   const { pulseMessage, processPulse, clearPulse, resetSessionState } = useAICoachPulse();
+
+  // Inactivity auto-pause logic
+  useEffect(() => {
+    if (!isActive || isCompleted || isPaused) return;
+
+    let idleTimer: NodeJS.Timeout;
+
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setIsPaused(true);
+        pauseSession();
+      }, 10000); // 10s idle threshold
+    };
+
+    const handleWindowBlur = () => {
+      setIsPaused(true);
+      pauseSession();
+    };
+
+    const activityEvents = ['keydown', 'mousedown', 'mousemove', 'touchstart'];
+    activityEvents.forEach(evt => window.addEventListener(evt, resetIdleTimer));
+    window.addEventListener('blur', handleWindowBlur);
+
+    resetIdleTimer();
+
+    return () => {
+      clearTimeout(idleTimer);
+      activityEvents.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [isActive, isCompleted, isPaused, pauseSession]);
+
+  const handleResume = () => {
+    setIsPaused(false);
+    resumeSession();
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
 
   // Reset coaching stats when words (session context) change
   useEffect(() => {
@@ -175,7 +218,7 @@ export default function TypingEngine({
   }, [isCompleted]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isCompleted || cheatDetected) return;
+    if (isCompleted || cheatDetected || isPaused) return;
 
     if (!isActive) startSession();
 
@@ -233,6 +276,7 @@ export default function TypingEngine({
   // Retry = restart the exact same text
   const handleRetry = useCallback(() => {
     setCheatDetected(false);
+    setIsPaused(false);
     const state = useTypingStore.getState();
     initializeSession(state.words, state.mode, state.difficulty, state.riskKeys);
     setTimeout(focusInput, 50);
@@ -241,6 +285,7 @@ export default function TypingEngine({
   // Next = App.tsx decides what text comes next
   const handleNext = useCallback(() => {
     setCheatDetected(false);
+    setIsPaused(false);
     if (onStartNext) onStartNext();
     setTimeout(focusInput, 50);
   }, [onStartNext, focusInput]);
@@ -253,6 +298,7 @@ export default function TypingEngine({
   // Reset button in the header (mid-session restart)
   const handleReset = useCallback(() => {
     setCheatDetected(false);
+    setIsPaused(false);
     const state = useTypingStore.getState();
     initializeSession(state.words, state.mode, state.difficulty, state.riskKeys);
     setTimeout(focusInput, 50);
@@ -329,7 +375,40 @@ export default function TypingEngine({
       </div>
 
       {/* Typing Board Panel */}
-      <div className="glass-panel p-6 md:p-8 rounded-2xl border border-brand-border/40 mb-4 relative min-h-[160px] flex items-center">
+      <div
+        onClick={() => {
+          if (isPaused) {
+            handleResume();
+          } else {
+            inputRef.current?.focus();
+          }
+        }}
+        className="glass-panel p-6 md:p-8 rounded-2xl border border-brand-border/40 mb-4 relative min-h-[160px] flex items-center cursor-text"
+      >
+        {isPaused && (
+          <div
+            className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-2xl"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleResume();
+            }}
+          >
+            <div className="bg-brand-card/90 border border-brand-border/80 p-6 rounded-2xl text-center max-w-sm mx-4 space-y-4 shadow-2xl">
+              <div className="inline-flex p-3 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary animate-pulse">
+                <Timer className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-base font-black text-white">Practice Paused</h4>
+                <p className="text-[11px] text-brand-muted mt-1 leading-relaxed">
+                  You have been inactive. Click or touch anywhere to resume typing.
+                </p>
+              </div>
+              <button className="w-full py-2 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold rounded-xl text-xs transition-all shadow-md">
+                Resume
+              </button>
+            </div>
+          </div>
+        )}
         {cheatDetected ? (
           <div className="w-full text-center space-y-3">
             <ShieldAlert className="w-12 h-12 text-brand-danger mx-auto animate-bounce" />

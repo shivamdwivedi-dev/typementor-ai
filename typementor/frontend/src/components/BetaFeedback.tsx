@@ -1,24 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useTypingStore } from '../store/TypingStore';
+import { useAuthStore } from '../store/AuthStore';
 import { MessageSquare, X, Download, Sparkles, CheckCircle2 } from 'lucide-react';
-
-interface FeedbackItem {
-  id: string;
-  name: string;
-  email: string;
-  device: string;
-  rating: number;
-  whatWorked: string;
-  whatConfused: string;
-  bugFound: string;
-  suggestion: string;
-  createdAt: string;
-}
 
 export default function BetaFeedback() {
   const isTypingActive = useTypingStore((state) => state.isActive);
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const { user, token } = useAuthStore();
+
+  const isDevAdmin = user && (
+    user.email.toLowerCase() === 'shivamdwivedi.dev@gmail.com' ||
+    (import.meta.env.VITE_ADMIN_EMAIL && user.email.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL.toLowerCase())
+  );
 
   // Form states
   const [name, setName] = useState('');
@@ -42,88 +36,131 @@ export default function BetaFeedback() {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newFeedback: FeedbackItem = {
-      id: Math.random().toString(36).substring(2, 11),
+    const bodyData = {
       name,
-      email,
+      email: email || null,
       device,
       rating,
       whatWorked,
       whatConfused,
       bugFound,
-      suggestion,
-      createdAt: new Date().toISOString()
+      suggestion
     };
 
-    const existingFeedbackStr = localStorage.getItem('typementor_beta_feedback');
-    const existingFeedback: FeedbackItem[] = existingFeedbackStr ? JSON.parse(existingFeedbackStr) : [];
-    existingFeedback.push(newFeedback);
-    localStorage.setItem('typementor_beta_feedback', JSON.stringify(existingFeedback));
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setIsOpen(false);
-      // Reset form
-      setName('');
-      setEmail('');
-      setRating(10);
-      setWhatWorked('');
-      setWhatConfused('');
-      setBugFound('');
-      setSuggestion('');
-    }, 2500);
-  };
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(bodyData)
+      });
 
-  // Developer Export functions
-  const getStoredFeedback = (): FeedbackItem[] => {
-    const feedbackStr = localStorage.getItem('typementor_beta_feedback');
-    return feedbackStr ? JSON.parse(feedbackStr) : [];
-  };
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to submit feedback to server.');
+      }
 
-  const exportJSON = () => {
-    const data = getStoredFeedback();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `typementor_feedback_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportCSV = () => {
-    const data = getStoredFeedback();
-    if (data.length === 0) {
-      alert('No feedback submitted yet to export.');
-      return;
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setIsOpen(false);
+        // Reset form
+        setName('');
+        setEmail('');
+        setRating(10);
+        setWhatWorked('');
+        setWhatConfused('');
+        setBugFound('');
+        setSuggestion('');
+      }, 2500);
+    } catch (err: any) {
+      alert(err.message || 'Error submitting feedback.');
     }
-    
-    const headers = ['ID', 'Name', 'Email', 'Device', 'Rating', 'What Worked Well', 'What Felt Confusing', 'Bug Found', 'Feature Suggestion', 'Created At'];
-    const rows = data.map(item => [
-      item.id,
-      `"${item.name.replace(/"/g, '""')}"`,
-      `"${item.email.replace(/"/g, '""')}"`,
-      item.device,
-      item.rating,
-      `"${item.whatWorked.replace(/"/g, '""')}"`,
-      `"${item.whatConfused.replace(/"/g, '""')}"`,
-      `"${item.bugFound.replace(/"/g, '""')}"`,
-      `"${item.suggestion.replace(/"/g, '""')}"`,
-      item.createdAt
-    ]);
+  };
 
-    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `typementor_feedback_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const exportJSON = async () => {
+    try {
+      if (!token) throw new Error('Authentication required.');
+      
+      const response = await fetch('/api/feedback', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to fetch feedback.');
+      }
+      
+      const data = await response.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `typementor_feedback_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message || 'Failed to export feedback.');
+    }
+  };
+
+  const exportCSV = async () => {
+    try {
+      if (!token) throw new Error('Authentication required.');
+      
+      const response = await fetch('/api/feedback', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to fetch feedback.');
+      }
+      
+      const data = await response.json();
+      if (data.length === 0) {
+        alert('No feedback submitted yet to export.');
+        return;
+      }
+      
+      const headers = ['ID', 'Name', 'Email', 'Device', 'Rating', 'What Worked Well', 'What Felt Confusing', 'Bug Found', 'Feature Suggestion', 'Created At'];
+      const rows = data.map((item: any) => [
+        item.id,
+        `"${item.name.replace(/"/g, '""')}"`,
+        `"${(item.email || '').replace(/"/g, '""')}"`,
+        item.device,
+        item.rating,
+        `"${(item.whatWorked || '').replace(/"/g, '""')}"`,
+        `"${(item.whatConfused || '').replace(/"/g, '""')}"`,
+        `"${(item.bugFound || '').replace(/"/g, '""')}"`,
+        `"${(item.suggestion || '').replace(/"/g, '""')}"`,
+        item.createdAt
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map((e: any) => e.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `typementor_feedback_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err.message || 'Failed to export feedback.');
+    }
   };
 
   // Hide or minimize if typing is active
@@ -275,26 +312,28 @@ export default function BetaFeedback() {
 
                   <div className="pt-2 flex items-center justify-between gap-4">
                     {/* Developer Admin Tools */}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={exportJSON}
-                        className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-brand-card hover:bg-brand-card/80 border border-brand-border text-brand-muted hover:text-white flex items-center gap-1 transition-all"
-                        title="Developer: Export feedback to JSON"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        JSON
-                      </button>
-                      <button
-                        type="button"
-                        onClick={exportCSV}
-                        className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-brand-card hover:bg-brand-card/80 border border-brand-border text-brand-muted hover:text-white flex items-center gap-1 transition-all"
-                        title="Developer: Export feedback to CSV"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        CSV
-                      </button>
-                    </div>
+                    {isDevAdmin && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={exportJSON}
+                          className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-brand-card hover:bg-brand-card/80 border border-brand-border text-brand-muted hover:text-white flex items-center gap-1 transition-all"
+                          title="Developer: Export feedback to JSON"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          JSON
+                        </button>
+                        <button
+                          type="button"
+                          onClick={exportCSV}
+                          className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-brand-card hover:bg-brand-card/80 border border-brand-border text-brand-muted hover:text-white flex items-center gap-1 transition-all"
+                          title="Developer: Export feedback to CSV"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          CSV
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       type="submit"

@@ -43,6 +43,7 @@ interface TypingState {
   riskKeys: Record<string, number>;
   predictionAccuracy: number | null;
   finalResult: FinalSessionResult | null;
+  pauseTime: number | null;
 
   initializeSession: (text: string, mode?: string, difficulty?: number, riskKeys?: Record<string, number>) => void;
   startSession: () => void;
@@ -50,6 +51,8 @@ interface TypingState {
   handleBackspace: () => void;
   completeSession: () => void;
   resetSession: () => void;
+  pauseSession: () => void;
+  resumeSession: () => void;
 }
 
 export const useTypingStore = create<TypingState>((set, get) => {
@@ -69,6 +72,7 @@ export const useTypingStore = create<TypingState>((set, get) => {
     focusScore: 100,
     isActive: false,
     isCompleted: false,
+    pauseTime: null,
     mode: 'English',
     difficulty: 1,
     riskKeys: {},
@@ -92,6 +96,7 @@ export const useTypingStore = create<TypingState>((set, get) => {
         focusScore: 100,
         isActive: false,
         isCompleted: false,
+        pauseTime: null,
         mode,
         difficulty,
         riskKeys,
@@ -108,8 +113,8 @@ export const useTypingStore = create<TypingState>((set, get) => {
     },
 
     recordKeystroke: (info) => {
-      const { keystrokes, startTime, currentIndex, words, backspaceCount, isCompleted } = get();
-      if (isCompleted) return;
+      const { keystrokes, startTime, currentIndex, words, backspaceCount, isCompleted, pauseTime } = get();
+      if (isCompleted || pauseTime !== null) return;
       if (!startTime) return;
 
       const now = info.timestamp;
@@ -167,8 +172,8 @@ export const useTypingStore = create<TypingState>((set, get) => {
     },
 
     handleBackspace: () => {
-      const { currentIndex, keystrokes, backspaceCount, isCompleted } = get();
-      if (isCompleted) return;
+      const { currentIndex, keystrokes, backspaceCount, isCompleted, pauseTime } = get();
+      if (isCompleted || pauseTime !== null) return;
       if (currentIndex === 0 || !get().startTime) return;
 
       const popped = keystrokes.pop();
@@ -254,6 +259,22 @@ export const useTypingStore = create<TypingState>((set, get) => {
     resetSession: () => {
       const { words, mode, difficulty, riskKeys } = get();
       get().initializeSession(words, mode, difficulty, riskKeys);
+    },
+
+    pauseSession: () => {
+      const { isActive, isCompleted, pauseTime } = get();
+      if (!isActive || isCompleted || pauseTime !== null) return;
+      set({ pauseTime: Date.now() });
+    },
+
+    resumeSession: () => {
+      const { startTime, pauseTime } = get();
+      if (pauseTime === null || startTime === null) return;
+      const pausedDuration = Date.now() - pauseTime;
+      set({
+        startTime: startTime + pausedDuration,
+        pauseTime: null,
+      });
     },
   };
 });

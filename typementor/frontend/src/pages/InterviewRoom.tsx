@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTypingStore } from '../store/TypingStore';
 import { Timer, Skull, Award, AlertOctagon } from 'lucide-react';
+import { soundEngine } from '../utils/soundEngine';
 
 // Mock candidates database for interview room
 const INITIAL_CANDIDATES = [
@@ -27,6 +28,7 @@ export default function InterviewRoom() {
   const [candidates, setCandidates] = useState(INITIAL_CANDIDATES);
   const [errorCount, setErrorCount] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const interviewText = "SELECT name, email, wpm FROM candidates WHERE wpm > 80 ORDER BY accuracy DESC LIMIT 5;";
@@ -37,12 +39,50 @@ export default function InterviewRoom() {
     setErrorCount(0);
     setFailed(false);
     setTimeLeft(60);
+    setIsPaused(false);
     setCandidates(INITIAL_CANDIDATES);
   }, []);
 
+  // Inactivity auto-pause logic
+  useEffect(() => {
+    if (!isActive || isCompleted || failed || isPaused) return;
+
+    let idleTimer: NodeJS.Timeout;
+
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setIsPaused(true);
+      }, 10000); // 10s idle threshold
+    };
+
+    const handleWindowBlur = () => {
+      setIsPaused(true);
+    };
+
+    const activityEvents = ['keydown', 'mousedown', 'mousemove', 'touchstart'];
+    activityEvents.forEach(evt => window.addEventListener(evt, resetIdleTimer));
+    window.addEventListener('blur', handleWindowBlur);
+
+    resetIdleTimer();
+
+    return () => {
+      clearTimeout(idleTimer);
+      activityEvents.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [isActive, isCompleted, failed, isPaused]);
+
+  const handleResume = () => {
+    setIsPaused(false);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
   // Timer loop
   useEffect(() => {
-    if (!isActive || isCompleted || failed) return;
+    if (!isActive || isCompleted || failed || isPaused) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -75,7 +115,7 @@ export default function InterviewRoom() {
   }, [isActive, isCompleted, failed, wpm, currentIndex, words]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isCompleted || failed) return;
+    if (isCompleted || failed || isPaused) return;
 
     if (!isActive) {
       startSession();
@@ -113,6 +153,14 @@ export default function InterviewRoom() {
       holdTime: 80,
       isMistake,
     });
+
+    if (key === ' ') {
+      soundEngine.play('space');
+    } else if (key === 'Enter') {
+      soundEngine.play('enter');
+    } else {
+      soundEngine.play('key');
+    }
   };
 
   const handleReset = () => {
@@ -120,6 +168,7 @@ export default function InterviewRoom() {
     setErrorCount(0);
     setFailed(false);
     setTimeLeft(60);
+    setIsPaused(false);
     setCandidates(INITIAL_CANDIDATES);
     setTimeout(() => inputRef.current?.focus(), 50);
   };
@@ -158,9 +207,39 @@ export default function InterviewRoom() {
         {/* Typing Board */}
         <div className="lg:col-span-2 space-y-4">
           <div
-            onClick={() => inputRef.current?.focus()}
-            className="glass-panel p-8 rounded-2xl border border-brand-border/40 min-h-[200px] flex items-center justify-center relative overflow-hidden"
+            onClick={() => {
+              if (isPaused) {
+                handleResume();
+              } else {
+                inputRef.current?.focus();
+              }
+            }}
+            className="glass-panel p-8 rounded-2xl border border-brand-border/40 min-h-[200px] flex items-center justify-center relative overflow-hidden cursor-text"
           >
+            {isPaused && (
+              <div
+                className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResume();
+                }}
+              >
+                <div className="bg-brand-card/90 border border-brand-border/80 p-5 rounded-2xl text-center max-w-sm mx-4 space-y-3 shadow-2xl">
+                  <div className="inline-flex p-2.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary animate-pulse">
+                    <Timer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-white">Interview Paused</h4>
+                    <p className="text-[10px] text-brand-muted mt-1 leading-relaxed">
+                      You have been inactive. Click or touch anywhere to resume.
+                    </p>
+                  </div>
+                  <button className="w-full py-1.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold rounded-xl text-[11px] transition-all shadow-md">
+                    Resume
+                  </button>
+                </div>
+              </div>
+            )}
             {failed ? (
               <div className="text-center py-6">
                 <div className="inline-flex p-3 rounded-full bg-brand-danger/10 border border-brand-danger/30 text-brand-danger mb-4">

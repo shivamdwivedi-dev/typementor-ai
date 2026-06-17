@@ -146,17 +146,17 @@ class SoundEngine {
       thudDecay = 0.15;
     }
 
-    // High transient click
+    // High transient click (increased from 0.08 to 0.18)
     oscClick.type = 'triangle';
     oscClick.frequency.setValueAtTime(clickFreq, now);
     oscClick.frequency.exponentialRampToValueAtTime(clickFreq / 2, now + clickDecay);
-    gainClick.gain.setValueAtTime(0.08, now);
+    gainClick.gain.setValueAtTime(0.18, now);
     gainClick.gain.exponentialRampToValueAtTime(0.001, now + clickDecay);
 
-    // Low chassis thud
+    // Low chassis thud (increased from 0.35 to 0.65)
     oscThud.type = 'sine';
     oscThud.frequency.setValueAtTime(thudFreq, now);
-    gainThud.gain.setValueAtTime(0.35, now);
+    gainThud.gain.setValueAtTime(0.65, now);
     gainThud.gain.exponentialRampToValueAtTime(0.001, now + thudDecay);
 
     oscClick.start(now);
@@ -174,20 +174,20 @@ class SoundEngine {
 
     let freq = 1600;
     let decay = 0.008;
-    let vol = 0.18;
+    let vol = 0.35; // increased from 0.18 to 0.35
 
     if (type === 'space') {
       freq = 900;
       decay = 0.018;
-      vol = 0.22;
+      vol = 0.45; // increased from 0.22 to 0.45
     } else if (type === 'backspace') {
       freq = 1300;
       decay = 0.012;
-      vol = 0.18;
+      vol = 0.35; // increased from 0.18 to 0.35
     } else if (type === 'enter') {
       freq = 1200;
       decay = 0.015;
-      vol = 0.25;
+      vol = 0.50; // increased from 0.25 to 0.50
     }
 
     osc.type = 'sine';
@@ -207,7 +207,7 @@ class SoundEngine {
       const gain = ctx.createGain();
 
       gain.connect(destination);
-      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.setValueAtTime(0.55, now); // increased from 0.25 to 0.55
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
       // Bell harmonics
@@ -235,7 +235,7 @@ class SoundEngine {
 
     oscRing.type = 'triangle';
     oscRing.frequency.setValueAtTime(ringFreq, now);
-    gainRing.gain.setValueAtTime(0.06, now);
+    gainRing.gain.setValueAtTime(0.15, now); // increased from 0.06 to 0.15
     gainRing.gain.exponentialRampToValueAtTime(0.001, now + ringDecay);
 
     // Dynamic noise strike
@@ -256,7 +256,7 @@ class SoundEngine {
       noiseFilter.Q.value = 3.0;
 
       const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.2, now);
+      noiseGain.gain.setValueAtTime(0.45, now); // increased from 0.2 to 0.45
       noiseGain.gain.exponentialRampToValueAtTime(0.001, now + strikeDecay);
 
       noiseSource.connect(noiseFilter);

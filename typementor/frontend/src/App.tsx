@@ -153,12 +153,15 @@ export default function App() {
                 <p className="text-[10px] text-brand-muted tracking-wider uppercase font-semibold">Adaptive Typing Coach</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowAuth(false)}
-              className="text-xs text-brand-muted hover:text-white font-semibold border border-brand-border px-3 py-1.5 rounded-lg bg-brand-card/25"
-            >
-              ← Back
-            </button>
+            <div className="flex items-center gap-3">
+              <SoundSettings />
+              <button
+                onClick={() => setShowAuth(false)}
+                className="text-xs text-brand-muted hover:text-white font-semibold border border-brand-border px-3 py-1.5 rounded-lg bg-brand-card/25"
+              >
+                ← Back
+              </button>
+            </div>
           </header>
 
           <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
@@ -203,12 +206,15 @@ export default function App() {
               <p className="text-[10px] text-brand-muted tracking-wider uppercase font-semibold">Adaptive Typing Coach</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowAuth(true)}
-            className="text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary/95 px-4 py-2 rounded-xl transition-all border border-indigo-400/40"
-          >
-            Sign In / Register
-          </button>
+          <div className="flex items-center gap-3">
+            <SoundSettings />
+            <button
+              onClick={() => setShowAuth(true)}
+              className="text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary/95 px-4 py-2 rounded-xl transition-all border border-indigo-400/40"
+            >
+              Sign In / Register
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">

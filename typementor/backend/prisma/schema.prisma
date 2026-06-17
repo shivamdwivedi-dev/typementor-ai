@@ -142,3 +142,16 @@ model RecoveryHistory {
   recoveryScore     Float    @default(0)
   createdAt         DateTime @default(now())
 }
+
+model Feedback {
+  id           String   @id @default(uuid())
+  name         String
+  email        String?
+  device       String
+  rating       Int
+  whatWorked   String   @db.Text
+  whatConfused String   @db.Text
+  bugFound     String   @db.Text
+  suggestion   String   @db.Text
+  createdAt    DateTime @default(now())
+}

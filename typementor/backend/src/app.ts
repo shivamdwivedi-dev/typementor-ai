@@ -115,11 +115,13 @@ import authRoutes from './routes/auth.routes';
 import sessionRoutes from './routes/session.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import coachRoutes from './routes/coach.routes';
+import feedbackRoutes from './routes/feedback.routes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/coach', coachRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req: Request, res: Response) => {

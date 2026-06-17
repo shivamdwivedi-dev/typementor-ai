@@ -7,7 +7,7 @@ import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { saveLastActivity } from '../utils/ResumeTracker';
 import {
   Trophy, Award,
-  RefreshCw, ChevronRight, Activity, Clock
+  RefreshCw, ChevronRight, Activity, Clock, Timer
 } from 'lucide-react';
 
 type Rating = 'Beginner' | 'Intermediate' | 'Advanced' | 'Elite';
@@ -52,6 +52,9 @@ export default function EnduranceArena() {
 
   const [backspacesLog, setBackspacesLog] = useState<Array<{ timestamp: number; isAfterMistake: boolean }>>([]);
 
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [pauseTime, setPauseTime] = useState<number | null>(null);
+
   // AI Coach Pulse Hook
   const { pulseMessage, processPulse, clearPulse, resetSessionState } = useAICoachPulse();
 
@@ -85,6 +88,50 @@ export default function EnduranceArena() {
     });
   }, [typedText.length, backspacesLog.length, endTime, isStarted, step]);
 
+  // Inactivity auto-pause logic
+  useEffect(() => {
+    if (!isStarted || endTime !== null || isPaused) return;
+
+    let idleTimer: NodeJS.Timeout;
+
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setIsPaused(true);
+        setPauseTime(Date.now());
+      }, 10000); // 10s idle threshold
+    };
+
+    const handleWindowBlur = () => {
+      setIsPaused(true);
+      setPauseTime(Date.now());
+    };
+
+    const activityEvents = ['keydown', 'mousedown', 'mousemove', 'touchstart'];
+    activityEvents.forEach(evt => window.addEventListener(evt, resetIdleTimer));
+    window.addEventListener('blur', handleWindowBlur);
+
+    resetIdleTimer();
+
+    return () => {
+      clearTimeout(idleTimer);
+      activityEvents.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [isStarted, endTime, isPaused]);
+
+  const handleResume = () => {
+    if (pauseTime && startTime) {
+      const pausedDuration = Date.now() - pauseTime;
+      setStartTime(prev => prev ? prev + pausedDuration : null);
+    }
+    setPauseTime(null);
+    setIsPaused(false);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
   // ── Setup Session ──────────────────────────────────────────────────────────
   const startSession = () => {
     const recentlyUsedRaw = localStorage.getItem('endurance_recent_passages');
@@ -105,6 +152,8 @@ export default function EnduranceArena() {
     setFinalResult(null);
     setShowExitConfirm(false);
     resetSessionState();
+    setIsPaused(false);
+    setPauseTime(null);
     setStep('practice');
     saveLastActivity({
       type: 'endurance',
@@ -118,7 +167,7 @@ export default function EnduranceArena() {
 
   // ── Handle Key Inputs ─────────────────────────────────────────────────────
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (endTime !== null || showExitConfirm) return;
+    if (endTime !== null || isPaused) return;
     const value = e.target.value;
     if (step !== 'practice') return;
 
@@ -463,12 +512,13 @@ export default function EnduranceArena() {
           />
 
           {/* Interactive Typing Board */}
-          <div
-            ref={textContainerRef}
-            onClick={focusTypingInput}
-            className="p-5 sm:p-6 bg-brand-bg/50 border border-brand-border/30 rounded-xl cursor-text select-none leading-relaxed text-base sm:text-lg tracking-wide font-mono text-slate-400 max-h-96 overflow-y-auto outline-none transition-all focus-within:border-brand-primary/60"
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
+          <div className="relative">
+            <div
+              ref={textContainerRef}
+              onClick={() => !isPaused && focusTypingInput()}
+              className="p-5 sm:p-6 bg-brand-bg/50 border border-brand-border/30 rounded-xl cursor-text select-none leading-relaxed text-base sm:text-lg tracking-wide font-mono text-slate-400 max-h-96 overflow-y-auto outline-none transition-all focus-within:border-brand-primary/60"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
             {passage.length === 0 ? (
               <div className="text-center text-xs text-brand-muted py-6">No passage available.</div>
             ) : (
@@ -491,6 +541,32 @@ export default function EnduranceArena() {
                   </span>
                 );
               })
+            )}
+            </div>
+
+            {isPaused && isStarted && endTime === null && (
+              <div
+                className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-xl"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResume();
+                }}
+              >
+                <div className="bg-brand-card/90 border border-brand-border/80 p-5 rounded-2xl text-center max-w-sm mx-4 space-y-3 shadow-2xl">
+                  <div className="inline-flex p-2.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary animate-pulse">
+                    <Timer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-white">Arena Paused</h4>
+                    <p className="text-[10px] text-brand-muted mt-1 leading-relaxed">
+                      You have been inactive. Click or touch anywhere to resume.
+                    </p>
+                  </div>
+                  <button className="w-full py-1.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold rounded-xl text-[11px] transition-all shadow-md">
+                    Resume
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

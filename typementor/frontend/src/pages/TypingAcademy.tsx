@@ -9,7 +9,7 @@ import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { getStorageKey } from '../utils/api';
 import {
   CheckCircle2, Lock,
-  ChevronRight, RefreshCw, Star, Info, Award, Download, X, Sparkles
+  ChevronRight, RefreshCw, Star, Info, Award, Download, X, Sparkles, Timer
 } from 'lucide-react';
 
 const FINGER_COLORS: Record<string, { border: string; text: string; bg: string; activeBg: string }> = {
@@ -78,6 +78,10 @@ export default function TypingAcademy() {
   const [celebrationCourse, setCelebrationCourse] = useState<'beginner' | 'intermediate' | null>(null);
   const [celebrationStats, setCelebrationStats] = useState<{ avgWpm: number; avgAccuracy: number; lessonsCompleted: number; certId: string } | null>(null);
 
+  // Inactivity / Pause states
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [pauseTime, setPauseTime] = useState<number | null>(null);
+
   // AI Coach Pulse integration
   const { pulseMessage, processPulse, clearPulse, resetSessionState } = useAICoachPulse();
 
@@ -96,6 +100,62 @@ export default function TypingAcademy() {
       setCompletedLessons([]);
     }
   }, [user?.id]);
+
+  // Inactivity auto-pause loop for Academy
+  useEffect(() => {
+    const isAcademyActive = (startTime !== null && endTime === null) || (testStart !== null && testEnd === null);
+    if (!isAcademyActive || isPaused) return;
+
+    let idleTimer: NodeJS.Timeout;
+
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setIsPaused(true);
+        setPauseTime(Date.now());
+      }, 10000); // 10s idle threshold
+    };
+
+    const handleWindowBlur = () => {
+      setIsPaused(true);
+      setPauseTime(Date.now());
+    };
+
+    const activityEvents = ['keydown', 'mousedown', 'mousemove', 'touchstart'];
+    activityEvents.forEach(evt => window.addEventListener(evt, resetIdleTimer));
+    window.addEventListener('blur', handleWindowBlur);
+
+    resetIdleTimer();
+
+    return () => {
+      clearTimeout(idleTimer);
+      activityEvents.forEach(evt => window.removeEventListener(evt, resetIdleTimer));
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [startTime, endTime, testStart, testEnd, isPaused]);
+
+  const handleResume = () => {
+    if (pauseTime) {
+      const pausedDuration = Date.now() - pauseTime;
+      if (startTime && !endTime) {
+        setStartTime(prev => prev ? prev + pausedDuration : null);
+      }
+      if (testStart && !testEnd) {
+        setTestStart(prev => prev ? prev + pausedDuration : null);
+      }
+    }
+    setPauseTime(null);
+    setIsPaused(false);
+    
+    // Focus appropriate input field
+    setTimeout(() => {
+      if (startTime && !endTime) {
+        inputRef.current?.focus();
+      } else if (testStart && !testEnd) {
+        testInputRef.current?.focus();
+      }
+    }, 50);
+  };
 
   // Listen for smart resume events or window variables to launch lesson
   useEffect(() => {
@@ -389,6 +449,8 @@ export default function TypingAcademy() {
     setTypedCharsLog([]);
     setBackspacesLog([]);
     setFinalResult(null);
+    setIsPaused(false);
+    setPauseTime(null);
     setTimeout(() => inputRef.current?.focus(), 150);
   };
 
@@ -397,7 +459,7 @@ export default function TypingAcademy() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (endTime !== null) return;
+    if (endTime !== null || isPaused) return;
     const value = e.target.value;
     if (!selectedLesson) return;
 
@@ -475,11 +537,13 @@ export default function TypingAcademy() {
     setTestEnd(null);
     setTestErrors(0);
     setRecommendedLevel(null);
+    setIsPaused(false);
+    setPauseTime(null);
     setTimeout(() => testInputRef.current?.focus(), 150);
   };
 
   const handleTestChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (testEnd !== null) return;
+    if (testEnd !== null || isPaused) return;
     const value = e.target.value;
     if (!testStarted) {
       setTestStarted(true);
@@ -831,23 +895,50 @@ export default function TypingAcademy() {
               />
 
               {/* Text display board */}
-              <div
-                onClick={() => testInputRef.current?.focus()}
-                className="p-5 bg-brand-bg/50 border border-brand-border/30 rounded-xl cursor-text font-mono text-base leading-relaxed text-slate-400 select-none text-left"
-              >
-                {testText.split('').map((char, index) => {
-                  let colorClass = 'text-slate-500';
-                  let cursor = '';
+              <div className="relative">
+                <div
+                  onClick={() => !isPaused && testInputRef.current?.focus()}
+                  className="p-5 bg-brand-bg/50 border border-brand-border/30 rounded-xl cursor-text font-mono text-base leading-relaxed text-slate-400 select-none text-left"
+                >
+                  {testText.split('').map((char, index) => {
+                    let colorClass = 'text-slate-500';
+                    let cursor = '';
 
-                  if (index < testTyped.length) {
-                    colorClass = testTyped[index] === char ? 'text-white' : 'text-brand-danger bg-brand-danger/10 border-b border-brand-danger';
-                  } else if (index === testTyped.length) {
-                    colorClass = 'text-brand-primary';
-                    cursor = 'border-l-2 border-brand-primary animate-pulse';
-                  }
+                    if (index < testTyped.length) {
+                      colorClass = testTyped[index] === char ? 'text-white' : 'text-brand-danger bg-brand-danger/10 border-b border-brand-danger';
+                    } else if (index === testTyped.length) {
+                      colorClass = 'text-brand-primary';
+                      cursor = 'border-l-2 border-brand-primary animate-pulse';
+                    }
 
-                  return <span key={index} className={`${colorClass} ${cursor}`}>{char}</span>;
-                })}
+                    return <span key={index} className={`${colorClass} ${cursor}`}>{char}</span>;
+                  })}
+                </div>
+
+                {isPaused && testStart && !testEnd && (
+                  <div
+                    className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-xl"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleResume();
+                    }}
+                  >
+                    <div className="bg-brand-card/90 border border-brand-border/80 p-5 rounded-2xl text-center max-w-sm mx-4 space-y-3 shadow-2xl">
+                      <div className="inline-flex p-2.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary animate-pulse">
+                        <Timer className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-white">Assessment Paused</h4>
+                        <p className="text-[10px] text-brand-muted mt-1 leading-relaxed">
+                          You have been inactive. Click or touch anywhere to resume.
+                        </p>
+                      </div>
+                      <button className="w-full py-1.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold rounded-xl text-[11px] transition-all shadow-md">
+                        Resume
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -909,23 +1000,50 @@ export default function TypingAcademy() {
           />
 
           {/* Practice Text Display Deck */}
-          <div
-            onClick={focusTypingInput}
-            className="p-6 bg-brand-bg/50 border border-brand-border/30 rounded-xl font-mono text-lg leading-relaxed text-slate-400 select-none text-left cursor-text"
-          >
-            {selectedLesson.text.split('').map((char, index) => {
-              let colorClass = 'text-slate-500';
-              let cursor = '';
+          <div className="relative">
+            <div
+              onClick={() => !isPaused && focusTypingInput()}
+              className="p-6 bg-brand-bg/50 border border-brand-border/30 rounded-xl font-mono text-lg leading-relaxed text-slate-400 select-none text-left cursor-text"
+            >
+              {selectedLesson.text.split('').map((char, index) => {
+                let colorClass = 'text-slate-500';
+                let cursor = '';
 
-              if (index < typedText.length) {
-                colorClass = typedText[index] === char ? 'text-white' : 'text-brand-danger bg-brand-danger/10 border-b border-brand-danger';
-              } else if (index === typedText.length) {
-                colorClass = 'text-brand-primary';
-                cursor = 'border-l-2 border-brand-primary animate-pulse';
-              }
+                if (index < typedText.length) {
+                  colorClass = typedText[index] === char ? 'text-white' : 'text-brand-danger bg-brand-danger/10 border-b border-brand-danger';
+                } else if (index === typedText.length) {
+                  colorClass = 'text-brand-primary';
+                  cursor = 'border-l-2 border-brand-primary animate-pulse';
+                }
 
-              return <span key={index} className={`${colorClass} ${cursor}`}>{char}</span>;
-            })}
+                return <span key={index} className={`${colorClass} ${cursor}`}>{char}</span>;
+              })}
+            </div>
+
+            {isPaused && selectedLesson && startTime && !endTime && (
+              <div
+                className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-xl"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleResume();
+                }}
+              >
+                <div className="bg-brand-card/90 border border-brand-border/80 p-5 rounded-2xl text-center max-w-sm mx-4 space-y-3 shadow-2xl">
+                  <div className="inline-flex p-2.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 text-brand-primary animate-pulse">
+                    <Timer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-white">Lesson Paused</h4>
+                    <p className="text-[10px] text-brand-muted mt-1 leading-relaxed">
+                      You have been inactive. Click or touch anywhere to resume.
+                    </p>
+                  </div>
+                  <button className="w-full py-1.5 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold rounded-xl text-[11px] transition-all shadow-md">
+                    Resume
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Results overlay when finished */}
