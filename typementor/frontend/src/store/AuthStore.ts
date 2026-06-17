@@ -124,27 +124,85 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
       console.error('Failed to sync migrated progress to database:', err);
     }
   } else {
-    // 2. No guest progress to migrate, just sync DB to localStorage
+    // 2. No guest progress to migrate.
+    // Let's check if the user has local progress that is NOT in the database yet,
+    // or if the database progress is more up-to-date.
+    const userCompletedStr = localStorage.getItem(userCompletedKey);
+    const userCompleted = userCompletedStr ? JSON.parse(userCompletedStr) : [];
+
+    const userResultsStr = localStorage.getItem(userResultsKey);
+    const userResults = userResultsStr ? JSON.parse(userResultsStr) : {};
+
+    let dbCompleted: number[] = [];
+    let dbResults: any = {};
     if (user.academyProgress) {
       try {
         const parsed = JSON.parse(user.academyProgress);
-        const completed = parsed.completed || [];
-        const results = parsed.results || {};
-
-        localStorage.setItem(userCompletedKey, JSON.stringify(completed));
-        localStorage.setItem(userResultsKey, JSON.stringify(results));
-
-        // Unlock milestones based on completed lessons
-        const isBeginnerCompleted = completed.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every((id: any) => completed.includes(id));
-        if (isBeginnerCompleted) {
-          localStorage.setItem(userIntermediateUnlockedKey, 'true');
-        }
-        const isIntermediateCompleted = completed.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every((id: any) => completed.includes(id));
-        if (isIntermediateCompleted) {
-          localStorage.setItem(userTestUnlockedKey, 'true');
-        }
+        dbCompleted = parsed.completed || [];
+        dbResults = parsed.results || {};
       } catch (e) {
-        console.warn('Failed to sync DB academy progress to localStorage:', e);
+        console.warn('Failed to parse DB academy progress:', e);
+      }
+    }
+
+    // If local progress exists but database progress is empty/null, sync local to DB
+    if (userCompleted.length > 0 && dbCompleted.length === 0) {
+      try {
+        await fetch(getApiUrl('/api/auth/profile/academy'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            progress: {
+              completed: userCompleted,
+              results: userResults,
+            },
+          }),
+        });
+        console.log('Successfully synced existing local progress to database');
+      } catch (err) {
+        console.error('Failed to sync existing local progress to database:', err);
+      }
+    } else if (user.academyProgress || userCompleted.length > 0) {
+      // Merge database progress and local progress together to avoid losing anything
+      const mergedCompleted = [...new Set([...dbCompleted, ...userCompleted])];
+      const mergedResults = { ...dbResults, ...userResults };
+
+      localStorage.setItem(userCompletedKey, JSON.stringify(mergedCompleted));
+      localStorage.setItem(userResultsKey, JSON.stringify(mergedResults));
+
+      // Unlock milestones based on completed lessons
+      const isBeginnerCompleted = mergedCompleted.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every((id: any) => mergedCompleted.includes(id));
+      if (isBeginnerCompleted || mergedCompleted.some(id => id >= 31)) {
+        localStorage.setItem(userIntermediateUnlockedKey, 'true');
+      }
+      const isIntermediateCompleted = mergedCompleted.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every((id: any) => mergedCompleted.includes(id));
+      if (isIntermediateCompleted || mergedCompleted.some(id => id >= 51)) {
+        localStorage.setItem(userTestUnlockedKey, 'true');
+      }
+
+      // If local progress was merged and had new additions, sync the merged back to DB
+      if (mergedCompleted.length > dbCompleted.length) {
+        try {
+          await fetch(getApiUrl('/api/auth/profile/academy'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              progress: {
+                completed: mergedCompleted,
+                results: mergedResults,
+              },
+            }),
+          });
+          console.log('Successfully synced merged local/DB progress to database');
+        } catch (err) {
+          console.error('Failed to sync merged progress back to DB:', err);
+        }
       }
     }
   }
