@@ -187,9 +187,9 @@ export default function TypingAcademy() {
 
   // Completion criteria evaluation
   const isBeginnerCompleted = completedLessons.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every(id => completedLessons.includes(id));
-  const isIntermediateUnlocked = isBeginnerCompleted || localStorage.getItem(getStorageKey('academy_intermediate_unlocked', user?.id)) === 'true';
+  const isIntermediateUnlocked = isBeginnerCompleted || completedLessons.some(id => id >= 31) || localStorage.getItem(getStorageKey('academy_intermediate_unlocked', user?.id)) === 'true';
   const isIntermediateCompleted = completedLessons.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every(id => completedLessons.includes(id));
-  const isTestUnlocked = isIntermediateCompleted || localStorage.getItem(getStorageKey('academy_test_unlocked', user?.id)) === 'true';
+  const isTestUnlocked = isIntermediateCompleted || completedLessons.some(id => id >= 51) || localStorage.getItem(getStorageKey('academy_test_unlocked', user?.id)) === 'true';
 
   // Make sure Intermediate unlock rule persists
   useEffect(() => {
@@ -204,6 +204,43 @@ export default function TypingAcademy() {
       localStorage.setItem(getStorageKey('academy_test_unlocked', user?.id), 'true');
     }
   }, [isIntermediateCompleted, user?.id]);
+
+  // Listen for global keydown events to support pressing Enter to advance/retry lessons
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showCelebration) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          setShowCelebration(false);
+        }
+        return;
+      }
+
+      if (endTime && selectedLesson && finalResult) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const isSuccess = finalResult.wpm >= selectedLesson.minWpm && finalResult.accuracy >= selectedLesson.minAccuracy;
+          if (isSuccess) {
+            const nextId = selectedLesson.id + 1;
+            const next = ACADEMY_LESSONS.find(l => l.id === nextId);
+            if (next) {
+              startLesson(next);
+            } else {
+              setSelectedLesson(null);
+            }
+          } else {
+            // Restart the same lesson
+            startLesson(selectedLesson);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [endTime, selectedLesson, finalResult, showCelebration, completedLessons]);
 
   // Reset pulse stats on lesson change
   useEffect(() => {
@@ -455,6 +492,13 @@ export default function TypingAcademy() {
 
   // ── Typing Mechanics ──────────────────────────────────────────────────────
   const startLesson = (lesson: AcademyLesson) => {
+    if (lesson.id <= 30) {
+      setActiveTab('beginner');
+    } else if (lesson.id <= 50) {
+      setActiveTab('intermediate');
+    } else {
+      setActiveTab('test');
+    }
     setSelectedLesson(lesson);
     saveLastActivity({
       type: 'academy',
@@ -1112,8 +1156,12 @@ export default function TypingAcademy() {
                   onClick={() => {
                     const nextId = selectedLesson.id + 1;
                     const next = ACADEMY_LESSONS.find(l => l.id === nextId);
-                    if (next && completedLessons.includes(selectedLesson.id)) {
+                    const isSuccess = completedLessons.includes(selectedLesson.id);
+                    if (isSuccess && next) {
                       startLesson(next);
+                    } else if (!isSuccess) {
+                      // Restart the current lesson (Try Again)
+                      startLesson(selectedLesson);
                     } else {
                       setSelectedLesson(null);
                     }
