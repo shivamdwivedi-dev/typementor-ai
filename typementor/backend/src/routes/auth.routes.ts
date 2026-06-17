@@ -1,5 +1,5 @@
 import { Router, RequestHandler, Request, Response, NextFunction } from 'express';
-import { register, login, getProfile, googleLogin, updateLastActivity } from '../controllers/auth.controller';
+import { register, login, getProfile, googleLogin, updateLastActivity, updateAcademyProgress } from '../controllers/auth.controller';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { authLimiter } from '../app';
 
@@ -23,6 +23,7 @@ router.post('/google', authLimiter, googleLogin as RequestHandler);
 router.use('/profile', authenticateToken);
 router.get('/profile', authHandler(getProfile));
 router.post('/profile/activity', authHandler(updateLastActivity));
+router.post('/profile/academy', authHandler(updateAcademyProgress));
 
 export default router;
 

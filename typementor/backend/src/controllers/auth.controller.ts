@@ -88,7 +88,8 @@ export const register = async (req: Request, res: Response) => {
         level: newUser.level,
         xp: newUser.xp,
         streak: newUser.streak,
-        longestStreak: newUser.longestStreak
+        longestStreak: newUser.longestStreak,
+        academyProgress: newUser.academyProgress
       }
     });
   } catch (error: unknown) {
@@ -170,7 +171,8 @@ export const login = async (req: Request, res: Response) => {
         level: updatedUser.level,
         xp: updatedUser.xp,
         streak: updatedUser.streak,
-        longestStreak: updatedUser.longestStreak
+        longestStreak: updatedUser.longestStreak,
+        academyProgress: updatedUser.academyProgress
       }
     });
   } catch (error: unknown) {
@@ -352,7 +354,8 @@ export const googleLogin = async (req: Request, res: Response) => {
         level: user.level,
         xp: user.xp,
         streak: user.streak,
-        longestStreak: user.longestStreak
+        longestStreak: user.longestStreak,
+        academyProgress: user.academyProgress
       }
     });
   } catch (error: unknown) {
@@ -392,4 +395,37 @@ export const updateLastActivity = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: 'An error occurred updating user activity.' });
   }
 };
+
+export const updateAcademyProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID missing in token.' });
+    }
+
+    const { progress } = req.body;
+    if (!progress) {
+      return res.status(400).json({ error: 'Progress data is required.' });
+    }
+
+    const progressString = typeof progress === 'object' ? JSON.stringify(progress) : progress;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        academyProgress: progressString,
+        lastActiveAt: new Date()
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      academyProgress: updatedUser.academyProgress
+    });
+  } catch (error: unknown) {
+    console.error('Update academy progress error:', error);
+    return res.status(500).json({ error: 'An error occurred updating academy progress.' });
+  }
+};
+
 

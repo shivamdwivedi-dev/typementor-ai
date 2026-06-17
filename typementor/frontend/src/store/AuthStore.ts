@@ -16,6 +16,7 @@ export interface UserProfile {
   practiceHours: number;
   typingDna?: string;
   lastActivity?: string;
+  academyProgress?: string;
   createdAt: string;
   achievements?: Array<{
     id: string;
@@ -44,6 +45,111 @@ export interface UserProfile {
     };
   }>;
 }
+
+// Helper to sync database academy progress to localStorage and migrate guest progress
+async function syncAndMigrateAcademyProgress(user: any, token: string) {
+  if (!user || !user.id) return;
+
+  const userCompletedKey = `academy_completed_lessons_${user.id}`;
+  const userResultsKey = `academy_lesson_results_${user.id}`;
+  const userIntermediateUnlockedKey = `academy_intermediate_unlocked_${user.id}`;
+  const userTestUnlockedKey = `academy_test_unlocked_${user.id}`;
+
+  const guestCompletedKey = 'academy_completed_lessons_guest';
+  const guestResultsKey = 'academy_lesson_results_guest';
+  const guestIntermediateUnlockedKey = 'academy_intermediate_unlocked_guest';
+  const guestTestUnlockedKey = 'academy_test_unlocked_guest';
+
+  // 1. Check if guest progress exists and needs migration
+  const guestCompletedStr = localStorage.getItem(guestCompletedKey);
+  const guestCompleted = guestCompletedStr ? JSON.parse(guestCompletedStr) : [];
+
+  if (Array.isArray(guestCompleted) && guestCompleted.length > 0) {
+    // We have guest progress! Let's migrate it
+    const guestResultsStr = localStorage.getItem(guestResultsKey);
+    const guestResults = guestResultsStr ? JSON.parse(guestResultsStr) : {};
+
+    const guestIntermediateUnlocked = localStorage.getItem(guestIntermediateUnlockedKey) === 'true';
+    const guestTestUnlocked = localStorage.getItem(guestTestUnlockedKey) === 'true';
+
+    // Merge/overwrite user storage with guest progress
+    let dbCompleted: number[] = [];
+    let dbResults: any = {};
+    if (user.academyProgress) {
+      try {
+        const parsed = JSON.parse(user.academyProgress);
+        dbCompleted = parsed.completed || [];
+        dbResults = parsed.results || {};
+      } catch (e) {
+        console.warn('Failed to parse DB academy progress during migration:', e);
+      }
+    }
+
+    const mergedCompleted = [...new Set([...dbCompleted, ...guestCompleted])];
+    const mergedResults = { ...dbResults, ...guestResults };
+
+    // Update user's localStorage
+    localStorage.setItem(userCompletedKey, JSON.stringify(mergedCompleted));
+    localStorage.setItem(userResultsKey, JSON.stringify(mergedResults));
+    if (guestIntermediateUnlocked || mergedCompleted.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every((id: any) => mergedCompleted.includes(id))) {
+      localStorage.setItem(userIntermediateUnlockedKey, 'true');
+    }
+    if (guestTestUnlocked || mergedCompleted.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every((id: any) => mergedCompleted.includes(id))) {
+      localStorage.setItem(userTestUnlockedKey, 'true');
+    }
+
+    // Clear guest storage so we don't migrate again
+    localStorage.removeItem(guestCompletedKey);
+    localStorage.removeItem(guestResultsKey);
+    localStorage.removeItem(guestIntermediateUnlockedKey);
+    localStorage.removeItem(guestTestUnlockedKey);
+
+    // Sync merged progress to the database
+    try {
+      await fetch(getApiUrl('/api/auth/profile/academy'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          progress: {
+            completed: mergedCompleted,
+            results: mergedResults,
+          },
+        }),
+      });
+      console.log('Successfully migrated guest progress to user account in database');
+    } catch (err) {
+      console.error('Failed to sync migrated progress to database:', err);
+    }
+  } else {
+    // 2. No guest progress to migrate, just sync DB to localStorage
+    if (user.academyProgress) {
+      try {
+        const parsed = JSON.parse(user.academyProgress);
+        const completed = parsed.completed || [];
+        const results = parsed.results || {};
+
+        localStorage.setItem(userCompletedKey, JSON.stringify(completed));
+        localStorage.setItem(userResultsKey, JSON.stringify(results));
+
+        // Unlock milestones based on completed lessons
+        const isBeginnerCompleted = completed.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every((id: any) => completed.includes(id));
+        if (isBeginnerCompleted) {
+          localStorage.setItem(userIntermediateUnlockedKey, 'true');
+        }
+        const isIntermediateCompleted = completed.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every((id: any) => completed.includes(id));
+        if (isIntermediateCompleted) {
+          localStorage.setItem(userTestUnlockedKey, 'true');
+        }
+      } catch (e) {
+        console.warn('Failed to sync DB academy progress to localStorage:', e);
+      }
+    }
+  }
+}
+
 
 interface AuthState {
   user: UserProfile | null;
@@ -99,6 +205,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (response.ok) {
         const data = await response.json();
+        await syncAndMigrateAcademyProgress(data, savedToken);
         set({
           token: savedToken,
           user: data,
@@ -274,6 +381,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(data.error || 'Failed to fetch profile.');
       }
 
+      await syncAndMigrateAcademyProgress(data, token);
       set({ user: data, isLoading: false, isOffline: false });
     } catch (err: unknown) {
       const isNetwork = err instanceof TypeError || (err instanceof Error && err.message.toLowerCase().includes('failed to fetch'));

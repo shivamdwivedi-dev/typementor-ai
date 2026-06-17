@@ -36,16 +36,34 @@ const GUEST_MODE_ENABLED = import.meta.env.VITE_ENABLE_GUEST_MODE === 'true';
 type Page = 'practice' | 'dashboard' | 'path' | 'profile' | 'interview' | 'endurance' | 'academy' | 'privacy' | 'terms';
 
 export default function App() {
+  const { user, isAuthenticated, isBootstrapping, isOffline, logout, bootstrap, fetchProfile } = useAuthStore();
+  const { difficulty, mode, initializeSession } = useTypingStore();
+
   const [currentPage, setCurrentPage] = useState<Page>('academy');
   const [showAuth, setShowAuth] = useState(false);
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const hasShownWelcome = useRef(false);
   const [difficultyAlert, setDifficultyAlert] = useState<string | null>(null);
-  const [isGuestSession, setIsGuestSession] = useState(false);
+  const [isGuestSession, setIsGuestSessionState] = useState(() => localStorage.getItem('typementor_is_guest') === 'true');
+  const setIsGuestSession = (val: boolean) => {
+    setIsGuestSessionState(val);
+    if (val) {
+      localStorage.setItem('typementor_is_guest', 'true');
+    } else {
+      localStorage.removeItem('typementor_is_guest');
+    }
+  };
   const [pendingNextDifficulty, setPendingNextDifficulty] = useState(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
+
+  // Clear guest session when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      setIsGuestSession(false);
+    }
+  }, [isAuthenticated]);
 
   // Register local toast listener
   useEffect(() => {
@@ -92,9 +110,6 @@ export default function App() {
 
   // Preserve weak keys from the last session so the next lesson can target them
   const lastSessionKeystrokes = useRef<{ expectedKey: string; isMistake: boolean }[]>([]);
-
-  const { user, isAuthenticated, isBootstrapping, isOffline, logout, bootstrap, fetchProfile } = useAuthStore();
-  const { difficulty, mode, initializeSession } = useTypingStore();
 
   // ── On mount: validate stored token before rendering anything ──────────────
   useEffect(() => {

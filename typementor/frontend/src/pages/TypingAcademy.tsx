@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/AuthStore';
 import { saveLastActivity, logResumeAnalytics } from '../utils/ResumeTracker';
 import { jsPDF } from 'jspdf';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
-import { getStorageKey } from '../utils/api';
+import { getStorageKey, getApiUrl } from '../utils/api';
 import {
   CheckCircle2, Lock,
   ChevronRight, RefreshCw, Star, Info, Award, Download, X, Sparkles, Timer
@@ -251,6 +251,26 @@ export default function TypingAcademy() {
     savedResults[id] = { wpm, accuracy, date: new Date().toISOString() };
     localStorage.setItem(getStorageKey('academy_lesson_results', user?.id), JSON.stringify(savedResults));
 
+    // Sync to database if user is authenticated
+    const token = localStorage.getItem('typementor_token');
+    if (token && user?.id) {
+      fetch(getApiUrl('/api/auth/profile/academy'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          progress: {
+            completed: updated,
+            results: savedResults,
+          },
+        }),
+      }).catch((err) => {
+        console.error('Failed to sync completed lesson to database:', err);
+      });
+    }
+
     // Calculate completions on the updated set to unlock next levels immediately
     const nextIsBeginnerCompleted = id === 30 || Array.from({ length: 30 }, (_, i) => i + 1).every(item => updated.includes(item));
     if (nextIsBeginnerCompleted) {
@@ -281,7 +301,7 @@ export default function TypingAcademy() {
   };
 
   const getCourseStats = (type: 'beginner' | 'intermediate', fallbackWpm: number, fallbackAcc: number) => {
-    const savedResultsStr = localStorage.getItem('academy_lesson_results');
+    const savedResultsStr = localStorage.getItem(getStorageKey('academy_lesson_results', user?.id));
     const savedResults = savedResultsStr ? JSON.parse(savedResultsStr) : {};
     
     const ids = type === 'beginner' 
@@ -588,7 +608,7 @@ export default function TypingAcademy() {
   };
 
   const handleOpenCertificate = (course: 'beginner' | 'intermediate') => {
-    const savedResultsStr = localStorage.getItem('academy_lesson_results');
+    const savedResultsStr = localStorage.getItem(getStorageKey('academy_lesson_results', user?.id));
     const savedResults = savedResultsStr ? JSON.parse(savedResultsStr) : {};
     const finalLessonId = course === 'beginner' ? 30 : 50;
     const finalLessonStats = savedResults[finalLessonId] || { wpm: course === 'beginner' ? 35 : 50, accuracy: 95 };

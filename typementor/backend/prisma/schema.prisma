@@ -25,6 +25,7 @@ model User {
   practiceHours     Float             @default(0)
   typingDna         String?           @db.Text
   lastActivity      String?           @db.Text
+  academyProgress   String?           @db.Text
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
