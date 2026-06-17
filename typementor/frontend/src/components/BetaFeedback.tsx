@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTypingStore } from '../store/TypingStore';
 import { useAuthStore } from '../store/AuthStore';
+import { getApiUrl } from '../utils/api';
 import { MessageSquare, X, Download, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function BetaFeedback() {
@@ -58,7 +59,7 @@ export default function BetaFeedback() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/feedback', {
+      const response = await fetch(getApiUrl('/api/feedback'), {
         method: 'POST',
         headers,
         body: JSON.stringify(bodyData)
@@ -91,7 +92,7 @@ export default function BetaFeedback() {
     try {
       if (!token) throw new Error('Authentication required.');
       
-      const response = await fetch('/api/feedback', {
+      const response = await fetch(getApiUrl('/api/feedback'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -119,7 +120,7 @@ export default function BetaFeedback() {
     try {
       if (!token) throw new Error('Authentication required.');
       
-      const response = await fetch('/api/feedback', {
+      const response = await fetch(getApiUrl('/api/feedback'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
