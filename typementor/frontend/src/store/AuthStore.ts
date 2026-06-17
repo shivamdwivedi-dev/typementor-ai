@@ -107,8 +107,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isOffline: false,
         });
       } else {
-        if (response.status === 401 || response.status === 403) {
-          // Token is expired or invalid — purge it
+        if (response.status === 401 || response.status === 403 || response.status === 444) {
+          // Token is expired, invalid, or belongs to a deleted user — purge it
           localStorage.removeItem(TOKEN_KEY);
           set({ token: null, user: null, isAuthenticated: false, isBootstrapping: false, isOffline: false });
         } else {
@@ -266,8 +266,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const data = await response.json();
 
       if (!response.ok) {
-        // 401 or 403 — token is invalid/expired, force logout
-        if (response.status === 401 || response.status === 403) {
+        // 401, 403, or 444 — token is invalid/expired/deleted, force logout
+        if (response.status === 401 || response.status === 403 || response.status === 444) {
           get().logout();
           return;
         }
