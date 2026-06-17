@@ -18,6 +18,7 @@ import BetaFeedback from './components/BetaFeedback';
 import WelcomeBackCard from './components/WelcomeBackCard';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import MobileKeyboardWarning from './components/MobileKeyboardWarning';
 import { getApiUrl, getStorageKey } from './utils/api';
 import { getLastActivity, getSmartResumeTarget, ResumeTarget, logResumeAnalytics } from './utils/ResumeTracker';
 import { CODING_TEMPLATES } from './utils/codingTemplates';
@@ -44,6 +45,7 @@ export default function App() {
   const [pendingNextDifficulty, setPendingNextDifficulty] = useState(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [showMobileWarning, setShowMobileWarning] = useState(false);
 
   // Register local toast listener
   useEffect(() => {
@@ -74,6 +76,18 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Check if touch-capable mobile device is used to trigger warning popup
+  useEffect(() => {
+    const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const hasTouch = navigator.maxTouchPoints > 0;
+    const isTouchDevice = isMobileUserAgent || (hasTouch && window.innerWidth <= 1024);
+    const isDismissed = sessionStorage.getItem('mobile_keyboard_warning_dismissed') === 'true';
+
+    if (isTouchDevice && !isDismissed) {
+      setShowMobileWarning(true);
+    }
   }, []);
 
   // Preserve weak keys from the last session so the next lesson can target them
@@ -491,6 +505,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col font-sans select-none text-brand-text">
+      {showMobileWarning && (
+        <MobileKeyboardWarning onClose={() => setShowMobileWarning(false)} />
+      )}
       {isOffline && (
         <div className="bg-brand-warning/15 border-b border-brand-warning/45 text-brand-warning px-4 py-3 text-center text-xs flex flex-wrap items-center justify-center gap-3 animate-pulse shadow-lg z-50">
           <div className="flex items-center gap-2 font-extrabold uppercase tracking-wide">
