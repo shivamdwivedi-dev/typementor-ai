@@ -8,7 +8,6 @@ dotenv.config();
 
 const app = express();
 app.set('trust proxy', 1);
-const PORT = process.env.PORT || 5000;
 
 // ── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({
@@ -29,7 +28,7 @@ const corsOptions: cors.CorsOptions = {
       return callback(null, true);
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
       return callback(null, true);
     }
 
@@ -142,16 +141,5 @@ app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: 
     error: err.message || 'Internal Server Error',
   });
 });
-
-// ── Start server ──────────────────────────────────────────────────────────────
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`TypeMentor AI Server is running on port ${PORT}`);
-
-    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-      console.warn('⚠️  WARNING: JWT_SECRET is weak or missing. Set a strong 64-char secret in .env before deploying to production.');
-    }
-  });
-}
 
 export default app;
