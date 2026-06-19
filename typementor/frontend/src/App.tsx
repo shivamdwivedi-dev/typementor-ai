@@ -641,95 +641,144 @@ export default function App() {
           </div>
         </div>
 
-        <nav className="hidden md:flex items-center gap-2">
-          {/* Typing Academy is visible to all */}
+        {/* ── Desktop Nav: icon-only on lg, icon+text on xl+ ── */}
+        <nav className="hidden lg:flex items-center gap-1">
+          {/* Typing Academy */}
           <button
             onClick={() => setCurrentPage('academy')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
+            title="Typing Academy"
+            className={`px-3 py-2 rounded-lg font-medium text-sm flex items-center gap-1.5 transition-all ${
               safePage === 'academy'
                 ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/15'
                 : 'text-brand-muted hover:text-brand-text hover:bg-brand-card/55'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
-            Typing Academy
+            <BookOpen className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden xl:inline">Academy</span>
           </button>
 
-          {/* Practice is visible to all (including guest) */}
+          {/* Practice */}
           <button
             onClick={() => setCurrentPage('practice')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
+            title="Practice"
+            className={`px-3 py-2 rounded-lg font-medium text-sm flex items-center gap-1.5 transition-all ${
               safePage === 'practice'
                 ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/15'
                 : 'text-brand-muted hover:text-brand-text hover:bg-brand-card/55'
             }`}
           >
-            <Code className="w-4 h-4" />
-            Practice
+            <Code className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden xl:inline">Practice</span>
           </button>
 
-          {/* Authenticated navigation links */}
+          {/* Authenticated-only nav */}
           {isAuthenticated && (
             <>
               <button
                 onClick={() => setCurrentPage('endurance')}
-                className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
+                title="Endurance Arena"
+                className={`px-3 py-2 rounded-lg font-medium text-sm flex items-center gap-1.5 transition-all ${
                   safePage === 'endurance'
                     ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/15'
                     : 'text-brand-muted hover:text-brand-text hover:bg-brand-card/55'
                 }`}
               >
-                <Activity className="w-4 h-4" />
-                Endurance Arena
+                <Activity className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden xl:inline">Endurance</span>
               </button>
 
               <button
                 onClick={() => setCurrentPage('path')}
-                className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
+                title="Learning Path"
+                className={`px-3 py-2 rounded-lg font-medium text-sm flex items-center gap-1.5 transition-all ${
                   safePage === 'path'
                     ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/15'
                     : 'text-brand-muted hover:text-brand-text hover:bg-brand-card/55'
                 }`}
               >
-                <Award className="w-4 h-4" />
-                Learning Path
+                <Award className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden xl:inline">Path</span>
               </button>
 
               <button
                 onClick={() => setCurrentPage('dashboard')}
-                className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
+                title="Dashboard"
+                className={`px-3 py-2 rounded-lg font-medium text-sm flex items-center gap-1.5 transition-all ${
                   safePage === 'dashboard'
                     ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/15'
                     : 'text-brand-muted hover:text-brand-text hover:bg-brand-card/55'
                 }`}
               >
-                <Activity className="w-4 h-4" />
-                Dashboard
+                <Activity className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden xl:inline">Stats</span>
               </button>
 
               <button
                 onClick={() => setCurrentPage('profile')}
-                className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all ${
+                title="Profile"
+                className={`px-3 py-2 rounded-lg font-medium text-sm flex items-center gap-1.5 transition-all ${
                   safePage === 'profile'
                     ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/15'
                     : 'text-brand-muted hover:text-brand-text hover:bg-brand-card/55'
                 }`}
               >
-                <UserIcon className="w-4 h-4" />
-                Profile
+                <UserIcon className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden xl:inline">Profile</span>
               </button>
             </>
           )}
 
-          {/* Sound Settings panel */}
+          {/* Sound Settings */}
           <SoundSettings />
 
-          <div className="h-6 w-[1px] bg-brand-border mx-2" />
+          <div className="h-5 w-[1px] bg-brand-border mx-1" />
 
-          {/* User greeting + Sign Out — authenticated only */}
+          {/* User pill: streak + avatar + sign out */}
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              {/* Streak Fire Widget */}
+            <div className="flex items-center gap-1.5">
+              <StreakFireWidget streak={user?.streak ?? 0} />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  className="w-7 h-7 rounded-full border border-brand-primary/40 object-cover flex-shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-brand-primary/20 border border-brand-primary/40 flex items-center justify-center text-[10px] font-black text-brand-primary flex-shrink-0">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <button
+                onClick={handleLogout}
+                title="Sign Out"
+                className="p-2 rounded-lg border border-brand-border bg-brand-card/30 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-brand-danger flex-shrink-0"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            isGuestSession && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-brand-muted font-semibold border border-brand-border px-2 py-1 rounded-lg">
+                  Guest
+                </span>
+                <button
+                  onClick={handleLogout}
+                  title="Exit Guest"
+                  className="p-2 rounded-lg border border-brand-border bg-brand-card/30 hover:bg-red-500/10 transition-all text-brand-danger flex-shrink-0"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )
+          )}
+        </nav>
+
+        {/* Mobile/tablet right side: streak + avatar + hamburger */}
+        <div className="flex lg:hidden items-center gap-2">
+          {isAuthenticated && (
+            <>
               <StreakFireWidget streak={user?.streak ?? 0} />
               {user?.avatar ? (
                 <img
@@ -743,47 +792,18 @@ export default function App() {
                   {user?.name?.charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="text-xs font-semibold text-brand-muted hidden sm:inline">
-                Hi, {user?.name}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2 rounded-lg border border-brand-border bg-brand-card/30 hover:bg-brand-card/80 transition-all font-medium text-sm flex items-center gap-2 text-brand-danger"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign Out</span>
-              </button>
-            </div>
-          ) : (
-            /* Guest session badge */
-            isGuestSession && (
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-brand-muted font-semibold border border-brand-border px-2 py-1 rounded-lg">
-                  Guest
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="px-3 py-2 rounded-lg border border-brand-border bg-brand-card/30 hover:bg-brand-card/80 transition-all font-medium text-sm flex items-center gap-2 text-brand-danger"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Exit Guest</span>
-                </button>
-              </div>
-            )
+            </>
           )}
-        </nav>
-
-        {/* Mobile menu button */}
-        {(isAuthenticated || isGuestSession) && (
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg border border-brand-border bg-brand-card/30 hover:bg-brand-card/80 transition-all text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary"
-            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-          >
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        )}
+          {(isAuthenticated || isGuestSession) && (
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-lg border border-brand-border bg-brand-card/30 hover:bg-brand-card/80 transition-all text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          )}
+        </div>
       </header>
 
       {/* XP Progress Bar — shows for authenticated users only */}
@@ -791,7 +811,9 @@ export default function App() {
         <XPProgressBar xp={user.xp ?? 0} level={user.level ?? 1} />
       )}
 
+
       {/* Mobile Drawer Overlay and Menu */}
+
 
       {isMobileMenuOpen && (isAuthenticated || isGuestSession) && (
         <div className="fixed inset-0 z-40 md:hidden flex justify-end">
