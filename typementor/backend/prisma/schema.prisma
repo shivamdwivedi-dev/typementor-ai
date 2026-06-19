@@ -26,6 +26,8 @@ model User {
   typingDna         String?           @db.Text
   lastActivity      String?           @db.Text
   academyProgress   String?           @db.Text
+  failedLoginAttempts Int             @default(0)
+  lockoutUntil        DateTime?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 

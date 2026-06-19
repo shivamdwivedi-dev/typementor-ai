@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import * as dotenv from 'dotenv';
+import { sanitizeBody, blockSqlInjection } from './middleware/sanitize.middleware';
 
 dotenv.config();
 
@@ -66,6 +67,10 @@ const corsOptions: cors.CorsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
+// ── Input sanitization ────────────────────────────────────────────────────────
+app.use(sanitizeBody);
+app.use(blockSqlInjection);
+
 // Debug log middleware - Dev only
 if (!isProduction) {
   app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -77,20 +82,20 @@ if (!isProduction) {
 // ── Body parser ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 
-// ── Global rate limiter: 100 req / 15 min per IP ─────────────────────────────
+// ── Global rate limiter: 200 req / 15 min per IP ─────────────────────────────
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again in 15 minutes.' },
 });
 app.use('/api/', globalLimiter);
 
-// ── Strict auth limiter: 10 attempts / 15 min per IP ─────────────────────────
+// ── Strict auth limiter: 5 attempts / 15 min per IP ──────────────────────────
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },

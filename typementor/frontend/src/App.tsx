@@ -24,6 +24,9 @@ import { getLastActivity, getSmartResumeTarget, ResumeTarget, logResumeAnalytics
 import { CODING_TEMPLATES } from './utils/codingTemplates';
 import { selectNextLesson, extractWeakKeys } from './utils/lessonEngine';
 import { showPrToast, registerToastListener, ToastMessage } from './utils/toastHelper';
+import StreakFireWidget from './components/StreakFireWidget';
+import XPProgressBar from './components/XPProgressBar';
+import AchievementToast, { useAchievementToast } from './components/AchievementToast';
 import {
   Brain, Activity, User as UserIcon, Code, Award,
   LogOut, Flame, Sparkles, Loader2, Menu, X, BookOpen,
@@ -57,6 +60,9 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
+  const [sessionMinutes, setSessionMinutes] = useState(0);
+  const [showTimeNudge, setShowTimeNudge] = useState(false);
+  const { current: currentAchievement, addAchievement, dismiss: dismissAchievement } = useAchievementToast();
 
   // Clear guest session when authenticated
   useEffect(() => {
@@ -110,6 +116,31 @@ export default function App() {
 
   // Preserve weak keys from the last session so the next lesson can target them
   const lastSessionKeystrokes = useRef<{ expectedKey: string; isMistake: boolean }[]>([]);
+
+  // ── Session time tracker — nudge every 30 minutes ──────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated && !isGuestSession) return;
+    const interval = setInterval(() => {
+      setSessionMinutes(m => {
+        const newM = m + 1;
+        if (newM > 0 && newM % 30 === 0) {
+          setShowTimeNudge(true);
+          setTimeout(() => setShowTimeNudge(false), 5000);
+        }
+        return newM;
+      });
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, isGuestSession]);
+
+  // ── Wire achievement unlocks from session submissions ─────────────────────
+  useEffect(() => {
+    const handleAchievement = (e: any) => {
+      if (e.detail) addAchievement(e.detail);
+    };
+    window.addEventListener('typementor_achievement', handleAchievement);
+    return () => window.removeEventListener('typementor_achievement', handleAchievement);
+  }, [addAchievement]);
 
   // ── On mount: validate stored token before rendering anything ──────────────
   useEffect(() => {
@@ -526,6 +557,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col font-sans select-none text-brand-text">
+      {/* Achievement Toast */}
+      <AchievementToast achievement={currentAchievement} onDismiss={dismissAchievement} />
+
+      {/* Session Time Nudge */}
+      {showTimeNudge && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full
+          bg-gray-900/95 border border-white/10 text-white text-xs font-semibold shadow-xl backdrop-blur-sm
+          animate-bounce">
+          ⌨️ You've been practicing for {sessionMinutes} minutes! Amazing focus!
+        </div>
+      )}
+
       {showMobileWarning && (
         <MobileKeyboardWarning onClose={() => setShowMobileWarning(false)} />
       )}
@@ -686,12 +729,8 @@ export default function App() {
           {/* User greeting + Sign Out — authenticated only */}
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
-              {(user?.streak ?? 0) > 0 && (
-                <span className="text-xs font-bold text-brand-warning hidden sm:flex items-center gap-1">
-                  <Flame className="w-3.5 h-3.5" />
-                  {user?.streak}
-                </span>
-              )}
+              {/* Streak Fire Widget */}
+              <StreakFireWidget streak={user?.streak ?? 0} />
               {user?.avatar ? (
                 <img
                   src={user.avatar}
@@ -747,7 +786,13 @@ export default function App() {
         )}
       </header>
 
+      {/* XP Progress Bar — shows for authenticated users only */}
+      {isAuthenticated && user && (
+        <XPProgressBar xp={user.xp ?? 0} level={user.level ?? 1} />
+      )}
+
       {/* Mobile Drawer Overlay and Menu */}
+
       {isMobileMenuOpen && (isAuthenticated || isGuestSession) && (
         <div className="fixed inset-0 z-40 md:hidden flex justify-end">
           {/* Backdrop */}

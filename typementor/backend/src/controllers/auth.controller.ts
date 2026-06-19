@@ -114,21 +114,43 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+    // ── Account lockout check ─────────────────────────────────────────────────
+    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 60000);
+      return res.status(429).json({
+        error: `Account temporarily locked due to too many failed attempts. Try again in ${minutesLeft} minute(s).`
+      });
     }
 
-    // Calculate streak on login (only resets to 0 if streak was missed)
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      // Increment failed attempts
+      const newAttempts = (user.failedLoginAttempts || 0) + 1;
+      const shouldLock = newAttempts >= 5;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: newAttempts,
+          lockoutUntil: shouldLock ? new Date(Date.now() + 15 * 60 * 1000) : null
+        }
+      });
+      if (shouldLock) {
+        return res.status(429).json({ error: 'Too many failed attempts. Account locked for 15 minutes.' });
+      }
+      return res.status(401).json({ error: `Invalid email or password. ${5 - newAttempts} attempt(s) remaining.` });
+    }
+
+    // ── Successful login: reset lockout counters ──────────────────────────────
     const newStreak = getStreakOnLogin(user.lastActiveAt, user.streak);
     const newLongestStreak = Math.max(user.longestStreak, newStreak);
 
-    // Update user login and streak
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         streak: newStreak,
         longestStreak: newLongestStreak,
+        failedLoginAttempts: 0,
+        lockoutUntil: null
       }
     });
 
@@ -155,7 +177,6 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    // Sign token
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
