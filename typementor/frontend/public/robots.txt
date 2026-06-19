@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://typementor-ai-frontend.vercel.app/sitemap.xml
