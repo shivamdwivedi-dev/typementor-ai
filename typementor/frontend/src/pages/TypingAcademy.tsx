@@ -9,7 +9,7 @@ import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { getStorageKey, getApiUrl } from '../utils/api';
 import {
   CheckCircle2, Lock,
-  ChevronRight, RefreshCw, Star, Info, Award, Download, X, Sparkles, Timer
+  ChevronRight, RefreshCw, Star, Info, Award, Download, X, Sparkles, Timer, Zap, AlertTriangle
 } from 'lucide-react';
 
 const FINGER_COLORS: Record<string, { border: string; text: string; bg: string; activeBg: string }> = {
@@ -82,10 +82,20 @@ export default function TypingAcademy() {
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [pauseTime, setPauseTime] = useState<number | null>(null);
 
+  // ── Power-Up State ───────────────────────────────────────────────────
+  // How many consecutive fails on current lesson
+  const [lessonFailCount, setLessonFailCount] = useState<number>(0);
+  // Whether the Power-Up offer modal is visible
+  const [showPowerUpOffer, setShowPowerUpOffer] = useState<boolean>(false);
+  // Active power-up: temporarily reduced minWpm for 1 round only
+  const [activePowerUp, setActivePowerUp] = useState<{ reducedMinWpm: number; xpCost: number } | null>(null);
+  // Animating purchase pop (achievement burst)
+  const [powerUpActivated, setPowerUpActivated] = useState<boolean>(false);
+
   // AI Coach Pulse integration
   const { pulseMessage, processPulse, clearPulse, resetSessionState } = useAICoachPulse();
 
-  const { user } = useAuthStore();
+  const { user, fetchProfile } = useAuthStore();
   const userName = user?.name || 'TypeMentor Student';
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -246,6 +256,18 @@ export default function TypingAcademy() {
   useEffect(() => {
     resetSessionState();
   }, [selectedLesson]);
+
+  // Reset fail counter and power-up when switching to a DIFFERENT lesson
+  const prevLessonIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!selectedLesson) return;
+    if (prevLessonIdRef.current !== null && prevLessonIdRef.current !== selectedLesson.id) {
+      setLessonFailCount(0);
+      setActivePowerUp(null);
+      setShowPowerUpOffer(false);
+    }
+    prevLessonIdRef.current = selectedLesson.id;
+  }, [selectedLesson?.id]);
 
   // Track abandoned lessons when navigating away from an active lesson
   useEffect(() => {
@@ -515,6 +537,9 @@ export default function TypingAcademy() {
     setFinalResult(null);
     setIsPaused(false);
     setPauseTime(null);
+    // Reset power-up offer state (don't reset activePowerUp or failCount here
+    // — those are managed by the lesson change detector below)
+    setShowPowerUpOffer(false);
     setTimeout(() => inputRef.current?.focus(), 150);
   };
 
@@ -584,12 +609,81 @@ export default function TypingAcademy() {
         errors
       }));
 
-      if (wpm >= selectedLesson.minWpm && acc >= selectedLesson.minAccuracy) {
+      // Use reduced minWpm if power-up is active for this round
+      const effectiveMinWpm = activePowerUp ? activePowerUp.reducedMinWpm : selectedLesson.minWpm;
+
+      if (wpm >= effectiveMinWpm && acc >= selectedLesson.minAccuracy) {
+        // Success: clear power-up and fail counter
+        setActivePowerUp(null);
+        setLessonFailCount(0);
         completeLesson(selectedLesson.id, wpm, acc);
       } else {
-        showPrToast(`⚠️ Lesson failed. Need ${selectedLesson.minWpm} WPM & ${selectedLesson.minAccuracy}% Accuracy.`);
+        // Failure: increment fail counter, clear any used power-up
+        setActivePowerUp(null);
+        const newFails = lessonFailCount + 1;
+        setLessonFailCount(newFails);
+        const failMsg = activePowerUp
+          ? `⚠️ Power-Up attempt failed. Need ${effectiveMinWpm} WPM & ${selectedLesson.minAccuracy}% Accuracy.`
+          : `⚠️ Lesson failed. Need ${selectedLesson.minWpm} WPM & ${selectedLesson.minAccuracy}% Accuracy.`;
+        showPrToast(failMsg);
+        // Offer power-up after 5 consecutive fails (and user hasn't used a power-up this round)
+        if (newFails >= 5 && !activePowerUp && user) {
+          setTimeout(() => setShowPowerUpOffer(true), 800);
+        }
       }
     }
+  };
+
+  // ── Power-Up Helpers ───────────────────────────────────────────────
+  // XP cost formula: each WPM point reduced costs 15 XP, minimum 30 XP
+  const calcPowerUpCost = (minWpm: number): { reducedMinWpm: number; xpCost: number } => {
+    // Reduce by 20% (floor to nearest integer), minimum floor is 15 WPM
+    const reduction = Math.max(1, Math.floor(minWpm * 0.20));
+    const reducedMinWpm = Math.max(15, minWpm - reduction);
+    const xpCost = Math.max(30, reduction * 15);
+    return { reducedMinWpm, xpCost };
+  };
+
+  const handleActivatePowerUp = async () => {
+    if (!selectedLesson || !user) return;
+    const { reducedMinWpm, xpCost } = calcPowerUpCost(selectedLesson.minWpm);
+
+    // Check user has enough XP
+    if ((user.xp ?? 0) < xpCost) {
+      showPrToast(`⚠️ Not enough XP! Need ${xpCost} XP but you have ${user.xp ?? 0} XP.`);
+      setShowPowerUpOffer(false);
+      return;
+    }
+
+    // Deduct XP via API
+    const token = localStorage.getItem('typementor_token');
+    if (token && user.id) {
+      try {
+        await fetch(getApiUrl('/api/auth/profile/spend-xp'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ amount: xpCost, reason: `Power-Up: Lesson ${selectedLesson.id} WPM reduced to ${reducedMinWpm}` }),
+        });
+        // Refresh profile so XP bar updates
+        fetchProfile();
+      } catch {
+        // If API call fails we still apply power-up locally (fallback)
+      }
+    }
+
+    // Apply the power-up for this one round
+    setActivePowerUp({ reducedMinWpm, xpCost });
+    setShowPowerUpOffer(false);
+    setPowerUpActivated(true);
+    // Auto-hide burst animation after 3.5s
+    setTimeout(() => setPowerUpActivated(false), 3500);
+    // Reset fail count since they're getting a fresh start
+    setLessonFailCount(0);
+    // Restart lesson with the power active
+    startLesson(selectedLesson);
   };
 
   // ── Assessment Test Mechanics ─────────────────────────────────────────────
@@ -706,9 +800,166 @@ export default function TypingAcademy() {
           0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
           100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
         }
+        @keyframes powerUpBurst {
+          0%   { transform: scale(0.6) translateY(30px); opacity: 0; }
+          40%  { transform: scale(1.08) translateY(-6px); opacity: 1; }
+          70%  { transform: scale(0.97) translateY(0); }
+          100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        @keyframes powerUpGlow {
+          0%, 100% { box-shadow: 0 0 20px rgba(234,179,8,0.4), 0 0 60px rgba(234,179,8,0.15); }
+          50%       { box-shadow: 0 0 40px rgba(234,179,8,0.8), 0 0 80px rgba(234,179,8,0.4); }
+        }
+        .power-up-burst { animation: powerUpBurst 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+        .power-up-glow  { animation: powerUpGlow  1.4s ease-in-out infinite; }
       `}</style>
 
+      {/* ── Power-Up Activation Burst Banner (appears top-center for 3.5s) ── */}
+      {powerUpActivated && selectedLesson && activePowerUp && (
+        <div className="fixed inset-0 z-[100] pointer-events-none flex items-start justify-center pt-24 px-4">
+          <div className="power-up-burst power-up-glow max-w-sm w-full rounded-2xl border border-yellow-500/60
+            bg-gradient-to-br from-yellow-950/95 via-gray-900/98 to-gray-950/95 backdrop-blur-lg
+            p-6 text-center shadow-2xl">
+            {/* Sparkle icon */}
+            <div className="flex justify-center mb-3">
+              <div className="relative w-14 h-14 rounded-full bg-yellow-500/20 border border-yellow-500/50
+                flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-yellow-500/20 animate-ping" />
+                <Zap className="w-7 h-7 text-yellow-400 relative z-10" />
+              </div>
+            </div>
+
+            <div className="text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-1">
+              ⚡ Power-Up Activated!
+            </div>
+            <h3 className="text-lg font-black text-white mb-1">AI Assist Engaged</h3>
+            <p className="text-sm font-bold text-yellow-300 mb-2">
+              WPM Requirement: <span className="line-through text-gray-500">{selectedLesson.minWpm}</span>
+              {' '}<span className="text-green-400">→ {activePowerUp.reducedMinWpm} WPM</span>
+            </p>
+            <p className="text-xs text-gray-400 leading-relaxed mb-3">
+              This is a one-round assistance. Your pass will be recorded normally. Power-ups are meant to help you
+              break through — not replace practice. Keep training hard! 💪
+            </p>
+            {/* Disclaimer */}
+            <div className="flex items-start gap-2 bg-yellow-500/10 border border-yellow-500/20
+              rounded-xl p-2.5 text-left">
+              <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-yellow-400/80 leading-relaxed">
+                <strong>Disclaimer:</strong> This power-up is valid for this attempt only.
+                Spending {activePowerUp.xpCost} XP is permanent. Results still count for your lesson history.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Power-Up Offer Modal (after 5 fails) ── */}
+      {showPowerUpOffer && selectedLesson && user && (() => {
+        const { reducedMinWpm, xpCost } = calcPowerUpCost(selectedLesson.minWpm);
+        const canAfford = (user.xp ?? 0) >= xpCost;
+        return (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 backdrop-blur-sm px-4"
+            onClick={() => setShowPowerUpOffer(false)}>
+            <div className="relative max-w-md w-full rounded-2xl border border-yellow-500/40
+              bg-gradient-to-br from-gray-900/98 to-gray-950/98 backdrop-blur-lg p-7 shadow-2xl"
+              style={{ boxShadow: '0 0 60px rgba(234,179,8,0.2)' }}
+              onClick={e => e.stopPropagation()}>
+
+              {/* Close */}
+              <button onClick={() => setShowPowerUpOffer(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-300 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 rounded-xl bg-yellow-500/20 border border-yellow-500/40
+                  flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <div className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">
+                    AI Power-Up Available
+                  </div>
+                  <h2 className="text-lg font-black text-white leading-tight">
+                    Stuck on Lesson {selectedLesson.id}?
+                  </h2>
+                </div>
+              </div>
+
+              {/* Fail count badge */}
+              <div className="flex items-center gap-2 mb-4 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                <span className="text-sm">😤</span>
+                <p className="text-xs text-red-300 font-semibold">
+                  You've failed <strong className="text-red-400">{lessonFailCount} times</strong> on this lesson.
+                  Our AI wants to help you through.
+                </p>
+              </div>
+
+              {/* The deal */}
+              <div className="bg-white/4 border border-white/8 rounded-xl p-4 mb-4 space-y-3">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">The Offer</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-gray-500 block">Current requirement</span>
+                    <span className="text-lg font-black text-white">{selectedLesson.minWpm} <span className="text-xs font-normal text-gray-500">WPM</span></span>
+                  </div>
+                  <div className="text-2xl text-yellow-400">→</div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Power-Up requirement</span>
+                    <span className="text-2xl font-black text-green-400">{reducedMinWpm} <span className="text-xs font-normal text-gray-500">WPM</span></span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-gray-500 block">XP Cost</span>
+                    <span className={`text-xl font-black ${canAfford ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {xpCost} <span className="text-xs font-normal text-gray-500">XP</span>
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-600 border-t border-white/5 pt-2">
+                  <span>Your XP balance: <strong className={canAfford ? 'text-cyan-400' : 'text-red-400'}>{user.xp ?? 0}</strong></span>
+                  <span>After purchase: <strong className={canAfford ? 'text-gray-300' : 'text-red-500'}>{(user.xp ?? 0) - xpCost}</strong></span>
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="flex items-start gap-2 bg-yellow-500/8 border border-yellow-500/20 rounded-xl p-3 mb-5">
+                <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <div className="text-[11px] text-yellow-400/80 leading-relaxed">
+                  <strong className="text-yellow-400">Important:</strong> This power-up applies to <em>this one attempt only</em>.
+                  WPM reduction is {Math.round((1 - reducedMinWpm / selectedLesson.minWpm) * 100)}% (from {selectedLesson.minWpm} → {reducedMinWpm} WPM).
+                  XP cost is permanent and non-refundable. Your lesson pass will still be counted as legitimate progress.
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleActivatePowerUp}
+                  disabled={!canAfford}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all
+                    ${canAfford
+                      ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-gray-950 hover:from-yellow-400 hover:to-amber-400 shadow-lg shadow-yellow-500/25'
+                      : 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700'}`}
+                >
+                  <Zap className="w-4 h-4" />
+                  {canAfford ? `Spend ${xpCost} XP & Activate` : `Need ${xpCost - (user.xp ?? 0)} more XP`}
+                </button>
+                <button
+                  onClick={() => { setShowPowerUpOffer(false); if (selectedLesson) startLesson(selectedLesson); }}
+                  className="flex-1 py-3 rounded-xl font-bold text-sm border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all"
+                >
+                  Keep Trying Free
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Onboarding welcome badge */}
+
       <div className="bg-brand-primary/10 border border-brand-primary/20 p-4 rounded-2xl flex items-center justify-between gap-4">
         <div className="space-y-1">
           <span className="text-[10px] uppercase font-black tracking-widest text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md">
