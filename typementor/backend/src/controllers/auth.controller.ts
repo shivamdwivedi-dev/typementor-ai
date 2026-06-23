@@ -449,4 +449,45 @@ export const updateAcademyProgress = async (req: AuthRequest, res: Response) => 
   }
 };
 
+export const spendXp = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID missing in token.' });
+    }
+
+    const { amount } = req.body;
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: 'Valid amount is required.' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const currentXp = user.xp || 0;
+    if (currentXp < amount) {
+      return res.status(400).json({ error: 'Insufficient XP.' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        xp: currentXp - amount,
+        lastActiveAt: new Date()
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      xp: updatedUser.xp
+    });
+  } catch (error: unknown) {
+    console.error('Spend XP error:', error);
+    return res.status(500).json({ error: 'An error occurred spending XP.' });
+  }
+};
+
+
 
