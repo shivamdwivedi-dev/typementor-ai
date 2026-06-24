@@ -87,6 +87,8 @@ export default function TypingAcademy() {
   const [lessonFailCount, setLessonFailCount] = useState<number>(0);
   // Whether the Power-Up offer modal is visible
   const [showPowerUpOffer, setShowPowerUpOffer] = useState<boolean>(false);
+  // Whether the Shady Bribe modal is visible
+  const [showBribeOffer, setShowBribeOffer] = useState<boolean>(false);
   // Active power-up: temporarily reduced minWpm for 1 round only
   const [activePowerUp, setActivePowerUp] = useState<{ reducedMinWpm: number; xpCost: number } | null>(null);
   // Animating purchase pop (achievement burst)
@@ -265,6 +267,8 @@ export default function TypingAcademy() {
       setLessonFailCount(0);
       setActivePowerUp(null);
       setShowPowerUpOffer(false);
+      setShowBribeOffer(false);
+      window.speechSynthesis.cancel();
     }
     prevLessonIdRef.current = selectedLesson.id;
   }, [selectedLesson?.id]);
@@ -540,6 +544,8 @@ export default function TypingAcademy() {
     // Reset power-up offer state (don't reset activePowerUp or failCount here
     // — those are managed by the lesson change detector below)
     setShowPowerUpOffer(false);
+    setShowBribeOffer(false);
+    window.speechSynthesis.cancel();
     setTimeout(() => inputRef.current?.focus(), 150);
   };
 
@@ -626,6 +632,17 @@ export default function TypingAcademy() {
           ? `⚠️ Power-Up attempt failed. Need ${effectiveMinWpm} WPM & ${selectedLesson.minAccuracy}% Accuracy.`
           : `⚠️ Lesson failed. Need ${selectedLesson.minWpm} WPM & ${selectedLesson.minAccuracy}% Accuracy.`;
         showPrToast(failMsg);
+        // Offer Bribe after 3 consecutive fails (if no power-up active)
+        if (newFails === 3 && !activePowerUp && user) {
+          setTimeout(() => {
+            setShowBribeOffer(true);
+            const msg = "Psst... You look stuck. I can forge your academy certificate for this level... but it will cost you 70 percent of your total XP.";
+            const utterance = new SpeechSynthesisUtterance(msg);
+            utterance.pitch = 0.5; // Deep/shady voice
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+          }, 800);
+        }
         // Offer power-up after 5 consecutive fails (and user hasn't used a power-up this round)
         if (newFails >= 5 && !activePowerUp && user) {
           setTimeout(() => setShowPowerUpOffer(true), 800);
@@ -684,6 +701,37 @@ export default function TypingAcademy() {
     setLessonFailCount(0);
     // Restart lesson with the power active
     startLesson(selectedLesson);
+  };
+
+  const handleAcceptBribe = async () => {
+    if (!selectedLesson || !user) return;
+    const bribeCost = Math.floor((user.xp ?? 0) * 0.70);
+
+    // Stop voice if it's still playing
+    window.speechSynthesis.cancel();
+
+    // Deduct XP via API
+    const token = localStorage.getItem('typementor_token');
+    if (token && user.id) {
+      try {
+        await fetch(getApiUrl('/api/auth/profile/spend-xp'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ amount: bribeCost, reason: `Shady Bribe to skip Lesson ${selectedLesson.id}` }),
+        });
+        fetchProfile();
+      } catch {
+        // Silently fail API, frontend state will still update temporarily
+      }
+    }
+
+    setShowBribeOffer(false);
+    setLessonFailCount(0);
+    // Grant minimal passing score to advance
+    completeLesson(selectedLesson.id, selectedLesson.minWpm, selectedLesson.minAccuracy);
   };
 
   // ── Assessment Test Mechanics ─────────────────────────────────────────────
@@ -952,6 +1000,58 @@ export default function TypingAcademy() {
                 >
                   Keep Trying Free
                 </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Shady Bribe Modal (after 3 fails) ── */}
+      {showBribeOffer && selectedLesson && user && (() => {
+        const bribeCost = Math.floor((user.xp ?? 0) * 0.70);
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md px-4"
+               style={{ perspective: '1200px' }}>
+            <div className="relative max-w-sm w-full rounded-2xl bg-gray-950 p-6 shadow-2xl border border-red-900/50"
+                 style={{ 
+                   transform: 'rotateX(8deg) translateY(-10px)',
+                   boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25), 0 0 40px rgba(0, 0, 0, 0.8) inset',
+                   transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                 }}>
+              
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-red-950/50 border border-red-900 flex items-center justify-center animate-pulse">
+                  <Lock className="w-8 h-8 text-red-500" />
+                </div>
+                
+                <h3 className="text-xl font-black tracking-widest text-red-500 uppercase">Psst... Stuck?</h3>
+                
+                <p className="text-sm text-gray-400 font-medium leading-relaxed">
+                  I can forge your academy certificate for <strong className="text-white">Lesson {selectedLesson.id}</strong> right now. Nobody has to know.
+                </p>
+
+                <div className="w-full bg-black/60 rounded-xl border border-white/5 p-4 my-2">
+                  <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">The Price</p>
+                  <p className="text-3xl font-black text-red-500">{bribeCost} <span className="text-sm text-red-800">XP</span></p>
+                  <p className="text-[10px] text-gray-600 mt-1">(70% of your total XP)</p>
+                </div>
+
+                <div className="flex flex-col w-full gap-3 mt-4">
+                  <button 
+                    onClick={handleAcceptBribe}
+                    className="w-full py-3 rounded-lg font-black text-sm uppercase tracking-wider bg-red-600 hover:bg-red-500 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)] transition-all">
+                    Pay {bribeCost} XP to Skip
+                  </button>
+                  <button 
+                    onClick={() => {
+                      window.speechSynthesis.cancel();
+                      setShowBribeOffer(false);
+                      if (selectedLesson) startLesson(selectedLesson);
+                    }}
+                    className="w-full py-3 rounded-lg font-bold text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors">
+                    No thanks, I'll keep trying
+                  </button>
+                </div>
               </div>
             </div>
           </div>
