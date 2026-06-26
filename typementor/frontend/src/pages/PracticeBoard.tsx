@@ -14,7 +14,14 @@ import { Sparkles } from 'lucide-react';
 export default function PracticeBoard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { mode, difficulty, initializeSession } = useTypingStore();
+  const { mode, difficulty, initializeSession, words } = useTypingStore();
+
+  React.useEffect(() => {
+    if (!words || words.length === 0) {
+      const lesson = selectNextLesson(difficulty, []);
+      initializeSession(lesson.text, 'English', lesson.tier);
+    }
+  }, [words, initializeSession, difficulty]);
   const { isAuthenticated } = useAuthStore();
   
   const [difficultyAlert, setDifficultyAlert] = useState<string | null>(null);
