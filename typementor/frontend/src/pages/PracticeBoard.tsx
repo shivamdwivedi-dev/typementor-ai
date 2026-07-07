@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTypingStore } from '../store/TypingStore';
 import { useAuthStore } from '../store/AuthStore';
 import TypingEngine from '../components/TypingEngine';
-import AICoach from '../components/AICoach';
 import FingerCamera from '../components/FingerCamera';
+const AICoach = React.lazy(() => import('../components/AICoach'));
 import { getApiUrl } from '../utils/api';
 import { CODING_TEMPLATES } from '../utils/codingTemplates';
 import { selectNextLesson, extractWeakKeys } from '../utils/lessonEngine';
@@ -288,7 +288,9 @@ export default function PracticeBoard() {
         </div>
 
         <div className="lg:col-span-1 space-y-6">
-          <AICoach onGenerateCustomLesson={handleCustomLessonGenerate} />
+          <React.Suspense fallback={<div className="glass-panel p-6 rounded-2xl border border-brand-border/40 text-center text-xs text-brand-muted animate-pulse">Loading AI Coach...</div>}>
+            <AICoach onGenerateCustomLesson={handleCustomLessonGenerate} />
+          </React.Suspense>
           <FingerCamera />
         </div>
       </div>

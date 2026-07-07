@@ -29,6 +29,34 @@ const LANDING_JSON_LD = {
       'creator': { '@type': 'Person', 'name': 'Shivam Dwivedi' }
     },
     {
+      '@type': 'Organization',
+      '@id': 'https://typementor-ai-frontend.vercel.app/#organization',
+      'name': 'TypeMentor AI',
+      'url': 'https://typementor-ai-frontend.vercel.app/',
+      'logo': 'https://typementor-ai-frontend.vercel.app/apple-touch-icon.png',
+      'sameAs': [
+        'https://github.com/shivamdwivedi-dev/typementor-ai'
+      ]
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': 'https://typementor-ai-frontend.vercel.app/#breadcrumb',
+      'itemListElement': [
+        {
+          '@type': 'ListItem',
+          'position': 1,
+          'name': 'Home',
+          'item': 'https://typementor-ai-frontend.vercel.app/'
+        },
+        {
+          '@type': 'ListItem',
+          'position': 2,
+          'name': 'Academy',
+          'item': 'https://typementor-ai-frontend.vercel.app/academy'
+        }
+      ]
+    },
+    {
       '@type': 'FAQPage',
       'mainEntity': [
         {
@@ -369,6 +397,82 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
               <p className="text-brand-muted text-xs leading-relaxed">{item.body}</p>
             </article>
           ))}
+        </div>
+      </section>
+
+      {/* ── 5b. Typing Science & Learning Methodology ── */}
+      <section className="space-y-10 px-4 max-w-5xl mx-auto py-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">The Science of Typing Muscle Memory</h2>
+          <p className="text-brand-muted text-sm max-w-2xl mx-auto leading-relaxed">
+            Touch typing is more than a mechanical habit — it is a cognitive shortcut that directly impacts mental endurance.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left">
+          <article className="space-y-3">
+            <h3 className="font-bold text-white text-lg flex items-center gap-2">
+              <Brain className="w-5 h-5 text-brand-primary" />
+              Declarative vs. Procedural Memory
+            </h3>
+            <p className="text-brand-muted text-xs leading-relaxed">
+              When first learning to type, your brain uses <strong>declarative memory</strong>: you consciously recall where a key is and instruct your finger to press it. This path is slow and cognitively expensive. 
+            </p>
+            <p className="text-brand-muted text-xs leading-relaxed">
+              Through deliberate practice, typing migrates to <strong>procedural memory</strong> (muscle memory). The motor cortex fires commands automatically, bypassing conscious decision-making. TypeMentor accelerates this transition by isolating your errors and building drills that target specific physical micro-movements.
+            </p>
+          </article>
+
+          <article className="space-y-3">
+            <h3 className="font-bold text-white text-lg flex items-center gap-2">
+              <Activity className="w-5 h-5 text-brand-success" />
+              Cognitive Load & Flow State
+            </h3>
+            <p className="text-brand-muted text-xs leading-relaxed">
+              Working memory has a strictly limited capacity. If you have to look down at your keyboard or correct a typo every few words, you break your focus and introduce cognitive drag.
+            </p>
+            <p className="text-brand-muted text-xs leading-relaxed">
+              By mastering touch typing, you eliminate the mechanical barrier between your thoughts and the screen. Whether you are drafting a document, writing code, or arguing a point, typing at 80+ WPM with high accuracy keeps you firmly in the flow state.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      {/* ── 5c. Targeted Workflows ── */}
+      <section className="space-y-10 px-4 max-w-5xl mx-auto">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Optimized Workflows</h2>
+          <p className="text-brand-muted text-sm max-w-2xl mx-auto leading-relaxed">
+            Whether you code, study, or write, TypeMentor adapts to your productivity requirements.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
+          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 space-y-4">
+            <h3 className="font-bold text-white text-base flex items-center gap-2">
+              <Zap className="w-5 h-5 text-brand-primary" />
+              Developer Coding Workflow
+            </h3>
+            <p className="text-brand-muted text-xs leading-relaxed">
+              Standard typing tests focus solely on English prose. But programmers spend most of their time typing special characters, nested brackets, and precise symbols like <code>{"{}"}</code>, <code>{"[]"}</code>, <code>{"()"}</code>, <code>{"=>"}</code>, and <code>;</code>.
+            </p>
+            <p className="text-brand-muted text-xs leading-relaxed font-medium text-white">
+              TypeMentor's coding module provides actual language syntax templates for Python, JavaScript, Java, and SQL. It trains your fingers to navigate key combinations that standard typing websites ignore.
+            </p>
+          </div>
+
+          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 space-y-4">
+            <h3 className="font-bold text-white text-base flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-brand-success" />
+              Academic Student Workflow
+            </h3>
+            <p className="text-brand-muted text-xs leading-relaxed">
+              Students face tight deadlines for essays, research papers, and code assignments. Slower typing speeds create a bottleneck, turning a simple task into hours of frustration.
+            </p>
+            <p className="text-brand-muted text-xs leading-relaxed font-medium text-white">
+              With our structured 50-lesson Academy, students learn proper home-row posture, vertical finger movements, and punctuation layout keys. This enables faster academic output and builds lifelong technical literacy.
+            </p>
+          </div>
         </div>
       </section>
 

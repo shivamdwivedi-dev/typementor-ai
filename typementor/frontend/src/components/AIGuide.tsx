@@ -299,6 +299,7 @@ export default function AIGuide({ currentPage, setCurrentPage }: AIGuideProps) {
               onClick={handleSkip}
               className="text-brand-muted hover:text-white transition-colors"
               title="Skip Tour"
+              aria-label="Skip onboarding tour"
             >
               <X className="w-4 h-4" />
             </button>
@@ -320,6 +321,7 @@ export default function AIGuide({ currentPage, setCurrentPage }: AIGuideProps) {
                     : 'bg-brand-card/35 border-brand-border text-brand-muted hover:text-white'
                 }`}
                 title={isVoiceEnabled ? 'Mute Guide' : 'Unmute Guide'}
+                aria-label={isVoiceEnabled ? 'Mute AI voice assistant' : 'Unmute AI voice assistant'}
               >
                 {isVoiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
               </button>
@@ -334,6 +336,7 @@ export default function AIGuide({ currentPage, setCurrentPage }: AIGuideProps) {
                   onClick={() => speakCurrentStep(step)}
                   className="p-1 rounded bg-brand-card hover:bg-brand-border/40 text-brand-muted hover:text-white transition-colors"
                   title="Replay Audio"
+                  aria-label="Replay current step explanation audio"
                 >
                   <RotateCcw className="w-3 h-3" />
                 </button>
@@ -341,6 +344,7 @@ export default function AIGuide({ currentPage, setCurrentPage }: AIGuideProps) {
                   onClick={stopVoice}
                   className="p-1 rounded bg-brand-card hover:bg-brand-border/40 text-brand-muted hover:text-white transition-colors"
                   title="Stop Audio"
+                  aria-label="Stop AI assistant audio playback"
                 >
                   <Square className="w-3 h-3" />
                 </button>
@@ -402,6 +406,7 @@ export default function AIGuide({ currentPage, setCurrentPage }: AIGuideProps) {
           }
         }}
         className="pointer-events-auto group w-12 h-12 md:w-14 md:h-14 rounded-full bg-brand-bg border border-brand-primary/40 shadow-lg shadow-brand-primary/20 flex items-center justify-center relative overflow-hidden transition-all hover:scale-105 active:scale-95 duration-200"
+        aria-label={isOpen ? "Close AI coach guide onboarding assistant" : "Open AI coach guide onboarding assistant"}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/10 to-transparent pointer-events-none" />
         <div className="absolute -inset-1 bg-brand-primary/20 rounded-full blur-sm group-hover:bg-brand-primary/35 transition-all animate-pulse" />

@@ -13,7 +13,8 @@ import AchievementToast, { useAchievementToast } from './AchievementToast';
 import MobileKeyboardWarning from './MobileKeyboardWarning';
 import WelcomeBackCard from './WelcomeBackCard';
 import BetaFeedback from './BetaFeedback';
-import AIGuide from './AIGuide';
+import { Suspense, lazy } from 'react';
+const AIGuide = lazy(() => import('./AIGuide'));
 
 // Icons
 import {
@@ -372,7 +373,11 @@ export default function AppLayout() {
         <p>© 2026 TypeMentor AI. All rights reserved. Adaptive keystroke analytics model v1.0.0.</p>
       </footer>
 
-      {isAuthenticated && <AIGuide currentPage={currentPage as any} setCurrentPage={(page) => navigate(`/${page}`)} />}
+      {isAuthenticated && (
+        <Suspense fallback={null}>
+          <AIGuide currentPage={currentPage as any} setCurrentPage={(page) => navigate(`/${page}`)} />
+        </Suspense>
+      )}
       
       {showWelcomeBack && (
         <WelcomeBackCard
