@@ -9,22 +9,51 @@ interface LandingPageProps {
 
 const LANDING_JSON_LD = {
   '@context': 'https://schema.org',
-  '@type': 'EducationalApplication',
-  'name': 'TypeMentor AI',
-  'url': 'https://typementor-ai-frontend.vercel.app/',
-  'description': 'AI-powered adaptive typing coach. Identify weak keys, practice coding syntax, and improve your WPM with personalized structured lessons.',
-  'applicationCategory': 'EducationalApplication',
-  'isAccessibleForFree': true,
-  'inLanguage': 'en',
-  'featureList': [
-    'AI weak-key detection',
-    'Live WPM and accuracy tracking',
-    'Typing Academy with structured lessons',
-    'Coding syntax practice',
-    'XP system and achievements'
-  ],
-  'offers': { '@type': 'Offer', 'price': '0', 'priceCurrency': 'USD' },
-  'creator': { '@type': 'Person', 'name': 'Shivam Dwivedi' }
+  '@graph': [
+    {
+      '@type': 'EducationalApplication',
+      'name': 'TypeMentor AI',
+      'url': 'https://typementor-ai-frontend.vercel.app/',
+      'description': 'AI-powered adaptive typing coach. Identify weak keys, practice coding syntax, and improve your WPM with personalized structured lessons.',
+      'applicationCategory': 'EducationalApplication',
+      'isAccessibleForFree': true,
+      'inLanguage': 'en',
+      'featureList': [
+        'AI weak-key detection',
+        'Live WPM and accuracy tracking',
+        'Typing Academy with structured lessons',
+        'Coding syntax practice',
+        'XP system and achievements'
+      ],
+      'offers': { '@type': 'Offer', 'price': '0', 'priceCurrency': 'USD' },
+      'creator': { '@type': 'Person', 'name': 'Shivam Dwivedi' }
+    },
+    {
+      '@type': 'FAQPage',
+      'mainEntity': [
+        {
+          '@type': 'Question',
+          'name': 'Is TypeMentor AI completely free?',
+          'acceptedAnswer': { '@type': 'Answer', 'text': 'Yes. TypeMentor AI is free for all users. Create an account to sync progress or use Guest Mode without registering.' }
+        },
+        {
+          '@type': 'Question',
+          'name': 'How does the AI detect weak typing keys?',
+          'acceptedAnswer': { '@type': 'Answer', 'text': 'Every keystroke is recorded with timing data. TypeMentor computes per-key error rates, confusion patterns, and reaction time, flagging keys above 15% error rate for targeted drills.' }
+        },
+        {
+          '@type': 'Question',
+          'name': 'What programming languages does TypeMentor support for coding practice?',
+          'acceptedAnswer': { '@type': 'Answer', 'text': 'TypeMentor includes syntax-accurate practice templates for Python, JavaScript, Java, and SQL.' }
+        },
+        {
+          '@type': 'Question',
+          'name': 'How long does it take to improve typing speed?',
+          'acceptedAnswer': { '@type': 'Answer', 'text': 'Most users see measurable improvement in 2 to 4 weeks of daily 15-minute targeted practice sessions.' }
+        }
+      ]
+    }
+  ]
 };
 
 export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPage }: LandingPageProps) {
@@ -304,7 +333,119 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
         </div>
       </section>
 
-      {/* ── 5. Footer ── */}
+      {/* ── 5. How TypeMentor Works ── */}
+      <section className="space-y-10 px-4 max-w-5xl mx-auto">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">How TypeMentor AI Works</h2>
+          <p className="text-brand-muted text-sm max-w-2xl mx-auto leading-relaxed">
+            A three-step adaptive cycle that gets smarter with every session you complete.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              step: '01',
+              title: 'Practice & Measure',
+              body: 'Type through structured lessons or free-form sessions. TypeMentor records every keystroke, reaction time, hold time, and pause — building a precise map of your current skill level.',
+              color: 'text-brand-primary'
+            },
+            {
+              step: '02',
+              title: 'AI Diagnostic Analysis',
+              body: 'Our AI identifies your weakest keys, confusion patterns (such as mixing "E" with "R"), and the exact characters costing you the most speed. No guesswork — pure data.',
+              color: 'text-brand-warning'
+            },
+            {
+              step: '03',
+              title: 'Targeted Recovery Drills',
+              body: 'Generate custom syllable-building lessons designed around your specific weak keys. Repeat until accuracy exceeds 95%, then advance to the next challenge node.',
+              color: 'text-brand-success'
+            }
+          ].map(item => (
+            <article key={item.step} className="glass-panel p-6 rounded-2xl border border-brand-border/40 text-left space-y-3">
+              <span className={`text-4xl font-black font-mono ${item.color} opacity-40`}>{item.step}</span>
+              <h3 className="font-bold text-white text-base">{item.title}</h3>
+              <p className="text-brand-muted text-xs leading-relaxed">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* ── 6. Benefits of Touch Typing ── */}
+      <section className="space-y-10 px-4 py-10 bg-brand-card/10 border-y border-brand-border/30">
+        <div className="text-center space-y-2 max-w-2xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Why Learn Touch Typing?</h2>
+          <p className="text-brand-muted text-sm leading-relaxed">
+            Touch typing — typing without looking at the keyboard — is one of the highest-leverage productivity skills a developer or knowledge worker can build.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-4xl mx-auto">
+          {[
+            { title: 'Save 20+ Hours Per Month', body: 'The average developer types 40 WPM. At 80 WPM, the same work takes half the time. That compounds to hundreds of hours saved annually.' },
+            { title: 'Reduce Cognitive Load', body: 'When typing is automatic, your full mental bandwidth stays on problem-solving. Errors and hesitation break your flow and interrupt deep work.' },
+            { title: 'Fewer Repetitive Strain Injuries', body: 'Correct finger placement distributes load evenly across both hands, reducing the risk of RSI, carpal tunnel, and wrist fatigue over time.' },
+            { title: 'Better Code Quality', body: 'Faster, more accurate typing means you can keep up with your own thought process. Slower typists often simplify ideas to reduce typing burden.' },
+            { title: 'Interview Confidence', body: 'Live coding interviews are stressful enough. Being able to type quickly and accurately without looking down removes one major source of anxiety.' },
+            { title: 'Long-Term Career Asset', body: 'Unlike most technical skills, typing speed does not become obsolete. It remains valuable through every programming language, editor, and tool change.' }
+          ].map((item, i) => (
+            <div key={i} className="flex gap-4 p-4 bg-brand-card/20 border border-brand-border/25 rounded-2xl">
+              <CheckCircle className="w-5 h-5 text-brand-success flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-white text-sm mb-1">{item.title}</h3>
+                <p className="text-brand-muted text-xs leading-relaxed">{item.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── 7. FAQ ── */}
+      <section className="space-y-8 px-4 max-w-3xl mx-auto">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Frequently Asked Questions</h2>
+        </div>
+
+        <div className="space-y-4">
+          {[
+            {
+              q: 'Is TypeMentor AI completely free?',
+              a: 'Yes. TypeMentor AI is free to use for all users. Create an account to sync your progress and unlock achievements, or use Guest Mode without registering.'
+            },
+            {
+              q: 'Do I need to create an account?',
+              a: 'No. Guest Mode lets you practice immediately — your progress is stored locally in your browser. Creating a free account enables cross-device sync, achievement tracking, and personalized AI diagnostics.'
+            },
+            {
+              q: 'How does the AI detect my weak keys?',
+              a: 'Every keystroke you type is recorded with timing data. TypeMentor\'s AI computes per-key error rates, confusion patterns (which key you pressed instead), and reaction time. Keys above a 15% error threshold are flagged for targeted recovery drills.'
+            },
+            {
+              q: 'What programming languages does it support for coding practice?',
+              a: 'TypeMentor includes syntax-accurate practice templates for Python, JavaScript, Java, and SQL — covering real-world patterns like function definitions, loops, conditionals, and database queries.'
+            },
+            {
+              q: 'How long does it take to improve typing speed?',
+              a: 'Most users see measurable improvement in 2–4 weeks of daily 15-minute sessions. The key is consistent practice targeting your specific weak areas, which TypeMentor automates for you.'
+            },
+            {
+              q: 'Is my camera data private?',
+              a: 'Completely. The optional posture camera mode runs entirely in your browser using TensorFlow.js. No video frames are ever uploaded, stored, or sent to our servers.'
+            }
+          ].map((item, i) => (
+            <details key={i} className="glass-panel border border-brand-border/40 rounded-2xl group">
+              <summary className="flex items-center justify-between p-5 cursor-pointer list-none gap-3">
+                <h3 className="font-semibold text-white text-sm text-left">{item.q}</h3>
+                <span className="text-brand-muted text-lg flex-shrink-0 group-open:rotate-45 transition-transform duration-200">+</span>
+              </summary>
+              <p className="text-brand-muted text-xs leading-relaxed px-5 pb-5">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      {/* ── 8. Footer ── */}
       <footer className="border-t border-brand-border/40 pt-10 px-4 text-center max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8">
           <div className="flex items-center gap-2">

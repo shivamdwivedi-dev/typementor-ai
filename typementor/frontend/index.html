@@ -6,7 +6,7 @@
 
     <!-- Default title & description (overridden per-page by react-helmet-async) -->
     <title>TypeMentor AI — Adaptive AI Typing Coach for Developers</title>
-    <meta name="description" content="TypeMentor AI is a free AI-powered typing coach for developers and students. Practice touch typing, fix weak keys, track WPM & accuracy, and level up with structured lessons." />
+    <meta name="description" content="TypeMentor AI is a free AI-powered typing coach for developers and students. Practice touch typing, fix weak keys, track WPM &amp; accuracy, and level up with structured lessons." />
     <meta name="keywords" content="typing coach, typing practice, learn to type, WPM test, touch typing, coding typing, developer typing, AI typing tutor, keyboard speed, muscle memory typing" />
     <meta name="author" content="Shivam Dwivedi" />
     <meta name="robots" content="index, follow" />
@@ -23,10 +23,11 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://typementor-ai-frontend.vercel.app/" />
     <meta property="og:title" content="TypeMentor AI — Adaptive AI Typing Coach for Developers" />
-    <meta property="og:description" content="Free AI-powered typing coach. Fix weak keys, practice coding syntax, track WPM & accuracy. Structured lessons for all skill levels." />
+    <meta property="og:description" content="Free AI-powered typing coach. Fix weak keys, practice coding syntax, track WPM &amp; accuracy. Structured lessons for all skill levels." />
     <meta property="og:image" content="https://typementor-ai-frontend.vercel.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="TypeMentor AI — Adaptive AI Typing Coach dashboard preview" />
     <meta property="og:site_name" content="TypeMentor AI" />
     <meta property="og:locale" content="en_US" />
 
@@ -34,11 +35,12 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://typementor-ai-frontend.vercel.app/" />
     <meta name="twitter:title" content="TypeMentor AI — Adaptive AI Typing Coach for Developers" />
-    <meta name="twitter:description" content="Free AI-powered typing coach. Fix weak keys, practice coding syntax, track WPM & accuracy. Structured lessons for all skill levels." />
+    <meta name="twitter:description" content="Free AI-powered typing coach. Fix weak keys, practice coding syntax, track WPM &amp; accuracy. Structured lessons for all skill levels." />
     <meta name="twitter:image" content="https://typementor-ai-frontend.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt" content="TypeMentor AI dashboard" />
     <meta name="twitter:creator" content="@shivam_dwivedi" />
 
-    <!-- JSON-LD: WebApplication + Organization structured data -->
+    <!-- JSON-LD: WebApplication + WebSite + FAQ structured data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -78,42 +80,100 @@
           "url": "https://typementor-ai-frontend.vercel.app/",
           "name": "TypeMentor AI",
           "description": "Free AI-powered adaptive typing coach for developers",
-          "inLanguage": "en",
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": {
-              "@type": "EntryPoint",
-              "urlTemplate": "https://typementor-ai-frontend.vercel.app/academy"
+          "inLanguage": "en"
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://typementor-ai-frontend.vercel.app/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is TypeMentor AI completely free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. TypeMentor AI is free for all users. Create an account to sync progress and unlock achievements, or use Guest Mode without registering."
+              }
             },
-            "query-input": "required name=search_term_string"
-          }
+            {
+              "@type": "Question",
+              "name": "How does the AI detect weak typing keys?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Every keystroke is recorded with timing data. TypeMentor's AI computes per-key error rates, confusion patterns, and reaction time. Keys with over 15% error rate are flagged for targeted recovery drills."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What programming languages does TypeMentor support?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "TypeMentor includes syntax-accurate practice templates for Python, JavaScript, Java, and SQL."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How long does it take to improve typing speed?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Most users see measurable improvement in 2 to 4 weeks of daily 15-minute sessions with TypeMentor's targeted practice."
+              }
+            }
+          ]
         }
       ]
     }
     </script>
 
-    <!-- Fonts (preconnect first for performance) -->
+    <!-- Phase 7: Performance — DNS prefetch + preconnect for critical origins -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://typementor-ai-frontend.vercel.app" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Outfit:wght@100..900&display=swap" rel="stylesheet" />
+
+    <!-- Fonts: display=swap prevents FOIT (Flash of Invisible Text) -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-brand-bg text-brand-text font-sans antialiased selection:bg-brand-primary selection:text-white">
-    <!-- Crawlable fallback content for Googlebot (pre-hydration) -->
+    <!-- Crawlable static HTML for Googlebot and no-JS environments.
+         Google WRS does run JavaScript, but this ensures content is indexed
+         even before JS hydration completes. -->
     <noscript>
-      <div style="font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;">
-        <h1>TypeMentor AI — Adaptive AI Typing Coach</h1>
-        <p>TypeMentor AI is a free AI-powered typing coach for developers and students. Practice touch typing, identify your weak keys with AI diagnostics, track WPM and accuracy, and level up through structured lessons.</p>
-        <h2>Features</h2>
-        <ul>
-          <li>AI-powered weak key detection and targeted recovery drills</li>
-          <li>Live WPM, accuracy, and consistency tracking</li>
-          <li>Typing Academy with 50+ structured lessons</li>
+      <div style="font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:24px;line-height:1.7;color:#e2e8f0;background:#0f0f1a;">
+        <h1 style="font-size:2rem;font-weight:900;margin-bottom:0.5rem;">TypeMentor AI — Free AI Typing Coach for Developers</h1>
+        <p style="margin-bottom:1.5rem;">TypeMentor AI is a free, AI-powered typing coach built for developers, students, and writers. Practice touch typing, identify your personal weak keys with live AI diagnostics, track your WPM and accuracy, and level up through 50+ structured lessons.</p>
+
+        <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;">Key Features</h2>
+        <ul style="margin-bottom:1.5rem;padding-left:1.25rem;">
+          <li>AI-powered weak-key detection and targeted recovery drills</li>
+          <li>Live WPM, raw WPM, accuracy, and consistency tracking</li>
+          <li>Typing Academy: 50+ structured lessons from home-row basics to advanced coding syntax</li>
           <li>Coding syntax practice: Python, JavaScript, Java, SQL</li>
-          <li>Endurance Arena with focus score metrics</li>
-          <li>XP system, daily streaks, and achievement certificates</li>
+          <li>Endurance Arena with focus score biometric metrics</li>
+          <li>XP system, daily streaks, and shareable achievement certificates</li>
+          <li>Privacy-safe posture camera mode (fully local, no upload)</li>
+          <li>Guest mode — no account required to start practicing</li>
         </ul>
-        <p><a href="/academy">Try the Typing Academy</a> | <a href="/privacy">Privacy Policy</a> | <a href="/terms">Terms of Service</a></p>
-        <p>Please enable JavaScript to use TypeMentor AI.</p>
+
+        <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;">Why Learn Touch Typing?</h2>
+        <p style="margin-bottom:1rem;">Touch typing — typing without looking at the keyboard — is one of the highest-leverage productivity skills. The average developer types 40 WPM; at 80 WPM, the same work takes half the time. TypeMentor uses AI to identify exactly which keys slow you down and builds custom drills around them.</p>
+
+        <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;">Frequently Asked Questions</h2>
+        <dl style="margin-bottom:1.5rem;">
+          <dt style="font-weight:700;">Is TypeMentor AI free?</dt>
+          <dd style="margin-bottom:0.75rem;">Yes. TypeMentor AI is completely free. Guest Mode requires no registration.</dd>
+          <dt style="font-weight:700;">What programming languages are supported?</dt>
+          <dd style="margin-bottom:0.75rem;">Python, JavaScript, Java, and SQL syntax practice templates are included.</dd>
+          <dt style="font-weight:700;">Is my camera data private?</dt>
+          <dd style="margin-bottom:0.75rem;">The optional posture camera runs entirely in your browser. No video is ever uploaded or stored.</dd>
+        </dl>
+
+        <nav style="margin-bottom:1rem;">
+          <a href="/academy" style="color:#6366f1;margin-right:1rem;">Try Typing Academy</a>
+          <a href="/privacy" style="color:#6366f1;margin-right:1rem;">Privacy Policy</a>
+          <a href="/terms" style="color:#6366f1;">Terms of Service</a>
+        </nav>
+        <p style="font-size:0.8rem;color:#64748b;">Please enable JavaScript to use TypeMentor AI.</p>
       </div>
     </noscript>
     <div id="root"></div>
