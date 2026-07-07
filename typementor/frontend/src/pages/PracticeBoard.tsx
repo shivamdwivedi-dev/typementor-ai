@@ -133,7 +133,31 @@ export default function PracticeBoard() {
 
         useAuthStore.getState().fetchProfile();
       } catch (e) {
-        console.error('Failed to submit session telemetry', e);
+        console.error('Failed to submit session telemetry, storing locally:', e);
+        
+        // Cache the session locally in offline queue
+        const user = useAuthStore.getState().user;
+        const offlineQueueKey = `typementor_offline_sessions_queue_${user?.id || 'guest'}`;
+        const currentQueueStr = localStorage.getItem(offlineQueueKey);
+        const currentQueue = currentQueueStr ? JSON.parse(currentQueueStr) : [];
+        
+        currentQueue.push({
+          mode,
+          difficulty,
+          wpm: metrics.wpm,
+          rawWpm: metrics.rawWpm,
+          accuracy: metrics.accuracy,
+          consistency: metrics.consistency,
+          focusScore: metrics.focusScore,
+          duration: (Date.now() - (useTypingStore.getState().startTime || Date.now())) / 1000,
+          backspaceCount: metrics.backspaceCount,
+          correctionCount: metrics.correctionCount,
+          keystrokes: metrics.keystrokes,
+          createdAt: new Date().toISOString(),
+        });
+        
+        localStorage.setItem(offlineQueueKey, JSON.stringify(currentQueue));
+        showPrToast(`💾 Practiced offline! Saved locally. Will sync when connection returns.`);
       }
     }
 

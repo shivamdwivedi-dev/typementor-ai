@@ -18,6 +18,7 @@ const InterviewRoom  = React.lazy(() => import('./pages/InterviewRoom'));
 const TypingAcademy  = React.lazy(() => import('./pages/TypingAcademy'));
 const PrivacyPolicy  = React.lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 
 // ── Shared loading fallback ─────────────────────────────────────────────────
 function PageLoader() {
@@ -151,6 +152,7 @@ export default function AppRoutes() {
               <InterviewRoom />
             </div>
           </ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute requireAuth><AdminDashboard /></ProtectedRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

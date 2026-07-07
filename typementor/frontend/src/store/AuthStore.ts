@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getApiUrl } from '../utils/api';
+import { safeFetch } from '../utils/api';
 
 export interface UserProfile {
   id: string;
@@ -106,7 +106,7 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
 
     // Sync merged progress to the database
     try {
-      await fetch(getApiUrl('/api/auth/profile/academy'), {
+      await safeFetch('/api/auth/profile/academy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
     // If local progress exists but database progress is empty/null, sync local to DB
     if (userCompleted.length > 0 && dbCompleted.length === 0) {
       try {
-        await fetch(getApiUrl('/api/auth/profile/academy'), {
+        await safeFetch('/api/auth/profile/academy', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
       // If local progress was merged and had new additions, sync the merged back to DB
       if (mergedCompleted.length > dbCompleted.length) {
         try {
-          await fetch(getApiUrl('/api/auth/profile/academy'), {
+          await safeFetch('/api/auth/profile/academy', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -207,6 +207,53 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
     }
   }
 }
+
+/**
+ * Syncs locally saved offline sessions to the database.
+ */
+export async function syncOfflineSessions(token: string, userId: string) {
+  const offlineQueueKey = `typementor_offline_sessions_queue_${userId}`;
+  const queueStr = localStorage.getItem(offlineQueueKey);
+  if (!queueStr) return;
+
+  try {
+    const queue = JSON.parse(queueStr);
+    if (!Array.isArray(queue) || queue.length === 0) return;
+
+    console.info(`[Offline Sync] Found ${queue.length} offline sessions. Syncing...`);
+    const remaining: any[] = [];
+
+    for (const session of queue) {
+      try {
+        const response = await safeFetch('/api/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(session),
+        });
+
+        if (!response.ok) {
+          remaining.push(session);
+        }
+      } catch (err) {
+        console.error('[Offline Sync] Failed to sync session:', err);
+        remaining.push(session);
+      }
+    }
+
+    if (remaining.length > 0) {
+      localStorage.setItem(offlineQueueKey, JSON.stringify(remaining));
+    } else {
+      localStorage.removeItem(offlineQueueKey);
+      console.info('[Offline Sync] All offline sessions successfully synced.');
+    }
+  } catch (e) {
+    console.warn('[Offline Sync] Error parsing offline sessions queue:', e);
+  }
+}
+
 
 
 interface AuthState {
@@ -257,7 +304,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Token exists — verify it is still valid by hitting /profile
     try {
-      const response = await fetch(getApiUrl('/api/auth/profile'), {
+      const response = await safeFetch('/api/auth/profile', {
         headers: { Authorization: `Bearer ${savedToken}` },
       });
 
@@ -271,6 +318,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isBootstrapping: false,
           isOffline: false,
         });
+        // Sync any offline sessions recorded during disconnect
+        syncOfflineSessions(savedToken, data.id);
       } else {
         if (response.status === 401 || response.status === 403 || response.status === 444) {
           // Token is expired, invalid, or belongs to a deleted user — purge it
@@ -298,10 +347,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ── Login ─────────────────────────────────────────────────────────────────
-  login: async (email, password) => {
+  login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(getApiUrl('/api/auth/login'), {
+      const response = await safeFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -324,6 +373,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // Fetch full profile (achievements, challenges, etc.)
       await get().fetchProfile();
+      syncOfflineSessions(data.token, data.user.id);
       return true;
     } catch (err: unknown) {
       const isNetwork = err instanceof TypeError || (err instanceof Error && err.message.toLowerCase().includes('failed to fetch'));
@@ -337,10 +387,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ── Register ──────────────────────────────────────────────────────────────
-  register: async (email, password, name) => {
+  register: async (email: string, password: string, name: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(getApiUrl('/api/auth/register'), {
+      const response = await safeFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
@@ -362,6 +412,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       await get().fetchProfile();
+      syncOfflineSessions(data.token, data.user.id);
       return true;
     } catch (err: unknown) {
       const isNetwork = err instanceof TypeError || (err instanceof Error && err.message.toLowerCase().includes('failed to fetch'));
@@ -375,10 +426,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ── Google Login ──────────────────────────────────────────────────────────
-  loginWithGoogle: async (idToken) => {
+  loginWithGoogle: async (idToken: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(getApiUrl('/api/auth/google'), {
+      const response = await safeFetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
@@ -400,6 +451,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       await get().fetchProfile();
+      syncOfflineSessions(data.token, data.user.id);
       return true;
     } catch (err: unknown) {
       const isNetwork = err instanceof TypeError || (err instanceof Error && err.message.toLowerCase().includes('failed to fetch'));
@@ -425,7 +477,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ isLoading: true });
     try {
-      const response = await fetch(getApiUrl('/api/auth/profile'), {
+      const response = await safeFetch('/api/auth/profile', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -450,4 +502,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ error: message, isLoading: false });
     }
   },
-}));
+} satisfies any));
+
+// ── Connection Status Listeners ─────────────────────────────────────────────
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    const { token, user, setOffline } = useAuthStore.getState();
+    setOffline(false);
+    if (token && user) {
+      syncOfflineSessions(token, user.id);
+    }
+  });
+  window.addEventListener('offline', () => {
+    useAuthStore.getState().setOffline(true);
+  });
+}
