@@ -72,10 +72,10 @@ export async function getAdminStats(req: Request, res: Response) {
         id: true,
       },
     });
-    const popularModes = sessionsByMode.map(m => ({
+    const popularModes = sessionsByMode.map((m: any) => ({
       mode: m.mode,
       count: m._count.id
-    })).sort((a, b) => b.count - a.count);
+    })).sort((a: any, b: any) => b.count - a.count);
 
     // 7. Error & feedback submissions count
     const feedbackCount = await prisma.feedback.count();

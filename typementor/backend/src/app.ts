@@ -111,7 +111,7 @@ prisma.$connect()
   .then(() => {
     console.log('TypeMentor AI Database connected successfully.');
   })
-  .catch((err) => {
+  .catch((err: any) => {
     console.error('Failed to connect to the database on startup:', err.message || err);
   });
 

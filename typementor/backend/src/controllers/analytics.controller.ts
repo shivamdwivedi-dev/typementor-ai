@@ -335,9 +335,9 @@ export const getEnduranceStats = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const longestSession = Math.max(...sessions.map(s => s.duration));
-    const bestWpm = Math.max(...sessions.map(s => s.wpm));
-    const totalWords = sessions.reduce((sum, s) => sum + Math.round((s.duration * s.wpm) / 60), 0);
+    const longestSession = Math.max(...sessions.map((s: any) => s.duration));
+    const bestWpm = Math.max(...sessions.map((s: any) => s.wpm));
+    const totalWords = sessions.reduce((sum: number, s: any) => sum + Math.round((s.duration * s.wpm) / 60), 0);
 
     return res.status(200).json({
       longestSession,
