@@ -1,4 +1,5 @@
 import { FileText, ArrowLeft, RefreshCw, AlertCircle, HelpCircle } from 'lucide-react';
+import SEOMeta from '../components/SEOMeta';
 
 interface TermsOfServiceProps {
   onBack: () => void;
@@ -7,6 +8,11 @@ interface TermsOfServiceProps {
 export default function TermsOfService({ onBack }: TermsOfServiceProps) {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 text-brand-text select-text">
+      <SEOMeta
+        title="Terms of Service — TypeMentor AI"
+        description="TypeMentor AI terms of service. Beta software terms covering data storage, guest mode limitations, AI coaching guidelines, and service change policies."
+        canonical="https://typementor-ai-frontend.vercel.app/terms"
+      />
       <button
         onClick={onBack}
         className="flex items-center gap-2 text-xs font-semibold text-brand-muted hover:text-white transition-colors border border-brand-border px-3.5 py-2 rounded-xl bg-brand-card/25 mb-8"

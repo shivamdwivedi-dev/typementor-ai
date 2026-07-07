@@ -1,4 +1,5 @@
 import { Brain, Award, Activity, Flame, ShieldCheck, BookOpen, ChevronRight, Zap, BarChart2, CheckCircle } from 'lucide-react';
+import SEOMeta from '../components/SEOMeta';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -6,9 +7,35 @@ interface LandingPageProps {
   onNavigateToPage?: (page: 'privacy' | 'terms') => void;
 }
 
+const LANDING_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'EducationalApplication',
+  'name': 'TypeMentor AI',
+  'url': 'https://typementor-ai-frontend.vercel.app/',
+  'description': 'AI-powered adaptive typing coach. Identify weak keys, practice coding syntax, and improve your WPM with personalized structured lessons.',
+  'applicationCategory': 'EducationalApplication',
+  'isAccessibleForFree': true,
+  'inLanguage': 'en',
+  'featureList': [
+    'AI weak-key detection',
+    'Live WPM and accuracy tracking',
+    'Typing Academy with structured lessons',
+    'Coding syntax practice',
+    'XP system and achievements'
+  ],
+  'offers': { '@type': 'Offer', 'price': '0', 'priceCurrency': 'USD' },
+  'creator': { '@type': 'Person', 'name': 'Shivam Dwivedi' }
+};
+
 export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPage }: LandingPageProps) {
   return (
     <div className="w-full space-y-24 py-10 pb-20">
+      <SEOMeta
+        title="TypeMentor AI — Free AI Typing Coach for Developers & Students"
+        description="TypeMentor AI is a free AI-powered typing coach. Identify weak keys, practice coding syntax, improve your WPM & accuracy with structured lessons and live keystroke diagnostics."
+        canonical="https://typementor-ai-frontend.vercel.app/"
+        jsonLd={LANDING_JSON_LD}
+      />
       
       {/* ── 1. Hero Section ── */}
       <section className="relative text-center max-w-4xl mx-auto space-y-8 px-4 py-12 md:py-20 overflow-hidden">
@@ -288,30 +315,27 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-brand-muted font-medium">
             <span>Built by Shivam Dwivedi</span>
             <span className="text-brand-border">|</span>
-            <button
-              onClick={() => onNavigateToPage?.('privacy')}
+            <a
+              href="/privacy"
+              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('privacy'); }}
               className="hover:text-white hover:underline transition-colors"
             >
               Privacy Policy
-            </button>
+            </a>
             <span className="text-brand-border">•</span>
-            <button
-              onClick={() => onNavigateToPage?.('terms')}
+            <a
+              href="/terms"
+              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('terms'); }}
               className="hover:text-white hover:underline transition-colors"
             >
               Terms of Service
-            </button>
+            </a>
             <span className="text-brand-border">|</span>
             <a
-              href="#feedback"
-              onClick={(e) => {
-                e.preventDefault();
-                const btn = document.querySelector('button[class*="fixed bottom-6 left-6"]');
-                if (btn) (btn as HTMLButtonElement).click();
-              }}
+              href="/academy"
               className="text-brand-primary hover:underline"
             >
-              Contact / Submit Feedback
+              Try Typing Academy
             </a>
           </div>
         </div>

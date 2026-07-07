@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import SEOMeta from '../components/SEOMeta';
 import { ACADEMY_LESSONS, AcademyLesson } from '../utils/academyLessons';
 import { showPrToast } from '../utils/toastHelper';
 import { soundEngine } from '../utils/soundEngine';
@@ -842,6 +843,11 @@ export default function TypingAcademy() {
 
   return (
     <div className="space-y-8 pb-12 text-left max-w-7xl mx-auto font-sans relative">
+      <SEOMeta
+        title="Typing Academy — TypeMentor AI | Structured Typing Lessons"
+        description="Learn to type faster with TypeMentor AI's Typing Academy. 50+ structured lessons covering home row basics, coding syntax, and advanced touch typing. Free for everyone."
+        canonical="https://typementor-ai-frontend.vercel.app/academy"
+      />
       {/* CSS Confetti keyframes styling */}
       <style>{`
         @keyframes academyConfettiFall {

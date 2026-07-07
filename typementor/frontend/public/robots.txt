@@ -1,4 +1,18 @@
+# robots.txt — TypeMentor AI
+# https://typementor-ai-frontend.vercel.app/
+
 User-agent: *
 Allow: /
+Allow: /academy
+Allow: /privacy
+Allow: /terms
 
+# Disallow private/auth-required routes
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /endurance
+Disallow: /path
+Disallow: /interview
+
+# Sitemap location
 Sitemap: https://typementor-ai-frontend.vercel.app/sitemap.xml

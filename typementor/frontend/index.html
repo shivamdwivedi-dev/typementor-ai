@@ -2,61 +2,120 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeMentor AI - Intelligent Developer Typing Website & Coach</title>
-    <meta name="description" content="TypeMentor AI is a premium developer typing website and interactive coding typing coach. Practice home-row accuracy, level up muscle memory, and track keyboard telemetry." />
-    <meta name="keywords" content="typing website, developer typing website, coding typing, learn typing, touch typing, muscle memory typing, typing tutor, AI typing coach, keyboard speed test" />
-    <meta name="robots" content="index, follow" />
+
+    <!-- Default title & description (overridden per-page by react-helmet-async) -->
+    <title>TypeMentor AI — Adaptive AI Typing Coach for Developers</title>
+    <meta name="description" content="TypeMentor AI is a free AI-powered typing coach for developers and students. Practice touch typing, fix weak keys, track WPM & accuracy, and level up with structured lessons." />
+    <meta name="keywords" content="typing coach, typing practice, learn to type, WPM test, touch typing, coding typing, developer typing, AI typing tutor, keyboard speed, muscle memory typing" />
     <meta name="author" content="Shivam Dwivedi" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#6366f1" />
+
+    <!-- Canonical (default — overridden by react-helmet-async per page) -->
     <link rel="canonical" href="https://typementor-ai-frontend.vercel.app/" />
-    <!-- Apple Touch Icon for Mobile SEO/PWA -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="theme-color" content="#1a1a2e" />
-    
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://typementor-ai-frontend.vercel.app/" />
-    <meta property="og:title" content="TypeMentor AI - Developer Typing Website & Coach" />
-    <meta property="og:description" content="An interactive, distraction-free typing academy to build programming muscle memory with live speed & accuracy telemetry." />
-    <meta property="og:image" content="https://typementor-ai-frontend.vercel.app/typementor_gallery_1_1781717212893.png" />
-    
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://typementor-ai-frontend.vercel.app/" />
-    <meta property="twitter:title" content="TypeMentor AI - Developer Typing Website & Coach" />
-    <meta property="twitter:description" content="Build programmer muscle memory and typing speed with TypeMentor AI." />
-    <meta property="twitter:image" content="https://typementor-ai-frontend.vercel.app/typementor_gallery_1_1781717212893.png" />
-    
-    <!-- JSON-LD Structured Data for Rich Snippets -->
+    <meta property="og:title" content="TypeMentor AI — Adaptive AI Typing Coach for Developers" />
+    <meta property="og:description" content="Free AI-powered typing coach. Fix weak keys, practice coding syntax, track WPM & accuracy. Structured lessons for all skill levels." />
+    <meta property="og:image" content="https://typementor-ai-frontend.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="TypeMentor AI" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://typementor-ai-frontend.vercel.app/" />
+    <meta name="twitter:title" content="TypeMentor AI — Adaptive AI Typing Coach for Developers" />
+    <meta name="twitter:description" content="Free AI-powered typing coach. Fix weak keys, practice coding syntax, track WPM & accuracy. Structured lessons for all skill levels." />
+    <meta name="twitter:image" content="https://typementor-ai-frontend.vercel.app/og-image.png" />
+    <meta name="twitter:creator" content="@shivam_dwivedi" />
+
+    <!-- JSON-LD: WebApplication + Organization structured data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "TypeMentor AI",
-      "url": "https://typementor-ai-frontend.vercel.app/",
-      "description": "Premium developer typing website and interactive coding typing coach. Practice home-row accuracy, level up muscle memory, and track keyboard telemetry.",
-      "applicationCategory": "EducationalApplication",
-      "genre": "Educational",
-      "operatingSystem": "All",
-      "creator": {
-        "@type": "Person",
-        "name": "Shivam Dwivedi"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "@id": "https://typementor-ai-frontend.vercel.app/#app",
+          "name": "TypeMentor AI",
+          "url": "https://typementor-ai-frontend.vercel.app/",
+          "description": "AI-powered adaptive typing coach for developers and students. Identify weak keys, practice coding syntax, and improve WPM with personalized lessons.",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Any",
+          "browserRequirements": "Requires JavaScript",
+          "inLanguage": "en",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "AI weak-key detection and targeted drills",
+            "Live WPM and accuracy tracking",
+            "Structured typing academy with 50+ lessons",
+            "Coding syntax practice (Python, JS, Java, SQL)",
+            "Endurance arena with focus metrics",
+            "XP system, streaks, and certificates"
+          ],
+          "creator": {
+            "@type": "Person",
+            "name": "Shivam Dwivedi"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://typementor-ai-frontend.vercel.app/#website",
+          "url": "https://typementor-ai-frontend.vercel.app/",
+          "name": "TypeMentor AI",
+          "description": "Free AI-powered adaptive typing coach for developers",
+          "inLanguage": "en",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://typementor-ai-frontend.vercel.app/academy"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
     }
     </script>
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Fonts (preconnect first for performance) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Outfit:wght@100..900&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-brand-bg text-brand-text font-sans antialiased selection:bg-brand-primary selection:text-white">
+    <!-- Crawlable fallback content for Googlebot (pre-hydration) -->
+    <noscript>
+      <div style="font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;">
+        <h1>TypeMentor AI — Adaptive AI Typing Coach</h1>
+        <p>TypeMentor AI is a free AI-powered typing coach for developers and students. Practice touch typing, identify your weak keys with AI diagnostics, track WPM and accuracy, and level up through structured lessons.</p>
+        <h2>Features</h2>
+        <ul>
+          <li>AI-powered weak key detection and targeted recovery drills</li>
+          <li>Live WPM, accuracy, and consistency tracking</li>
+          <li>Typing Academy with 50+ structured lessons</li>
+          <li>Coding syntax practice: Python, JavaScript, Java, SQL</li>
+          <li>Endurance Arena with focus score metrics</li>
+          <li>XP system, daily streaks, and achievement certificates</li>
+        </ul>
+        <p><a href="/academy">Try the Typing Academy</a> | <a href="/privacy">Privacy Policy</a> | <a href="/terms">Terms of Service</a></p>
+        <p>Please enable JavaScript to use TypeMentor AI.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
