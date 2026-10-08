@@ -7,9 +7,9 @@ import { sanitizeBody, blockSqlInjection } from './middleware/sanitize.middlewar
 
 dotenv.config();
 
-// Ensure Supabase PgBouncer pooler connection strings append pgbouncer=true to disable prepared statement caching
-if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('pooler.supabase.com') && !process.env.DATABASE_URL.includes('pgbouncer=true')) {
-  process.env.DATABASE_URL += (process.env.DATABASE_URL.includes('?') ? '&' : '?') + 'pgbouncer=true';
+// Ensure Supabase PgBouncer pooler connection strings disable prepared statement caching
+if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('statement_cache_size=')) {
+  process.env.DATABASE_URL += (process.env.DATABASE_URL.includes('?') ? '&' : '?') + 'pgbouncer=true&statement_cache_size=0';
 }
 
 const app = express();
@@ -120,7 +120,9 @@ export const authLimiter = rateLimit({
 
 // ── Prisma client & DDL Initialization ─────────────────────────────────────────
 import { PrismaClient } from '@prisma/client';
-export const prisma = new PrismaClient();
+export const prisma = new PrismaClient({
+  datasources: process.env.DATABASE_URL ? { db: { url: process.env.DATABASE_URL } } : undefined,
+});
 
 const DDL_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS "User" (
