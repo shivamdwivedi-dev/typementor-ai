@@ -300,20 +300,24 @@ export const googleLogin = async (req: Request, res: Response) => {
       });
       isNewUser = true;
 
-      // Seed initial challenges
-      const activeChallenges = await prisma.challenge.findMany({
-        where: { expiresAt: { gt: new Date() } }
-      });
-      if (activeChallenges.length > 0) {
-        await prisma.userChallengeProgress.createMany({
-          data: activeChallenges.map((ch: Challenge) => ({
-            userId: user!.id,
-            challengeId: ch.id,
-            currentValue: 0,
-            isCompleted: false
-          })),
-          skipDuplicates: true
+      // Seed initial challenges (non-blocking)
+      try {
+        const activeChallenges = await prisma.challenge.findMany({
+          where: { expiresAt: { gt: new Date() } }
         });
+        if (activeChallenges.length > 0) {
+          await prisma.userChallengeProgress.createMany({
+            data: activeChallenges.map((ch: Challenge) => ({
+              userId: user!.id,
+              challengeId: ch.id,
+              currentValue: 0,
+              isCompleted: false
+            })),
+            skipDuplicates: true
+          });
+        }
+      } catch (chErr) {
+        console.warn('[Google Auth] Failed to seed challenges for new user:', chErr);
       }
     } else {
       // Link Google ID if user exists but logged in via Google for first time
@@ -325,37 +329,49 @@ export const googleLogin = async (req: Request, res: Response) => {
         updates.avatar = payload.picture;
       }
       
-      // Update streak (only resets to 0 if streak was missed)
-      const newStreak = getStreakOnLogin(user.lastActiveAt, user.streak);
-      const newLongestStreak = Math.max(user.longestStreak, newStreak);
+      const newStreak = getStreakOnLogin(user.lastActiveAt || new Date(0), user.streak || 0);
+      const newLongestStreak = Math.max(user.longestStreak || 0, newStreak);
       updates.streak = newStreak;
       updates.longestStreak = newLongestStreak;
 
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: updates
-      });
-
-      // Seed any missing challenges
-      const activeChallenges = await prisma.challenge.findMany({
-        where: { expiresAt: { gt: new Date() } }
-      });
-      for (const ch of activeChallenges) {
-        await prisma.userChallengeProgress.upsert({
-          where: {
-            userId_challengeId: {
-              userId: user.id,
-              challengeId: ch.id
-            }
-          },
-          update: {},
-          create: {
-            userId: user.id,
-            challengeId: ch.id,
-            currentValue: 0,
-            isCompleted: false
-          }
+      try {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: updates
         });
+      } catch (updateErr) {
+        console.warn('[Google Auth] User update warning (e.g. googleId conflict):', updateErr);
+        delete updates.googleId;
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: updates
+        });
+      }
+
+      // Seed missing challenges (non-blocking)
+      try {
+        const activeChallenges = await prisma.challenge.findMany({
+          where: { expiresAt: { gt: new Date() } }
+        });
+        for (const ch of activeChallenges) {
+          await prisma.userChallengeProgress.upsert({
+            where: {
+              userId_challengeId: {
+                userId: user.id,
+                challengeId: ch.id
+              }
+            },
+            update: {},
+            create: {
+              userId: user.id,
+              challengeId: ch.id,
+              currentValue: 0,
+              isCompleted: false
+            }
+          });
+        }
+      } catch (chErr) {
+        console.warn('[Google Auth] Failed to seed challenges for existing user:', chErr);
       }
     }
 
@@ -381,8 +397,9 @@ export const googleLogin = async (req: Request, res: Response) => {
       }
     });
   } catch (error: unknown) {
-    console.error('[Backend Google Auth] CRITICAL UNHANDLED ERROR:', error);
-    return res.status(500).json({ error: 'Google login failed. Please try again.' });
+    const errMessage = error instanceof Error ? error.message : String(error);
+    console.error('[Backend Google Auth] CRITICAL UNHANDLED ERROR:', errMessage, error);
+    return res.status(500).json({ error: `Google login failed: ${errMessage}` });
   }
 };
 
