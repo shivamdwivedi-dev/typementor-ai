@@ -97,3 +97,25 @@ export async function getAdminStats(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to retrieve administrator telemetry.' });
   }
 }
+
+import { exec } from 'child_process';
+
+/**
+ * Executes prisma db push directly on the live backend server to create/sync Supabase tables.
+ */
+export async function pushDatabaseSchema(_req: Request, res: Response) {
+  try {
+    console.log('[Admin] Triggering database schema push on server...');
+    exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {
+      if (error) {
+        console.error('[Admin DB Push Error]', error, stderr);
+        return res.status(500).json({ success: false, error: error.message, stderr });
+      }
+      console.log('[Admin DB Push Success]', stdout);
+      return res.status(200).json({ success: true, message: 'Database schema pushed successfully!', output: stdout });
+    });
+  } catch (err: any) {
+    console.error('[Admin DB Push Exception]', err);
+    return res.status(500).json({ error: err.message });
+  }
+}
