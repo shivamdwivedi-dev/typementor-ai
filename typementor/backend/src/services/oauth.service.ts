@@ -1,6 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const DEFAULT_CLIENT_ID = '1034864032860-5h45uu3mjde019p1v43crq2inksns867.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
 
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
@@ -13,13 +14,11 @@ export interface GooglePayload {
 }
 
 export const verifyGoogleToken = async (idToken: string): Promise<GooglePayload> => {
-  if (!GOOGLE_CLIENT_ID) {
-    throw new Error('GOOGLE_CLIENT_ID is not configured in backend environment.');
-  }
+  const targetClientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
 
   const ticket = await client.verifyIdToken({
     idToken,
-    audience: GOOGLE_CLIENT_ID,
+    audience: targetClientId,
   });
 
   const payload = ticket.getPayload();
