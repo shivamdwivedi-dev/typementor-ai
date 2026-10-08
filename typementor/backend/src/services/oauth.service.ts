@@ -14,11 +14,12 @@ export interface GooglePayload {
 }
 
 export const verifyGoogleToken = async (idToken: string): Promise<GooglePayload> => {
-  const targetClientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
+  const envClientId = process.env.GOOGLE_CLIENT_ID;
+  const audiences = Array.from(new Set([envClientId, DEFAULT_CLIENT_ID].filter(Boolean))) as string[];
 
   const ticket = await client.verifyIdToken({
     idToken,
-    audience: targetClientId,
+    audience: audiences,
   });
 
   const payload = ticket.getPayload();
@@ -28,7 +29,7 @@ export const verifyGoogleToken = async (idToken: string): Promise<GooglePayload>
 
   return {
     sub: payload.sub,
-    email: payload.email,
+    email: payload.email.toLowerCase(),
     email_verified: !!payload.email_verified,
     name: payload.name || 'Google User',
     picture: payload.picture,

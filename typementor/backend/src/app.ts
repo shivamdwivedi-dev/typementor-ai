@@ -104,10 +104,10 @@ const globalLimiter = rateLimit({
 });
 app.use('/api/', globalLimiter);
 
-// ── Strict auth limiter: 5 attempts / 15 min per IP ──────────────────────────
+// ── Strict auth limiter: 30 attempts / 15 min per IP ──────────────────────────
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
