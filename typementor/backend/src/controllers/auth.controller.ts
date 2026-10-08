@@ -93,8 +93,9 @@ export const register = async (req: Request, res: Response) => {
       }
     });
   } catch (error: unknown) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ error: 'An error occurred during registration.' });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Registration error:', message, error);
+    return res.status(500).json({ error: `Registration error: ${message}` });
   }
 };
 
