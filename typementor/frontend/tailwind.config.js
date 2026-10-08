@@ -9,7 +9,7 @@ export default {
     extend: {
       colors: {
         brand: {
-          bg: '#0f172a',      // slate-900
+          bg: '#0b0f19',      // deep dark background
           card: '#1e293b',    // slate-800
           border: '#334155',  // slate-700
           text: '#f8fafc',    // slate-50
@@ -26,12 +26,30 @@ export default {
       },
       animation: {
         'blink': 'blink 1s step-end infinite',
+        'ripple': 'ripple 3s ease-in-out infinite',
+        'orbit': 'orbit calc(var(--duration)*1s) linear infinite',
       },
       keyframes: {
         blink: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0' },
-        }
+        },
+        ripple: {
+          '0%, 100%': {
+            transform: 'translate(-50%, -50%) scale(1)',
+          },
+          '50%': {
+            transform: 'translate(-50%, -50%) scale(0.9)',
+          },
+        },
+        orbit: {
+          '0%': {
+            transform: 'rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)',
+          },
+          '100%': {
+            transform: 'rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)',
+          },
+        },
       }
     },
   },

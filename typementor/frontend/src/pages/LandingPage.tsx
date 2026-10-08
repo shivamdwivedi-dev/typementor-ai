@@ -1,5 +1,6 @@
 import { Brain, Award, Activity, Flame, ShieldCheck, BookOpen, ChevronRight, Zap, BarChart2, CheckCircle } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
+import TubesBackground from '../components/ui/neon-flow';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -94,44 +95,44 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
         jsonLd={LANDING_JSON_LD}
       />
       
-      {/* ── 1. Hero Section ── */}
-      <section className="relative text-center max-w-4xl mx-auto space-y-8 px-4 py-12 md:py-20 overflow-hidden">
-        {/* Glow Effects */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-primary/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
-        <div className="absolute top-10 left-10 w-[200px] h-[200px] bg-brand-success/5 rounded-full blur-[80px] pointer-events-none -z-10"></div>
+      {/* ── 1. Hero Section with Tubes Background ── */}
+      <section className="relative text-center max-w-5xl mx-auto rounded-3xl overflow-hidden border border-brand-border/40 shadow-2xl">
+        <TubesBackground className="py-12 md:py-20 px-4">
+          <div className="space-y-8 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-brand-primary/20 border border-brand-primary/40 px-3.5 py-1.5 rounded-full text-brand-primary text-xs font-black tracking-widest uppercase animate-pulse pointer-events-auto">
+              <Zap className="w-3.5 h-3.5 fill-brand-primary" />
+              <span>Beta Version 1.0 Live</span>
+            </div>
 
-        <div className="inline-flex items-center gap-2 bg-brand-primary/10 border border-brand-primary/20 px-3.5 py-1.5 rounded-full text-brand-primary text-xs font-black tracking-widest uppercase animate-pulse">
-          <Zap className="w-3.5 h-3.5 fill-brand-primary" />
-          <span>Beta Version 1.0 Live</span>
-        </div>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight drop-shadow-[0_0_25px_rgba(0,0,0,0.9)] select-none">
+              Type Smarter. <br />
+              <span className="bg-gradient-to-r from-brand-primary via-indigo-400 to-brand-success bg-clip-text text-transparent">
+                Improve Faster.
+              </span>
+            </h1>
 
-        <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
-          Type Smarter. <br />
-          <span className="bg-gradient-to-r from-brand-primary via-indigo-400 to-brand-success bg-clip-text text-transparent">
-            Improve Faster.
-          </span>
-        </h1>
+            <p className="text-base md:text-lg text-slate-200 max-w-2xl mx-auto font-medium leading-relaxed drop-shadow-md">
+              An AI-powered typing coach that teaches, analyzes, and improves your typing. Build muscle memory through smart lessons targeted directly at your weak keys.
+            </p>
 
-        <p className="text-base md:text-lg text-brand-muted max-w-2xl mx-auto font-medium leading-relaxed">
-          An AI-powered typing coach that teaches, analyzes, and improves your typing. Build muscle memory through smart lessons targeted directly at your weak keys.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <button
-            onClick={onGetStarted}
-            className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white font-extrabold px-8 py-4 rounded-2xl shadow-xl shadow-brand-primary/25 hover:shadow-brand-primary/35 transition-all text-sm flex items-center justify-center gap-2 border border-indigo-400/40"
-          >
-            <span>Get Started</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onTryAcademy}
-            className="w-full sm:w-auto bg-brand-card hover:bg-brand-card/85 text-brand-success font-extrabold px-8 py-4 rounded-2xl border border-brand-success/30 hover:border-brand-success/50 shadow-md transition-all text-sm flex items-center justify-center gap-2"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Try Typing Academy (Guest)</span>
-          </button>
-        </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 pointer-events-auto">
+              <button
+                onClick={onGetStarted}
+                className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white font-extrabold px-8 py-4 rounded-2xl shadow-xl shadow-brand-primary/25 hover:shadow-brand-primary/35 transition-all text-sm flex items-center justify-center gap-2 border border-indigo-400/40"
+              >
+                <span>Get Started</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onTryAcademy}
+                className="w-full sm:w-auto bg-brand-card/90 hover:bg-brand-card text-brand-success font-extrabold px-8 py-4 rounded-2xl border border-brand-success/30 hover:border-brand-success/50 shadow-md transition-all text-sm flex items-center justify-center gap-2"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Try Typing Academy (Guest)</span>
+              </button>
+            </div>
+          </div>
+        </TubesBackground>
       </section>
 
       {/* ── 2. Feature Cards Section ── */}

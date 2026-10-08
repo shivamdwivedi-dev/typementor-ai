@@ -71,7 +71,8 @@ export default function AppRoutes() {
       <Routes>
         {/* Public Pages outside the standard layout (Landing & Auth) */}
         <Route path="/" element={
-          (isAuthenticated || isGuestSession) ? <Navigate to="/practice" replace /> :
+          isAuthenticated ? <Navigate to="/dashboard" replace /> :
+          isGuestSession ? <Navigate to="/practice" replace /> :
           <div className="min-h-screen bg-brand-bg flex flex-col font-sans select-none text-brand-text">
             <header className="border-b border-brand-border bg-brand-card/30 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
               <div className="flex items-center gap-3">
@@ -98,12 +99,12 @@ export default function AppRoutes() {
         } />
 
         <Route path="/auth" element={
-          isAuthenticated ? <Navigate to="/practice" replace /> :
+          isAuthenticated ? <Navigate to="/dashboard" replace /> :
           <div className="min-h-screen bg-brand-bg flex flex-col font-sans select-none text-brand-text">
             <header className="border-b border-brand-border bg-brand-card/30 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
               <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = '/'}>
                 <div className="bg-brand-primary p-2.5 rounded-xl text-white shadow-lg shadow-brand-primary/20">
-                  <svg className="w-6 h-6 lucide lucide-brain" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/></svg>
+                  <svg className="w-6 h-6 lucide lucide-brain" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/></svg>
                 </div>
                 <div>
                   <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
@@ -119,7 +120,7 @@ export default function AppRoutes() {
               </div>
             </header>
             <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
-              <AuthPage onSuccess={() => { window.location.href = '/practice'; }} />
+              <AuthPage onSuccess={() => { window.location.href = '/dashboard'; }} />
               {import.meta.env.VITE_ENABLE_GUEST_MODE === 'true' && (
                 <div className="mt-4 text-center">
                   <button onClick={() => { localStorage.setItem('typementor_is_guest', 'true'); window.location.href = '/practice'; }} className="text-xs text-brand-muted hover:text-brand-text underline underline-offset-2 transition-colors">

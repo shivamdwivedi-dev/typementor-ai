@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../store/AuthStore';
 import { useTypingStore } from '../store/TypingStore';
 import KeyboardHeatmap from '../components/KeyboardHeatmap';
+import CursorDrivenParticleTypography from '../components/ui/particle-typography';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Trophy, TrendingUp, Clock, AlertTriangle, ShieldCheck, Flame, Compass, Sparkles, Award, Star, Activity, Play } from 'lucide-react';
 import { getSmartResumeTarget, ResumeTarget } from '../utils/ResumeTracker';
@@ -239,6 +240,22 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
 
   return (
     <div className="space-y-8 pb-12">
+      {/* Particle Typography Banner */}
+      <div className="relative w-full h-36 rounded-3xl overflow-hidden glass-panel border border-brand-primary/30 flex items-center justify-center bg-gradient-to-r from-indigo-950/40 via-brand-card/70 to-slate-900/60 shadow-2xl">
+        <CursorDrivenParticleTypography
+          text="TYPEMENTOR AI"
+          fontSize={64}
+          color="#6366f1"
+          particleSize={1.8}
+          dispersionStrength={18}
+          returnSpeed={0.09}
+          className="min-h-[140px]"
+        />
+        <div className="absolute bottom-2 right-4 text-[9px] uppercase font-bold text-brand-muted tracking-widest pointer-events-none opacity-60">
+          Move cursor to disperse particles
+        </div>
+      </div>
+
       {/* Top Welcome Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
