@@ -12,7 +12,8 @@ app.set('trust proxy', 1);
 
 // ── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
 // ── CORS — restrict to known origins ─────────────────────────────────────────
@@ -23,13 +24,24 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
 
 const isProduction = process.env.NODE_ENV === "production";
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://typementor-ai-frontend.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+];
+
 const corsOptions: cors.CorsOptions = {
   origin(origin, callback) {
     if (!origin) {
       return callback(null, true);
     }
 
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+    if (
+      allowedOrigins.includes(origin) ||
+      allowedOrigins.includes("*") ||
+      DEFAULT_ALLOWED_ORIGINS.includes(origin)
+    ) {
       return callback(null, true);
     }
 
@@ -47,7 +59,7 @@ const corsOptions: cors.CorsOptions = {
       const isVercel =
         hostname.endsWith(".vercel.app");
 
-      if (!isProduction && (isLocalhost || isNgrok || isVercel)) {
+      if (isLocalhost || isNgrok || isVercel) {
         return callback(null, true);
       }
 

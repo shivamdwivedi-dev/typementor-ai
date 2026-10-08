@@ -249,19 +249,20 @@ import { verifyGoogleToken } from '../services/oauth.service';
 export const googleLogin = async (req: Request, res: Response) => {
   console.log('[Google Auth] Starting login flow...');
   try {
-    const { idToken } = req.body;
-    if (!idToken) {
-      console.warn('[Backend Google Auth] Verification failed: idToken is missing.');
-      return res.status(400).json({ error: 'Google login failed. Please try again.' });
+    const { idToken, credential } = req.body;
+    const tokenToVerify = idToken || credential;
+    if (!tokenToVerify) {
+      console.warn('[Backend Google Auth] Verification failed: idToken / credential is missing.');
+      return res.status(400).json({ error: 'Google login failed. Token is missing.' });
     }
 
     console.log('[Google Auth] Verifying ID token with Google API...');
     let payload;
     try {
-      payload = await verifyGoogleToken(idToken);
+      payload = await verifyGoogleToken(tokenToVerify);
     } catch (err: any) {
       console.error('[Backend Google Auth] Google verification FAILED:', err.message || err);
-      return res.status(401).json({ error: 'Google login failed. Please try again.' });
+      return res.status(401).json({ error: `Google verification failed: ${err.message || 'Invalid token'}` });
     }
 
     if (!payload.email_verified) {

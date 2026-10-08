@@ -347,6 +347,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ── Login ─────────────────────────────────────────────────────────────────
+  // ── Login ─────────────────────────────────────────────────────────────────
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
@@ -355,7 +356,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await response.json();
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed. Check your credentials.');
@@ -395,7 +401,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
       });
-      const data = await response.json();
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed.');
@@ -432,9 +443,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await safeFetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, credential: idToken }),
       });
-      const data = await response.json();
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Google login failed. Please try again.');

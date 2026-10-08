@@ -69,12 +69,12 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
   };
 
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId || clientId === 'your_google_client_id_here' || clientId.trim() === '') {
-      console.warn('VITE_GOOGLE_CLIENT_ID is not configured in frontend environment.');
-      setIsGoogleConfigured(false);
-      return;
-    }
+    const DEFAULT_CLIENT_ID = '1034864032860-5h45uu3mjde019p1v43crq2inksns867.apps.googleusercontent.com';
+    const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const clientId = (envClientId && envClientId !== 'your_google_client_id_here' && envClientId.trim() !== '')
+      ? envClientId.trim()
+      : DEFAULT_CLIENT_ID;
+
     setIsGoogleConfigured(true);
 
     const loadGoogleScript = () => {
