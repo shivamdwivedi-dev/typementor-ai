@@ -73,7 +73,7 @@ export default function AppRoutes() {
         <Route path="/" element={
           isAuthenticated ? <Navigate to="/dashboard" replace /> :
           isGuestSession ? <Navigate to="/practice" replace /> :
-          <div className="min-h-screen bg-brand-bg flex flex-col font-sans select-none text-brand-text">
+          <div className="min-h-screen bg-transparent flex flex-col font-sans select-none text-brand-text">
             <header className="border-b border-brand-border bg-brand-card/30 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
               <div className="flex items-center gap-3">
                 <div className="bg-brand-primary p-2.5 rounded-xl text-white shadow-lg shadow-brand-primary/20">
@@ -100,7 +100,7 @@ export default function AppRoutes() {
 
         <Route path="/auth" element={
           isAuthenticated ? <Navigate to="/dashboard" replace /> :
-          <div className="min-h-screen bg-brand-bg flex flex-col font-sans select-none text-brand-text">
+          <div className="min-h-screen bg-transparent flex flex-col font-sans select-none text-brand-text">
             <header className="border-b border-brand-border bg-brand-card/30 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
               <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = '/'}>
                 <div className="bg-brand-primary p-2.5 rounded-xl text-white shadow-lg shadow-brand-primary/20">

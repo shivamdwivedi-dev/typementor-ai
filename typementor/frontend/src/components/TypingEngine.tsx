@@ -49,27 +49,39 @@ interface TextBoardProps {
 }
 
 const TextBoard = React.memo(({ words, currentIndex, keystrokesSnapshot }: TextBoardProps) => {
-  return (
-    <div className="text-xl md:text-2xl leading-relaxed tracking-wide font-mono select-none break-all flex flex-wrap gap-y-2">
-      {words.split('').map((char, index) => {
-        let charClass = 'text-brand-muted';
+  let characterOffset = 0;
 
-        if (index < currentIndex) {
-          const keyLog = keystrokesSnapshot[index];
-          charClass = keyLog && !keyLog.isMistake
-            ? 'text-brand-success font-semibold border-b-2 border-brand-success/30'
-            : 'text-brand-danger font-semibold bg-brand-danger/10 border-b-2 border-brand-danger/30';
-        } else if (index === currentIndex) {
-          charClass = 'text-white bg-brand-primary/20 font-bold';
-        }
+  return (
+    <div className="text-xl md:text-2xl leading-relaxed tracking-wide font-mono select-none break-normal whitespace-normal [overflow-wrap:normal]">
+      {(words.match(/\S+|\s+/g) ?? []).map((token, tokenIndex) => {
+        const tokenStart = characterOffset;
+        characterOffset += token.length;
 
         return (
-          <CharSpan
-            key={index}
-            char={char}
-            charClass={charClass}
-            showCaret={index === currentIndex}
-          />
+          <span key={`${token}-${tokenIndex}`} className="inline-block whitespace-nowrap">
+            {token.split('').map((char, offset) => {
+              const index = tokenStart + offset;
+              let charClass = 'text-brand-muted';
+
+              if (index < currentIndex) {
+                const keyLog = keystrokesSnapshot[index];
+                charClass = keyLog && !keyLog.isMistake
+                  ? 'text-brand-success font-semibold border-b-2 border-brand-success/30'
+                  : 'text-brand-danger font-semibold bg-brand-danger/10 border-b-2 border-brand-danger/30';
+              } else if (index === currentIndex) {
+                charClass = 'text-white bg-brand-primary/20 font-bold';
+              }
+
+              return (
+                <CharSpan
+                  key={index}
+                  char={char}
+                  charClass={charClass}
+                  showCaret={index === currentIndex}
+                />
+              );
+            })}
+          </span>
         );
       })}
     </div>

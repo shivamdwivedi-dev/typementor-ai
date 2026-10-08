@@ -276,8 +276,8 @@ export default function PracticeBoard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="w-full space-y-8">
+        <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-2.5 bg-brand-card/30 p-2.5 rounded-xl border border-brand-border/40">
             <span className="text-[10px] text-brand-muted uppercase font-extrabold px-2">Mode:</span>
             {['English', 'Python', 'JavaScript', 'Java', 'SQL'].map(l => (
@@ -311,7 +311,7 @@ export default function PracticeBoard() {
           />
         </div>
 
-        <div className="lg:col-span-1 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           <React.Suspense fallback={<div className="glass-panel p-6 rounded-2xl border border-brand-border/40 text-center text-xs text-brand-muted animate-pulse">Loading AI Coach...</div>}>
             <AICoach onGenerateCustomLesson={handleCustomLessonGenerate} />
           </React.Suspense>

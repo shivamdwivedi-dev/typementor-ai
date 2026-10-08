@@ -144,7 +144,7 @@ export default function AppLayout() {
   const currentPage = location.pathname.substring(1) || 'practice';
 
   return (
-    <div className="relative min-h-screen bg-[#0b0f19] flex flex-col font-sans select-none text-brand-text overflow-x-hidden">
+    <div className="relative min-h-screen bg-transparent flex flex-col font-sans select-none text-brand-text overflow-x-hidden">
       {/* Background Animated Tubes Canvas Layer */}
       <div className="fixed inset-0 pointer-events-none opacity-20 z-0 overflow-hidden">
         <TubesBackground enableClickInteraction={false} className="w-full h-full" />
