@@ -79,9 +79,11 @@ const corsOptions: cors.CorsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
+// ── Body parser (Must come BEFORE sanitization) ──────────────────────────────
+app.use(express.json({ limit: '10mb' }));
+
 // ── Input sanitization ────────────────────────────────────────────────────────
 app.use(sanitizeBody);
-app.use(blockSqlInjection);
 
 // Debug log middleware - Dev only
 if (!isProduction) {
@@ -90,9 +92,6 @@ if (!isProduction) {
     next();
   });
 }
-
-// ── Body parser ───────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }));
 
 // ── Global rate limiter: 200 req / 15 min per IP ─────────────────────────────
 const globalLimiter = rateLimit({
@@ -142,18 +141,19 @@ app.use('/api/coach', coachRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok' });
-});
+// ── Health & Database Readiness check ──────────────────────────────────────────
+const checkHealth = async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    res.status(503).json({ status: 'degraded', database: 'disconnected', error: err.message });
+  }
+};
 
-app.get('/healthz', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+app.get('/health', checkHealth);
+app.get('/healthz', checkHealth);
+app.get('/api/health', checkHealth);
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {

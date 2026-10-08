@@ -6,7 +6,7 @@ import { prisma } from '../app';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { getStreakOnLogin } from '../services/gamification.service';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'typementor_secret_key_12345';
+import { JWT_SECRET } from '../config/env';
 
 export const register = async (req: Request, res: Response) => {
   try {

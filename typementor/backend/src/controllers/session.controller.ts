@@ -285,7 +285,8 @@ export const getUserSessions = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'User ID missing in token.' });
     }
 
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+    const rawLimit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+    const limit = isNaN(rawLimit) ? 20 : Math.min(100, Math.max(1, rawLimit));
 
     const sessions = await prisma.typingSession.findMany({
       where: { userId },

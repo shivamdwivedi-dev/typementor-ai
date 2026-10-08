@@ -79,11 +79,15 @@ export async function generateAICoachInsight(userId: string): Promise<string> {
       `;
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
             body: JSON.stringify({
               contents: [{
                 role: 'user',
@@ -92,6 +96,7 @@ export async function generateAICoachInsight(userId: string): Promise<string> {
             })
           }
         );
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           const resJson: GeminiResponse = await response.json() as GeminiResponse;

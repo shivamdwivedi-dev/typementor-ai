@@ -279,6 +279,31 @@ interface AuthState {
 
 const TOKEN_KEY = 'typementor_token';
 
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+    } catch {}
+    return null;
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+    } catch {}
+  },
+  removeItem: (key: string): void => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    } catch {}
+  },
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
@@ -294,7 +319,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // ── Validate stored token on app startup ──────────────────────────────────
   bootstrap: async () => {
-    const savedToken = localStorage.getItem(TOKEN_KEY);
+    const savedToken = safeStorage.getItem(TOKEN_KEY);
 
     if (!savedToken) {
       // No token at all — go straight to auth
@@ -323,7 +348,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         if (response.status === 401 || response.status === 403 || response.status === 444) {
           // Token is expired, invalid, or belongs to a deleted user — purge it
-          localStorage.removeItem(TOKEN_KEY);
+          safeStorage.removeItem(TOKEN_KEY);
           set({ token: null, user: null, isAuthenticated: false, isBootstrapping: false, isOffline: false });
         } else {
           // Server error (500, etc.) — do NOT delete token, assume offline/temporary issue
@@ -347,7 +372,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // ── Login ─────────────────────────────────────────────────────────────────
-  // ── Login ─────────────────────────────────────────────────────────────────
   login: async (email: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
@@ -367,7 +391,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(data.error || 'Login failed. Check your credentials.');
       }
 
-      localStorage.setItem(TOKEN_KEY, data.token);
+      safeStorage.setItem(TOKEN_KEY, data.token);
       set({
         token: data.token,
         user: data.user,
@@ -412,7 +436,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(data.error || 'Registration failed.');
       }
 
-      localStorage.setItem(TOKEN_KEY, data.token);
+      safeStorage.setItem(TOKEN_KEY, data.token);
       set({
         token: data.token,
         user: data.user,
@@ -456,7 +480,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(data.error || 'Google login failed. Please try again.');
       }
 
-      localStorage.setItem(TOKEN_KEY, data.token);
+      safeStorage.setItem(TOKEN_KEY, data.token);
       set({
         token: data.token,
         user: data.user,
@@ -482,7 +506,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // ── Logout ────────────────────────────────────────────────────────────────
   logout: () => {
-    localStorage.removeItem(TOKEN_KEY);
+    safeStorage.removeItem(TOKEN_KEY);
     set({ token: null, user: null, isAuthenticated: false, error: null });
   },
 

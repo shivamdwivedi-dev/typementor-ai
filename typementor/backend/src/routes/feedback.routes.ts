@@ -55,6 +55,9 @@ router.post('/', async (req, res) => {
   }
 });
 
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET, ADMIN_SECRET, ADMIN_EMAILS } from '../config/env';
+
 // GET /api/feedback - Restricted Developer/Admin Export Route
 // Supports token auth + email matching, or fallback to X-Admin-Secret header
 router.get('/', async (req: AuthRequest, res: Response) => {
@@ -63,8 +66,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
     // Check 1: Fallback Secret Key Header (very useful for CLI scripts or owner override)
     const secretHeader = req.headers['x-admin-secret'] || req.query.adminSecret;
-    const configuredSecret = process.env.ADMIN_SECRET || 'typementor_feedback_secret_key_2026';
-    if (secretHeader && secretHeader === configuredSecret) {
+    if (secretHeader && secretHeader === ADMIN_SECRET) {
       isAuthorized = true;
     }
 
@@ -74,15 +76,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       const token = authHeader && authHeader.split(' ')[1];
       if (token) {
         try {
-          const JWT_SECRET = process.env.JWT_SECRET || 'typementor_secret_key_12345';
-          const jwt = require('jsonwebtoken');
           const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string };
-          
-          const adminEmails = (process.env.ADMIN_EMAIL || 'shivamdwivedi.dev@gmail.com')
-            .split(',')
-            .map(email => email.trim().toLowerCase());
-
-          if (decoded && decoded.email && adminEmails.includes(decoded.email.toLowerCase())) {
+          if (decoded && decoded.email && ADMIN_EMAILS.includes(decoded.email.toLowerCase())) {
             isAuthorized = true;
           }
         } catch (jwtErr) {

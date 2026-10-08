@@ -4,28 +4,24 @@ import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
 
+import { ADMIN_EMAILS } from '../config/env';
+
 /**
  * Middleware to restrict route to designated admin email addresses.
  */
 function requireAdmin(req: Request & { user?: any }, res: Response, next: NextFunction) {
   const user = req.user;
-  const adminEmailsStr = process.env.ADMIN_EMAILS || '';
   
   if (!user || !user.email) {
     return res.status(401).json({ error: 'Authentication token required.' });
   }
 
-  const adminEmails = adminEmailsStr
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean);
-
   // Default fallback if no admin emails configured: allow development local access
-  if (adminEmails.length === 0 && process.env.NODE_ENV !== 'production') {
+  if (ADMIN_EMAILS.length === 0 && process.env.NODE_ENV !== 'production') {
     return next();
   }
 
-  if (adminEmails.includes(user.email.toLowerCase())) {
+  if (ADMIN_EMAILS.includes(user.email.toLowerCase())) {
     next();
   } else {
     res.status(403).json({ error: 'Access denied. Administrator privileges required.' });
