@@ -1,6 +1,7 @@
 import { Brain, Award, Activity, Flame, ShieldCheck, BookOpen, ChevronRight, Zap, BarChart2, CheckCircle } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 import TubesBackground from '../components/ui/neon-flow';
+import { ShinyButton } from '../components/ui/shiny-button';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -116,13 +117,13 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 pointer-events-auto">
-              <button
+              <ShinyButton
                 onClick={onGetStarted}
-                className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white font-extrabold px-8 py-4 rounded-2xl shadow-xl shadow-brand-primary/25 hover:shadow-brand-primary/35 transition-all text-sm flex items-center justify-center gap-2 border border-indigo-400/40"
+                className="w-full sm:w-auto text-sm font-extrabold"
               >
-                <span>Get Started</span>
+                Get Started
                 <ChevronRight className="w-4 h-4" />
-              </button>
+              </ShinyButton>
               <button
                 onClick={onTryAcademy}
                 className="w-full sm:w-auto bg-brand-card/90 hover:bg-brand-card text-brand-success font-extrabold px-8 py-4 rounded-2xl border border-brand-success/30 hover:border-brand-success/50 shadow-md transition-all text-sm flex items-center justify-center gap-2"
