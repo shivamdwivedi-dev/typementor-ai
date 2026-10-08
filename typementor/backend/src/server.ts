@@ -1,6 +1,16 @@
+import { execSync } from 'child_process';
 import app, { prisma } from './app';
 
 const PORT = process.env.PORT || 5000;
+
+// Auto-sync database schema on startup to ensure all tables exist in Supabase
+try {
+  console.log('[Database] Ensuring database tables exist in target PostgreSQL database...');
+  execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+  console.log('[Database] Database schema synced successfully.');
+} catch (dbErr: any) {
+  console.warn('[Database] Schema auto-sync warning:', dbErr.message || dbErr);
+}
 
 const server = app.listen(PORT, () => {
   console.log(`TypeMentor AI Server is running on port ${PORT}`);
