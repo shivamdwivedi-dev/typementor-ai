@@ -1,11 +1,22 @@
 import { trackException } from './monitoring';
 
+const DEFAULT_PROD_BACKEND = 'https://typementor-backend1.onrender.com';
+
 export function getApiUrl(path: string): string {
-  const baseUrl = (import.meta.env.VITE_API_URL || '').trim();
+  let baseUrl = (import.meta.env.VITE_API_URL || '').trim();
   const cleanPath = path.trim().startsWith('/') ? path.trim() : `/${path.trim()}`;
-  
+
+  // If VITE_API_URL is missing, fallback to live Render backend on production/Vercel
   if (!baseUrl) {
-    return cleanPath;
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1'
+    );
+    if (!isLocalhost) {
+      baseUrl = DEFAULT_PROD_BACKEND;
+    } else {
+      return cleanPath;
+    }
   }
 
   // Strip trailing slash
