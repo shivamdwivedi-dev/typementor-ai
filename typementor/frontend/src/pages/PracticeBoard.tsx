@@ -284,6 +284,8 @@ export default function PracticeBoard() {
               <button
                 key={l}
                 onClick={() => handleModeChange(l)}
+                type="button"
+                aria-pressed={mode === l}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   mode === l ? 'bg-brand-primary text-white' : 'text-brand-muted hover:text-white hover:bg-brand-card/60'
                 }`}

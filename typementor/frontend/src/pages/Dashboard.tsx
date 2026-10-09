@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../store/AuthStore';
 import { useTypingStore } from '../store/TypingStore';
 import KeyboardHeatmap from '../components/KeyboardHeatmap';
-import CursorDrivenParticleTypography from '../components/ui/particle-typography';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Trophy, TrendingUp, Clock, AlertTriangle, ShieldCheck, Flame, Compass, Sparkles, Award, Star, Activity, Play } from 'lucide-react';
 import { getSmartResumeTarget, ResumeTarget } from '../utils/ResumeTracker';
@@ -239,29 +238,13 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
   const xpProgressPercent = Math.min(100, Math.round((currentXp / xpNeeded) * 100));
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Particle Typography Banner */}
-      <div className="relative w-full h-36 rounded-3xl overflow-hidden glass-panel border border-brand-primary/30 flex items-center justify-center bg-gradient-to-r from-indigo-950/40 via-brand-card/70 to-slate-900/60 shadow-2xl">
-        <CursorDrivenParticleTypography
-          text="TYPEMENTOR AI"
-          fontSize={64}
-          color="#6366f1"
-          particleSize={1.8}
-          dispersionStrength={18}
-          returnSpeed={0.09}
-          className="min-h-[140px]"
-        />
-        <div className="absolute bottom-2 right-4 text-[9px] uppercase font-bold text-brand-muted tracking-widest pointer-events-none opacity-60">
-          Move cursor to disperse particles
-        </div>
-      </div>
-
-      {/* Top Welcome Title */}
+    <div className="space-y-6 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tight">Intelligence Dashboard</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-primary">Today's practice</p>
+          <h2 className="text-3xl font-black text-white tracking-tight mt-1">Welcome back, {user?.name?.split(' ')[0] || 'there'}</h2>
           <p className="text-brand-muted text-sm mt-1">
-            Analyzing {user?.name || 'Guest User'}'s keystroke telemetry & typing DNA profile.
+            A small, focused session is waiting for you.
           </p>
         </div>
         
@@ -285,14 +268,33 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         </div>
       </div>
 
-      {/* Grid of 4 Founder-Level Statistics */}
+      <div className="glass-panel p-5 md:p-6 rounded-2xl border border-brand-primary/35 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">Recommended next step</p>
+          <h3 className="text-lg font-extrabold text-white">{resumeTarget.buttonLabel}</h3>
+          <p className="text-sm text-brand-muted max-w-2xl">
+            {recoveryReport.mostMistypedKey !== 'None'
+              ? `Your recent practice suggests spending a few minutes on the ${recoveryReport.mostMistypedKey} key.`
+              : 'Keep your hands moving and build a little consistency today.'}
+          </p>
+        </div>
+        <button
+          onClick={() => onContinueJourney?.(resumeTarget)}
+          className="bg-brand-primary hover:bg-brand-primary/95 text-white font-extrabold px-5 py-3 rounded-xl shadow-lg shadow-brand-primary/20 transition-all text-sm flex items-center justify-center gap-2 border border-indigo-400/30 w-full lg:w-auto"
+        >
+          <Play className="w-4 h-4 fill-white" />
+          Start practice
+        </button>
+      </div>
+
+      {/* Progress overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
           <div className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Lifetime WPM</div>
           <div className="text-3xl font-black text-brand-primary mt-2 font-mono">
             {sessionHistory.length > 0 ? Math.round(user?.lifetimeWpm || wpm || 0) : 0}
           </div>
-          <p className="text-[10px] text-brand-muted mt-1 leading-none">Targeting next tier speed</p>
+          <p className="text-[10px] text-brand-muted mt-1 leading-none">Your long-term average</p>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
@@ -300,7 +302,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
           <div className="text-3xl font-black text-brand-success mt-2 font-mono">
             {sessionHistory.length > 0 ? Math.round(user?.lifetimeAccuracy || 0) : 0}%
           </div>
-          <p className="text-[10px] text-brand-muted mt-1 leading-none">Laser accuracy control</p>
+          <p className="text-[10px] text-brand-muted mt-1 leading-none">Across your sessions</p>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
@@ -308,7 +310,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
           <div className="text-3xl font-black text-white mt-2 font-mono">
             {sessionHistory.length > 0 ? (user?.totalCharacters || 0).toLocaleString() : '0'}
           </div>
-          <p className="text-[10px] text-brand-muted mt-1 leading-none">Lifetime key metrics captured</p>
+          <p className="text-[10px] text-brand-muted mt-1 leading-none">Total characters practiced</p>
         </div>
 
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
@@ -316,7 +318,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
           <div className="text-3xl font-black text-brand-warning mt-2 font-mono">
             {sessionHistory.length > 0 ? (user?.practiceHours || 0).toFixed(1) : '0.0'} hrs
           </div>
-          <p className="text-[10px] text-brand-muted mt-1 leading-none">Total active telemetry hours</p>
+          <p className="text-[10px] text-brand-muted mt-1 leading-none">Time spent practicing</p>
         </div>
       </div>
 
@@ -756,7 +758,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
               <div className="space-y-3">
                 <div className="flex justify-between items-center bg-brand-bg/50 p-3 rounded-xl border border-brand-border/30">
                   <span className="text-xs font-medium text-brand-muted">Most Mistyped Key:</span>
-                  <span className="text-sm font-bold text-white px-2.5 py-0.5 bg-brand-danger/10 border border-brand-danger/25 text-brand-danger rounded-lg font-mono">
+                  <span className="text-sm font-bold text-brand-danger px-2.5 py-0.5 bg-brand-danger/10 border border-brand-danger/25 rounded-lg font-mono">
                     {recoveryReport.mostMistypedKey}
                   </span>
                 </div>

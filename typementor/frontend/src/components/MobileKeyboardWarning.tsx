@@ -12,7 +12,7 @@ export default function MobileKeyboardWarning({ onClose }: MobileKeyboardWarning
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 modal-3d-perspective animate-fade-in">
+    <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 modal-3d-perspective animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="mobile-keyboard-title">
       <div className="relative w-full max-w-md glass-panel p-8 rounded-3xl border border-brand-border/40 shadow-2xl overflow-hidden modal-3d-content flex flex-col items-center">
         {/* Glow Effects */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-brand-warning/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -92,13 +92,13 @@ export default function MobileKeyboardWarning({ onClose }: MobileKeyboardWarning
         </div>
 
         {/* Content */}
-        <h3 className="text-xl font-extrabold text-white text-center tracking-tight mb-3">
+        <h3 id="mobile-keyboard-title" className="text-xl font-extrabold text-white text-center tracking-tight mb-3">
           Physical Keyboard Recommended
         </h3>
         <p className="text-sm text-brand-muted text-center leading-relaxed mb-6">
-          TypeMentor AI is a biometric and telemetry typing coach. Touchscreen keyboards cannot capture critical keystroke dynamics (hold times, flight transition speed, and finger positioning).
+          TypeMentor AI works best with a physical keyboard. Touchscreen keyboards cannot capture the timing details used for accurate typing feedback.
           <br /><br />
-          For the best training experience and biometric accuracy, please connect an external **USB or Bluetooth keyboard**.
+          For the best training experience, connect an external USB or Bluetooth keyboard.
         </p>
 
         {/* Actions with 3D press animation */}

@@ -4,6 +4,7 @@ import { useAuthStore } from './store/AuthStore';
 
 // Layout (NOT lazy — needed immediately for all authenticated routes)
 import AppLayout from './components/AppLayout';
+import AdSenseSlot from './components/AdSenseSlot';
 
 // ── Lazy-loaded pages (code splitting by route) ────────────────────────────
 // This reduces the initial JS bundle by only loading page code when navigated to.
@@ -93,6 +94,7 @@ export default function AppRoutes() {
               </div>
             </header>
             <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
+              <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_LANDING_SLOT} className="mx-auto mb-8 w-full max-w-5xl" />
               <LandingPage onGetStarted={handleLandingGetStarted} onTryAcademy={handleLandingTryAcademy} onNavigateToPage={handleLandingNavigateToPage} />
             </main>
           </div>

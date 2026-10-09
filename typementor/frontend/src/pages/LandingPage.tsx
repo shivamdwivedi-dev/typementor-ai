@@ -88,7 +88,7 @@ const LANDING_JSON_LD = {
 
 export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPage }: LandingPageProps) {
   return (
-    <div className="w-full space-y-24 py-10 pb-20">
+    <div className="w-full space-y-16 py-10 pb-20">
       <SEOMeta
         title="TypeMentor AI — Free AI Typing Coach for Developers & Students"
         description="TypeMentor AI is a free AI-powered typing coach. Identify weak keys, practice coding syntax, improve your WPM & accuracy with structured lessons and live keystroke diagnostics."
@@ -113,7 +113,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             </h1>
 
             <p className="text-base md:text-lg text-slate-200 max-w-2xl mx-auto font-medium leading-relaxed drop-shadow-md">
-              An AI-powered typing coach that teaches, analyzes, and improves your typing. Build muscle memory through smart lessons targeted directly at your weak keys.
+              A typing coach that notices where you slow down, gives you the right practice, and helps you build speed without losing accuracy.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 pointer-events-auto">
@@ -139,8 +139,8 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
       {/* ── 2. Feature Cards Section ── */}
       <section className="space-y-10 px-4">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Advanced Platform Features</h2>
-          <p className="text-brand-muted text-xs md:text-sm uppercase tracking-wider font-bold">Engineered for extreme performance and analytics</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Practice that adapts to you</h2>
+          <p className="text-brand-muted text-sm max-w-xl mx-auto">Everything you need to build a steadier, more comfortable typing rhythm.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -162,7 +162,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             </div>
             <h3 className="font-bold text-white text-lg mb-2">AI Weak-Key Recovery</h3>
             <p className="text-brand-muted text-xs leading-relaxed">
-              Real-time mistake tracking detects your confusion patterns and designs custom syllable-building lessons to target problem keys.
+              Notice the keys that slow you down and get short drills built around them.
             </p>
           </div>
 
@@ -173,7 +173,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             </div>
             <h3 className="font-bold text-white text-lg mb-2">Endurance Arena</h3>
             <p className="text-brand-muted text-xs leading-relaxed">
-              Push your stamina limits in raw time modes with real-time biometric focus metrics and speed stability profiling graphs.
+              Build consistency with longer sessions that show how your speed holds up over time.
             </p>
           </div>
 
@@ -195,7 +195,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             </div>
             <h3 className="font-bold text-white text-lg mb-2">Google Login</h3>
             <p className="text-brand-muted text-xs leading-relaxed">
-              Synchronize your typing telemetry history automatically. Safe authentication preserves your analytics profile forever.
+              Save your progress and pick up your practice on another device.
             </p>
           </div>
 
@@ -206,7 +206,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             </div>
             <h3 className="font-bold text-white text-lg mb-2">Certificates</h3>
             <p className="text-brand-muted text-xs leading-relaxed">
-              Earn and share beautiful credentials to validate your typing speed, accuracy limits, and layout mastery with employers.
+              Mark meaningful milestones as your speed, accuracy, and confidence improve.
             </p>
           </div>
         </div>
@@ -215,8 +215,8 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
       {/* ── 3. Who It Is For ── */}
       <section className="space-y-10 px-4 py-8 bg-brand-card/10 border-y border-brand-border/30">
         <div className="text-center space-y-2 max-w-xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Who Is TypeMentor For?</h2>
-          <p className="text-brand-muted text-xs md:text-sm uppercase tracking-wider font-bold">Tailored analytics engine for any typing goal</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">Made for real typing goals</h2>
+          <p className="text-brand-muted text-sm">Whether you are learning, writing, or coding, practice stays specific to you.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -225,7 +225,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             { title: 'Coders', desc: 'Master bracket spacing, special character symbols, and syntax speed drills.' },
             { title: 'Writers', desc: 'Eliminate mechanical drag between creative concepts and text output streams.' },
             { title: 'Steno Learners', desc: 'Train muscle coordination baseline layouts before introducing shorthand theories.' },
-            { title: 'Competitive Typists', desc: 'Analyze keystroke telemetry down to the millisecond to squeeze out speed.' },
+            { title: 'Competitive Typists', desc: 'Track per-key accuracy and timing patterns to find the exact spots where speed breaks down.' },
             { title: 'Typing Institutes', desc: 'Validate cohort progress records with standardized analytics scoring dashboards.' }
           ].map((item, idx) => (
             <div key={idx} className="flex gap-4 p-4 bg-brand-card/20 border border-brand-border/25 rounded-2xl">
@@ -244,8 +244,8 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
       {/* ── 4. Trust/Preview Section (Dashboard Previews) ── */}
       <section className="space-y-10 px-4 max-w-6xl mx-auto">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">First-Class Telemetry Previews</h2>
-          <p className="text-brand-muted text-xs md:text-sm uppercase tracking-wider font-bold">Get a glimpse of the analytics inside the app</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">See what practice feels like</h2>
+          <p className="text-brand-muted text-sm">Clear feedback helps you know what to repeat and what to try next.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -283,7 +283,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             </div>
             
             <p className="text-[10px] text-brand-muted mt-4">
-              Real-time telemetry compiles lifetime speed records and captures character frequency rates automatically.
+              Your dashboard updates after every session so you always see exactly where you stand.
             </p>
           </div>
 
@@ -366,7 +366,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
       {/* ── 5. How TypeMentor Works ── */}
       <section className="space-y-10 px-4 max-w-5xl mx-auto">
         <div className="text-center space-y-2">
-          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">How TypeMentor AI Works</h2>
+          <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">How your practice adapts</h2>
           <p className="text-brand-muted text-sm max-w-2xl mx-auto leading-relaxed">
             A three-step adaptive cycle that gets smarter with every session you complete.
           </p>
@@ -458,7 +458,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             <p className="text-brand-muted text-xs leading-relaxed">
               Standard typing tests focus solely on English prose. But programmers spend most of their time typing special characters, nested brackets, and precise symbols like <code>{"{}"}</code>, <code>{"[]"}</code>, <code>{"()"}</code>, <code>{"=>"}</code>, and <code>;</code>.
             </p>
-            <p className="text-brand-muted text-xs leading-relaxed font-medium text-white">
+            <p className="text-white text-xs leading-relaxed font-medium">
               TypeMentor's coding module provides actual language syntax templates for Python, JavaScript, Java, and SQL. It trains your fingers to navigate key combinations that standard typing websites ignore.
             </p>
           </div>
@@ -471,7 +471,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
             <p className="text-brand-muted text-xs leading-relaxed">
               Students face tight deadlines for essays, research papers, and code assignments. Slower typing speeds create a bottleneck, turning a simple task into hours of frustration.
             </p>
-            <p className="text-brand-muted text-xs leading-relaxed font-medium text-white">
+            <p className="text-white text-xs leading-relaxed font-medium">
               With our structured 50-lesson Academy, students learn proper home-row posture, vertical finger movements, and punctuation layout keys. This enables faster academic output and builds lifelong technical literacy.
             </p>
           </div>

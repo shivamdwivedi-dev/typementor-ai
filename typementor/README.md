@@ -18,6 +18,19 @@ An AI-powered, adaptive typing coach designed to help coders, writers, and stude
 ### 1. Prerequisite Setup
 Ensure you have Node.js (v18+) and PostgreSQL installed.
 
+### Google AdSense deployment
+
+AdSense is enabled only when the deployment provides all required values. Add these variables to the frontend hosting environment:
+
+```env
+VITE_ADSENSE_CLIENT=ca-pub-XXXXXXXXXXXXXXXX
+VITE_ADSENSE_LANDING_SLOT=1234567890
+VITE_ADSENSE_TOP_SLOT=1234567890
+VITE_ADSENSE_BOTTOM_SLOT=1234567890
+```
+
+Use the publisher ID and ad unit IDs generated in the AdSense account; do not commit them to source control. Before requesting review, publish an `ads.txt` file at the site root containing the exact authorized-seller line supplied by AdSense, for example `google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0`. Keep the existing Privacy Policy and Terms of Service pages reachable from every page, and complete Google's privacy/consent requirements for the regions you serve. AdSense approval is controlled by Google and cannot be guaranteed by code alone.
+
 ### 2. Backend Installation & Migration
 ```bash
 cd backend

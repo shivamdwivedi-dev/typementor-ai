@@ -15,6 +15,7 @@ import AchievementToast, { useAchievementToast } from './AchievementToast';
 import MobileKeyboardWarning from './MobileKeyboardWarning';
 import WelcomeBackCard from './WelcomeBackCard';
 import BetaFeedback from './BetaFeedback';
+import AdSenseSlot from './AdSenseSlot';
 import { Suspense, lazy } from 'react';
 const AIGuide = lazy(() => import('./AIGuide'));
 
@@ -146,7 +147,7 @@ export default function AppLayout() {
   return (
     <div className="relative min-h-screen bg-transparent flex flex-col font-sans select-none text-brand-text overflow-x-hidden">
       {/* Background Animated Tubes Canvas Layer */}
-      <div className="fixed inset-0 pointer-events-none opacity-20 z-0 overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none opacity-[0.07] z-0 overflow-hidden" aria-hidden="true">
         <TubesBackground enableClickInteraction={false} className="w-full h-full" />
       </div>
 
@@ -294,6 +295,8 @@ export default function AppLayout() {
 
         {isAuthenticated && user && <XPProgressBar xp={user.xp ?? 0} level={user.level ?? 1} />}
 
+        <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_TOP_SLOT} className="mx-auto w-full max-w-5xl px-4" />
+
         {isMobileMenuOpen && (isAuthenticated || isGuestSession) && (
           <div className="fixed inset-0 z-40 md:hidden flex justify-end">
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
@@ -382,6 +385,8 @@ export default function AppLayout() {
             <Outlet />
           </motion.main>
         </AnimatePresence>
+
+        <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_BOTTOM_SLOT} className="mx-auto w-full max-w-5xl px-4" />
 
         <footer className="py-6 border-t border-zinc-800/80 text-center text-xs text-zinc-400 space-y-2 relative z-10 bg-zinc-950/40 backdrop-blur-md">
           <div className="flex justify-center gap-4 text-[11px]">

@@ -53,6 +53,7 @@ export default function SoundSettings() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 bg-brand-card/45 hover:bg-brand-card/75 border border-brand-border/40 hover:border-brand-primary/60 rounded-xl text-xs font-bold text-white transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-brand-primary"
         aria-label="Sound Settings"
+        aria-expanded={isOpen}
       >
         {enabled && pack !== 'Silent' ? (
           <Volume2 className="w-4 h-4 text-brand-primary animate-pulse" />
@@ -69,11 +70,11 @@ export default function SoundSettings() {
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-3.5 w-76 sm:w-80 bg-brand-bg/95 border border-brand-border rounded-2xl glass-panel p-5 shadow-2xl z-50 animate-in fade-in duration-200">
+          <div className="absolute right-0 mt-3.5 w-76 sm:w-80 bg-brand-bg/95 border border-brand-border rounded-2xl glass-panel p-5 shadow-2xl z-50 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="sound-settings-title">
             <div className="flex items-center justify-between border-b border-brand-border/20 pb-3 mb-4">
               <div className="flex items-center gap-2 text-white">
                 <Settings className="w-4.5 h-4.5 text-brand-primary" />
-                <h4 className="font-extrabold text-sm tracking-wide">Sound & Coach Settings</h4>
+                <h4 id="sound-settings-title" className="font-extrabold text-sm tracking-wide">Sound & Coach Settings</h4>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
@@ -89,6 +90,8 @@ export default function SoundSettings() {
                 <span className="text-xs font-bold text-brand-text/95">Keyboard Click Sound</span>
                 <button
                   onClick={toggleSound}
+                  aria-label="Keyboard click sound"
+                  aria-pressed={enabled}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none ${
                     enabled ? 'bg-brand-primary' : 'bg-brand-card/80 border border-brand-border/40'
                   }`}
@@ -108,6 +111,7 @@ export default function SoundSettings() {
                   <span className="font-mono text-brand-primary">{volume}%</span>
                 </div>
                 <input
+                  aria-label="Volume"
                   type="range"
                   min="0"
                   max="100"

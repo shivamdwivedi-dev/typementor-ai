@@ -116,10 +116,15 @@ export default function KeyboardHeatmap({
               }
 
               return (
-                <div
+                <button
                   key={key}
+                  type="button"
                   onMouseEnter={() => setHoveredKey(key)}
                   onMouseLeave={() => setHoveredKey(null)}
+                  onFocus={() => setHoveredKey(key)}
+                  onBlur={() => setHoveredKey(null)}
+                  onClick={() => setHoveredKey(isHovered ? null : key)}
+                  aria-label={`${key} key statistics: ${stats.usage} typed, ${stats.mistakes} mistakes, ${stats.errorRate}% error rate`}
                   className={`w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 border border-brand-border/40 rounded-lg flex flex-col items-center justify-center font-bold font-mono text-xs sm:text-sm transition-all duration-200 cursor-pointer relative ${style} ${
                     isHovered ? 'scale-105 z-10 border-white ring-1 ring-white/20' : ''
                   }`}
@@ -155,7 +160,7 @@ export default function KeyboardHeatmap({
                       </div>
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
             
@@ -169,9 +174,14 @@ export default function KeyboardHeatmap({
         
         {/* Spacebar row */}
         <div className="flex justify-center mt-2">
-          <div
+          <button
+            type="button"
             onMouseEnter={() => setHoveredKey('Space')}
             onMouseLeave={() => setHoveredKey(null)}
+            onFocus={() => setHoveredKey('Space')}
+            onBlur={() => setHoveredKey(null)}
+            onClick={() => setHoveredKey(hoveredKey === 'Space' ? null : 'Space')}
+            aria-label={`Spacebar statistics: ${getKeyStats(' ').usage} typed, ${getKeyStats(' ').mistakes} mistakes, ${getKeyStats(' ').errorRate}% error rate`}
             className={`w-36 sm:w-56 md:w-80 h-7 sm:h-10 md:h-12 border border-brand-border/40 rounded-lg flex items-center justify-center font-bold font-mono text-xs sm:text-sm transition-all duration-200 cursor-pointer relative ${getKeyStyle(' ')} ${
               hoveredKey === 'Space' ? 'scale-105 z-10 border-white ring-1 ring-white/20' : ''
             }`}
@@ -198,7 +208,7 @@ export default function KeyboardHeatmap({
                 </div>
               </div>
             )}
-          </div>
+          </button>
         </div>
       </div>
     </div>

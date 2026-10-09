@@ -60,6 +60,15 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
         <section className="space-y-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Shield className="w-4 h-4 text-brand-primary" /> Advertising & Cookies
+          </h2>
+          <p className="text-sm text-brand-muted leading-relaxed">
+            When enabled, TypeMentor AI uses Google AdSense to display advertisements. Google and its partners may use cookies or similar technologies to deliver, measure, and personalize ads, subject to your choices and applicable law. You can manage ad personalization through Google's Ads Settings and your browser controls. We do not sell your typing metrics or use them to target advertising.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Camera className="w-4 h-4 text-brand-danger" /> Camera / Finger Mode Privacy
           </h2>
           <p className="text-sm text-brand-muted leading-relaxed">
