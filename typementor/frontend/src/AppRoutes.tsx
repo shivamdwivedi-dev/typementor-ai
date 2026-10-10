@@ -21,6 +21,20 @@ const PrivacyPolicy  = React.lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 
+// Preload core practice routes so tab transitions are instant
+if (typeof window !== 'undefined') {
+  const preloadRoutes = () => {
+    import('./pages/PracticeBoard');
+    import('./pages/TypingAcademy');
+    import('./pages/Dashboard');
+  };
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(preloadRoutes);
+  } else {
+    setTimeout(preloadRoutes, 1000);
+  }
+}
+
 // ── Shared loading fallback ─────────────────────────────────────────────────
 function PageLoader() {
   return (

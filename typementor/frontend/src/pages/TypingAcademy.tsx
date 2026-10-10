@@ -5,7 +5,6 @@ import { showPrToast } from '../utils/toastHelper';
 import { soundEngine } from '../utils/soundEngine';
 import { useAuthStore } from '../store/AuthStore';
 import { saveLastActivity, logResumeAnalytics } from '../utils/ResumeTracker';
-import { jsPDF } from 'jspdf';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { getStorageKey, getApiUrl } from '../utils/api';
 import {
@@ -399,11 +398,12 @@ export default function TypingAcademy() {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (!celebrationCourse || !celebrationStats) return;
     const type = celebrationCourse;
     const stats = celebrationStats;
 
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
