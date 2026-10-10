@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store/AuthStore';
 
 // Layout (NOT lazy — needed immediately for all authenticated routes)
@@ -51,6 +51,7 @@ const ProtectedRoute = ({ children, requireAuth = false }: { children: React.Rea
 
 // ── App routes ──────────────────────────────────────────────────────────────
 export default function AppRoutes() {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const isGuestSession = localStorage.getItem('typementor_is_guest') === 'true';
 
@@ -143,7 +144,29 @@ export default function AppRoutes() {
           <Route path="/terms" element={<TermsOfService onBack={() => window.history.back()} />} />
 
           {/* Authenticated ONLY */}
-          <Route path="/dashboard" element={<ProtectedRoute requireAuth><Dashboard onStartRecoveryPractice={() => {}} onContinueJourney={() => {}} /></ProtectedRoute>} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute requireAuth>
+              <Dashboard
+                onStartRecoveryPractice={() => {
+                  navigate('/practice', { state: { startRecovery: true } });
+                }}
+                onContinueJourney={(target) => {
+                  if (target.type === 'academy') {
+                    if (target.lessonId) {
+                      (window as any).__typementor_resume_lesson_id = target.lessonId;
+                    }
+                    navigate('/academy');
+                  } else if (target.type === 'endurance') {
+                    navigate('/endurance');
+                  } else if (target.type === 'recovery') {
+                    navigate('/practice', { state: { startRecovery: true } });
+                  } else {
+                    navigate('/practice');
+                  }
+                }}
+              />
+            </ProtectedRoute>
+          } />
           <Route path="/path" element={<ProtectedRoute requireAuth><LearningPath currentLevel={useAuthStore.getState().user?.level ?? 1} onSelectNode={() => window.location.href = '/practice'} /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute requireAuth><Profile /></ProtectedRoute>} />
           <Route path="/endurance" element={<ProtectedRoute requireAuth><EnduranceArena /></ProtectedRoute>} />

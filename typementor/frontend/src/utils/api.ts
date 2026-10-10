@@ -55,7 +55,7 @@ const originalFetch = window.fetch;
  * global telemetry logging (Sentry/GA4), and user-friendly error translations.
  */
 export async function safeFetch(path: string, options: SafeFetchOptions = {}): Promise<Response> {
-  const { timeout = 10000, retries = 2, ...fetchOptions } = options;
+  const { timeout = 35000, retries = 2, ...fetchOptions } = options;
   let attempt = 0;
   const fullUrl = path.startsWith('http') ? path : getApiUrl(path);
 

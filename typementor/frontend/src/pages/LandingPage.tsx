@@ -2,6 +2,7 @@ import { Brain, Award, Activity, Flame, ShieldCheck, BookOpen, ChevronRight, Zap
 import SEOMeta from '../components/SEOMeta';
 import TubesBackground from '../components/ui/neon-flow';
 import { ShinyButton } from '../components/ui/shiny-button';
+import GlassCard from '../components/ui/glass-card';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -143,72 +144,53 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
           <p className="text-brand-muted text-sm max-w-xl mx-auto">Everything you need to build a steadier, more comfortable typing rhythm.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {/* Card 1 */}
-          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 hover:border-brand-primary/40 transition-all duration-300 group hover:-translate-y-1">
-            <div className="bg-brand-primary/10 text-brand-primary p-3 rounded-xl w-fit border border-brand-primary/20 mb-4 group-hover:scale-110 transition-transform">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-white text-lg mb-2">Typing Academy</h3>
-            <p className="text-brand-muted text-xs leading-relaxed">
-              Structured learning pathways for all skill levels from home row basics to complex coding syntax. Level up systematically.
-            </p>
-          </div>
-
-          {/* Card 2 */}
-          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 hover:border-brand-primary/40 transition-all duration-300 group hover:-translate-y-1">
-            <div className="bg-brand-danger/10 text-brand-danger p-3 rounded-xl w-fit border border-brand-danger/20 mb-4 group-hover:scale-110 transition-transform">
-              <Brain className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-white text-lg mb-2">AI Weak-Key Recovery</h3>
-            <p className="text-brand-muted text-xs leading-relaxed">
-              Notice the keys that slow you down and get short drills built around them.
-            </p>
-          </div>
-
-          {/* Card 3 */}
-          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 hover:border-brand-primary/40 transition-all duration-300 group hover:-translate-y-1">
-            <div className="bg-brand-primary/10 text-brand-primary p-3 rounded-xl w-fit border border-brand-primary/20 mb-4 group-hover:scale-110 transition-transform">
-              <Activity className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-white text-lg mb-2">Endurance Arena</h3>
-            <p className="text-brand-muted text-xs leading-relaxed">
-              Build consistency with longer sessions that show how your speed holds up over time.
-            </p>
-          </div>
-
-          {/* Card 4 */}
-          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 hover:border-brand-primary/40 transition-all duration-300 group hover:-translate-y-1">
-            <div className="bg-brand-warning/10 text-brand-warning p-3 rounded-xl w-fit border border-brand-warning/20 mb-4 group-hover:scale-110 transition-transform">
-              <Flame className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-white text-lg mb-2">XP & Streaks</h3>
-            <p className="text-brand-muted text-xs leading-relaxed">
-              Gamify your practice schedule. Maintain daily streaks, score experience points (XP) for performance, and unlock achievements.
-            </p>
-          </div>
-
-          {/* Card 5 */}
-          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 hover:border-brand-primary/40 transition-all duration-300 group hover:-translate-y-1">
-            <div className="bg-brand-success/10 text-brand-success p-3 rounded-xl w-fit border border-brand-success/20 mb-4 group-hover:scale-110 transition-transform">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-white text-lg mb-2">Google Login</h3>
-            <p className="text-brand-muted text-xs leading-relaxed">
-              Save your progress and pick up your practice on another device.
-            </p>
-          </div>
-
-          {/* Card 6 */}
-          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 hover:border-brand-primary/40 transition-all duration-300 group hover:-translate-y-1">
-            <div className="bg-indigo-500/10 text-indigo-400 p-3 rounded-xl w-fit border border-indigo-400/20 mb-4 group-hover:scale-110 transition-transform">
-              <Award className="w-6 h-6" />
-            </div>
-            <h3 className="font-bold text-white text-lg mb-2">Certificates</h3>
-            <p className="text-brand-muted text-xs leading-relaxed">
-              Mark meaningful milestones as your speed, accuracy, and confidence improve.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 justify-items-center gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+          {[
+            {
+              title: 'Typing Academy',
+              description: 'Structured pathways from home-row basics to coding syntax, with one focused lesson at a time.',
+              icon: <BookOpen className="h-5 w-5" aria-hidden="true" />,
+              accentClassName: 'text-brand-primary',
+              onClick: onTryAcademy,
+            },
+            {
+              title: 'Weak-key recovery',
+              description: 'Notice the keys that slow you down and get short drills built around your actual mistakes.',
+              icon: <Brain className="h-5 w-5" aria-hidden="true" />,
+              accentClassName: 'text-brand-danger',
+              onClick: onGetStarted,
+            },
+            {
+              title: 'Endurance practice',
+              description: 'Build consistency with longer sessions that show how your speed holds up over time.',
+              icon: <Activity className="h-5 w-5" aria-hidden="true" />,
+              accentClassName: 'text-brand-success',
+              onClick: onGetStarted,
+            },
+            {
+              title: 'Streaks that help',
+              description: 'Keep a steady rhythm with simple goals, milestones, and progress you can actually see.',
+              icon: <Flame className="h-5 w-5" aria-hidden="true" />,
+              accentClassName: 'text-brand-warning',
+              onClick: onGetStarted,
+            },
+            {
+              title: 'Save your progress',
+              description: 'Sign in to keep your practice history and pick up your training on another device.',
+              icon: <ShieldCheck className="h-5 w-5" aria-hidden="true" />,
+              accentClassName: 'text-brand-success',
+              onClick: onGetStarted,
+            },
+            {
+              title: 'Celebrate milestones',
+              description: 'Mark meaningful improvements as your speed, accuracy, and confidence grow.',
+              icon: <Award className="h-5 w-5" aria-hidden="true" />,
+              accentClassName: 'text-brand-primary',
+              onClick: onGetStarted,
+            },
+          ].map((card) => (
+            <GlassCard key={card.title} {...card} actionLabel="Explore feature" className="cursor-pointer" />
+          ))}
         </div>
       </section>
 

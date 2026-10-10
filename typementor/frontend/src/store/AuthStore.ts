@@ -401,8 +401,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
 
-      // Fetch full profile (achievements, challenges, etc.)
-      await get().fetchProfile();
+      // Fetch full profile (achievements, challenges, etc.) — non-blocking so user enters app immediately
+      get().fetchProfile();
       syncOfflineSessions(data.token, data.user.id);
       return true;
     } catch (err: unknown) {
@@ -446,7 +446,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
 
-      await get().fetchProfile();
+      get().fetchProfile();
       syncOfflineSessions(data.token, data.user.id);
       return true;
     } catch (err: unknown) {
@@ -490,7 +490,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
 
-      await get().fetchProfile();
+      get().fetchProfile();
       syncOfflineSessions(data.token, data.user.id);
       return true;
     } catch (err: unknown) {
