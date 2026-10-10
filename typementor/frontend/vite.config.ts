@@ -20,6 +20,8 @@ export default defineConfig({
           'vendor-icons': ['lucide-react'],
           // State management
           'vendor-state': ['zustand'],
+          // 3D Engine (isolated lazy chunk)
+          'vendor-three': ['three'],
         },
       },
     },

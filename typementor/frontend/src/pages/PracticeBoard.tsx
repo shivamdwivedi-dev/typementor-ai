@@ -9,12 +9,13 @@ import { getApiUrl } from '../utils/api';
 import { CODING_TEMPLATES } from '../utils/codingTemplates';
 import { selectNextLesson, extractWeakKeys } from '../utils/lessonEngine';
 import { showPrToast } from '../utils/toastHelper';
+import TypingFingerGuide from '../components/TypingFingerGuide';
 import { Sparkles } from 'lucide-react';
 
 export default function PracticeBoard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { mode, difficulty, initializeSession, words } = useTypingStore();
+  const { mode, difficulty, initializeSession, words, currentIndex, keystrokes, isActive, isCompleted } = useTypingStore();
 
   React.useEffect(() => {
     if (!words || words.length === 0) {
@@ -311,6 +312,18 @@ export default function PracticeBoard() {
             onStartRecoveryPractice={handleStartRecoveryPractice}
             onNavigateToAcademy={() => navigate('/academy')}
           />
+
+          {/* 3D Finger Positioning Tutor */}
+          {!isCompleted && words && words.length > 0 && (
+            <div className="pt-2">
+              <TypingFingerGuide
+                targetCharacter={currentIndex < words.length ? words[currentIndex] : null}
+                typedCharacter={keystrokes.length > 0 ? keystrokes[keystrokes.length - 1].actualKey : null}
+                isCorrect={keystrokes.length > 0 ? !keystrokes[keystrokes.length - 1].isMistake : null}
+                isActive={isActive}
+              />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">

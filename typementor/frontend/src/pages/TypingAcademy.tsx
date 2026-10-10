@@ -7,45 +7,11 @@ import { useAuthStore } from '../store/AuthStore';
 import { saveLastActivity, logResumeAnalytics } from '../utils/ResumeTracker';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { getStorageKey, getApiUrl } from '../utils/api';
+import TypingFingerGuide from '../components/TypingFingerGuide';
 import {
   CheckCircle2, Lock,
-  ChevronRight, RefreshCw, Star, Info, Award, Download, X, Sparkles, Timer, Zap, AlertTriangle
+  ChevronRight, RefreshCw, Star, Award, Download, X, Sparkles, Timer, Zap, AlertTriangle
 } from 'lucide-react';
-
-const FINGER_COLORS: Record<string, { border: string; text: string; bg: string; activeBg: string }> = {
-  'Left Pinky': { border: 'border-rose-500/60', text: 'text-rose-400', bg: 'bg-rose-950/15', activeBg: 'bg-rose-500 text-slate-950 border-rose-400' },
-  'Left Ring': { border: 'border-orange-500/60', text: 'text-orange-400', bg: 'bg-orange-950/15', activeBg: 'bg-orange-500 text-slate-950 border-orange-400' },
-  'Left Middle': { border: 'border-amber-500/60', text: 'text-amber-400', bg: 'bg-amber-950/15', activeBg: 'bg-amber-500 text-slate-950 border-amber-400' },
-  'Left Index': { border: 'border-emerald-500/60', text: 'text-emerald-400', bg: 'bg-emerald-950/15', activeBg: 'bg-emerald-500 text-slate-950 border-emerald-400' },
-  'Thumb': { border: 'border-slate-500/60', text: 'text-slate-400', bg: 'bg-slate-800/15', activeBg: 'bg-slate-400 text-slate-950 border-slate-300' },
-  'Right Index': { border: 'border-blue-500/60', text: 'text-blue-400', bg: 'bg-blue-950/15', activeBg: 'bg-blue-500 text-slate-950 border-blue-400' },
-  'Right Middle': { border: 'border-indigo-500/60', text: 'text-indigo-400', bg: 'bg-indigo-950/15', activeBg: 'bg-indigo-500 text-slate-950 border-indigo-400' },
-  'Right Ring': { border: 'border-purple-500/60', text: 'text-purple-400', bg: 'bg-purple-950/15', activeBg: 'bg-purple-500 text-slate-950 border-purple-400' },
-  'Right Pinky': { border: 'border-fuchsia-500/60', text: 'text-fuchsia-400', bg: 'bg-fuchsia-950/15', activeBg: 'bg-fuchsia-500 text-slate-950 border-fuchsia-400' }
-};
-
-const KEY_TO_FINGER: Record<string, string> = {
-  '1': 'Left Pinky', 'Q': 'Left Pinky', 'A': 'Left Pinky', 'Z': 'Left Pinky',
-  '2': 'Left Ring', 'W': 'Left Ring', 'S': 'Left Ring', 'X': 'Left Ring',
-  '3': 'Left Middle', 'E': 'Left Middle', 'D': 'Left Middle', 'C': 'Left Middle',
-  '4': 'Left Index', 'R': 'Left Index', 'F': 'Left Index', 'V': 'Left Index',
-  '5': 'Left Index', 'T': 'Left Index', 'G': 'Left Index', 'B': 'Left Index',
-  ' ': 'Thumb',
-  '6': 'Right Index', 'Y': 'Right Index', 'H': 'Right Index', 'N': 'Right Index',
-  '7': 'Right Index', 'U': 'Right Index', 'J': 'Right Index', 'M': 'Right Index',
-  '8': 'Right Middle', 'I': 'Right Middle', 'K': 'Right Middle', ',': 'Right Middle',
-  '9': 'Right Ring', 'O': 'Right Ring', 'L': 'Right Ring', '.': 'Right Ring',
-  '0': 'Right Pinky', '-': 'Right Pinky', '=': 'Right Pinky', 'P': 'Right Pinky',
-  '[': 'Right Pinky', ']': 'Right Pinky', ';': 'Right Pinky', "'": 'Right Pinky',
-  '/': 'Right Pinky'
-};
-
-const KEYBOARD_ROWS = [
-  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
-  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']'],
-  ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'"],
-  ['Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/']
-];
 
 export default function TypingAcademy() {
   const [activeTab, setActiveTab] = useState<'beginner' | 'intermediate' | 'test'>('beginner');
@@ -807,13 +773,6 @@ export default function TypingAcademy() {
 
   const progressPercent = Math.round((completedLessons.length / ACADEMY_LESSONS.length) * 100);
 
-  // Active target character details for key highlighting
-  const currentExpectedChar = selectedLesson && typedText.length < selectedLesson.text.length && endTime === null
-    ? selectedLesson.text[typedText.length].toUpperCase()
-    : '';
-
-  const activeFinger = KEY_TO_FINGER[currentExpectedChar] || 'None';
-
   // Generate falling confetti particles
   const confettiColors = ['#f59e0b', '#3b82f6', '#10b981', '#ec4899', '#8b5cf6', '#ef4444'];
   const confettiParticles = Array.from({ length: 40 }).map((_, i) => {
@@ -1531,85 +1490,22 @@ export default function TypingAcademy() {
             </div>
           )}
 
-          {/* FINGER GUIDANCE INTERFACE CONTAINER */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
-            
-            {/* Visual Keyboard Row */}
-            <div className="lg:col-span-2 space-y-4">
-              <h4 className="text-xs font-bold text-brand-muted uppercase tracking-wider text-left">Virtual Keyboard Guide</h4>
-              
-              <div className="bg-slate-950/60 p-4 rounded-2xl border border-brand-border/40 space-y-2 max-w-full overflow-x-auto">
-                {KEYBOARD_ROWS.map((row, rIdx) => (
-                  <div key={rIdx} className="flex justify-center gap-1 min-w-max">
-                    {row.map(key => {
-                      const finger = KEY_TO_FINGER[key.toUpperCase()] || 'None';
-                      const fingerTheme = FINGER_COLORS[finger];
-                      
-                      const isTarget = key.toUpperCase() === currentExpectedChar;
-
-                      return (
-                        <div
-                          key={key}
-                          className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg border text-xs font-bold flex items-center justify-center transition-all duration-150 uppercase ${
-                            isTarget
-                              ? fingerTheme?.activeBg || 'bg-brand-primary border-brand-primary text-slate-950'
-                              : `${fingerTheme?.bg || 'bg-slate-900'} ${fingerTheme?.border || 'border-brand-border/30'} ${fingerTheme?.text || 'text-slate-400'}`
-                          }`}
-                        >
-                          {key}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-                
-                {/* Spacebar Row */}
-                <div className="flex justify-center min-w-max pt-1">
-                  <div
-                    className={`h-9 sm:h-11 rounded-lg border text-xs font-bold flex items-center justify-center transition-all duration-150 uppercase ${
-                      currentExpectedChar === ' '
-                        ? FINGER_COLORS['Thumb'].activeBg
-                        : 'bg-slate-900 border-brand-border/30 text-slate-400'
-                    }`}
-                    style={{ width: '45%' }}
-                  >
-                    Spacebar
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Hand Finger Guides */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-bold text-brand-muted uppercase tracking-wider text-left">Active Finger Focus</h4>
-              
-              <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 flex flex-col justify-center items-center space-y-4 min-h-[160px]">
-                {activeFinger !== 'None' ? (
-                  <div className="text-center space-y-3">
-                    <span className="text-[10px] text-brand-muted font-bold uppercase block font-mono">Suggested Finger</span>
-                    <div className="flex items-center justify-center gap-3">
-                      <span className={`w-3 h-3 rounded-full animate-ping ${
-                        activeFinger.startsWith('Left') ? 'bg-rose-500' : activeFinger.startsWith('Right') ? 'bg-blue-500' : 'bg-slate-400'
-                      }`} />
-                      <h4 className="text-xl font-extrabold text-white">{activeFinger}</h4>
-                    </div>
-                    
-                    {/* Active finger visual connection label */}
-                    <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold uppercase font-mono tracking-wider ${
-                      FINGER_COLORS[activeFinger]?.border
-                    } ${FINGER_COLORS[activeFinger]?.text}`}>
-                      Finger Theme Active
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-xs text-brand-muted py-6">
-                    <Info className="w-5 h-5 text-brand-muted mx-auto mb-2" />
-                    Place fingers on standard home row anchors.
-                  </div>
-                )}
-              </div>
-            </div>
-
+          {/* 3D INTERACTIVE FINGER & KEYBOARD GUIDANCE */}
+          <div className="pt-2">
+            <TypingFingerGuide
+              targetCharacter={
+                selectedLesson && typedText.length < selectedLesson.text.length && endTime === null
+                  ? selectedLesson.text[typedText.length]
+                  : null
+              }
+              typedCharacter={typedText.length > 0 ? typedText[typedText.length - 1] : null}
+              isCorrect={
+                typedText.length > 0 && selectedLesson
+                  ? typedText[typedText.length - 1] === selectedLesson.text[typedText.length - 1]
+                  : null
+              }
+              isActive={isStarted && endTime === null}
+            />
           </div>
 
         </div>
