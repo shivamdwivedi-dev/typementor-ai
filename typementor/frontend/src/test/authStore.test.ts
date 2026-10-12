@@ -53,4 +53,39 @@ describe('AuthStore Zustand Store', () => {
     expect(state.user).toBeNull();
     expect(state.isAuthenticated).toBe(false);
   });
+
+  it('should reactively update user stats on updateUserStats call', () => {
+    useAuthStore.setState({
+      user: {
+        id: '123',
+        email: 'test@example.com',
+        name: 'Tester',
+        level: 1,
+        xp: 100,
+        streak: 3,
+        longestStreak: 3,
+        totalCharacters: 50,
+        lifetimeWpm: 45,
+        lifetimeAccuracy: 95,
+        practiceHours: 0.1,
+        createdAt: new Date().toISOString(),
+      },
+      isAuthenticated: true,
+    });
+
+    useAuthStore.getState().updateUserStats({
+      xp: 180,
+      level: 2,
+      streak: 4,
+      totalCharacters: 120,
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.user?.xp).toBe(180);
+    expect(state.user?.level).toBe(2);
+    expect(state.user?.streak).toBe(4);
+    expect(state.user?.totalCharacters).toBe(120);
+    expect(state.user?.name).toBe('Tester'); // original fields preserved
+  });
 });
+

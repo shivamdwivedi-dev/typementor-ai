@@ -112,6 +112,9 @@ export default function PracticeBoard() {
 
         if (submitRes.ok) {
           const submitData = await submitRes.json();
+          if (submitData.user) {
+            useAuthStore.getState().updateUserStats(submitData.user);
+          }
           if (submitData.xpGained > 0) showPrToast(`✨ +${submitData.xpGained} XP Earned!`);
           if (submitData.isLevelUp) showPrToast(`🎉 LEVEL UP! You reached Level ${submitData.level}! Keep pushing!`);
           if (submitData.unlockedAchievements?.length > 0) {

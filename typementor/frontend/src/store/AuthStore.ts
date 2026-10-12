@@ -16,6 +16,7 @@ export interface UserProfile {
   practiceHours: number;
   typingDna?: string;
   lastActivity?: string;
+  lastActiveAt?: string | Date;
   academyProgress?: string;
   createdAt: string;
   achievements?: Array<{
@@ -273,6 +274,7 @@ interface AuthState {
   // Called once on app mount to validate any stored token
   bootstrap: () => Promise<void>;
   fetchProfile: () => Promise<void>;
+  updateUserStats: (partialUser: Partial<UserProfile>) => void;
   clearError: () => void;
   setOffline: (offline: boolean) => void;
 }
@@ -316,6 +318,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   clearError: () => set({ error: null }),
   setOffline: (offline: boolean) => set({ isOffline: offline }),
+  updateUserStats: (partialUser: Partial<UserProfile>) => {
+    set((state) => ({
+      user: state.user ? { ...state.user, ...partialUser } : null,
+    }));
+  },
 
   // ── Validate stored token on app startup ──────────────────────────────────
   bootstrap: async () => {

@@ -269,8 +269,31 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
       xpGained: gainedXp + extraChallengeXp + achievementXp,
       level: finalLevel,
       xp: finalXp,
+      streak: updatedUser.streak,
+      longestStreak: updatedUser.longestStreak,
+      totalCharacters: updatedUser.totalCharacters,
+      lifetimeWpm: updatedUser.lifetimeWpm,
+      lifetimeAccuracy: updatedUser.lifetimeAccuracy,
+      practiceHours: updatedUser.practiceHours,
+      lastActiveAt: updatedUser.lastActiveAt,
       isLevelUp,
       unlockedAchievements,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        avatar: updatedUser.avatar,
+        level: finalLevel,
+        xp: finalXp,
+        streak: updatedUser.streak,
+        longestStreak: updatedUser.longestStreak,
+        totalCharacters: updatedUser.totalCharacters,
+        lifetimeWpm: updatedUser.lifetimeWpm,
+        lifetimeAccuracy: updatedUser.lifetimeAccuracy,
+        practiceHours: updatedUser.practiceHours,
+        lastActiveAt: updatedUser.lastActiveAt,
+        academyProgress: updatedUser.academyProgress,
+      }
     });
   } catch (error: unknown) {
     console.error('Session submission error:', error);

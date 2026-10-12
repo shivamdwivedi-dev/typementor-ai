@@ -22,7 +22,7 @@ const AIGuide = lazy(() => import('./AIGuide'));
 // Icons
 import {
   Brain, Activity, User as UserIcon, Code, Award,
-  LogOut, Flame, Menu, X, BookOpen, WifiOff, RefreshCw
+  LogOut, Menu, X, BookOpen, WifiOff, RefreshCw
 } from 'lucide-react';
 
 export default function AppLayout() {
@@ -326,11 +326,7 @@ export default function AppLayout() {
                       <span className="text-sm font-semibold text-white truncate max-w-[120px]">{user?.name}</span>
                     </div>
                   </div>
-                  {(user?.streak ?? 0) > 0 && (
-                    <span className="text-xs font-bold text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-lg flex items-center gap-1 flex-shrink-0">
-                      <Flame className="w-3.5 h-3.5" /> {user?.streak}
-                    </span>
-                  )}
+                  <StreakFireWidget streak={user?.streak ?? 0} />
                 </div>
               )}
 

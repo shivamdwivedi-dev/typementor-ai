@@ -28,10 +28,12 @@ export function getXpProgress(totalXp: number, level: number) {
   };
 }
 
-export function getStreakOnLogin(lastActiveAt: Date, currentStreak: number): number {
-  const now = new Date();
+export function getStreakOnLogin(lastActiveAt: Date | string | null | undefined, currentStreak: number): number {
+  if (!lastActiveAt || currentStreak <= 0) return 0;
   const lastActive = new Date(lastActiveAt);
+  if (isNaN(lastActive.getTime()) || lastActive.getTime() === 0) return 0;
 
+  const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -47,10 +49,12 @@ export function getStreakOnLogin(lastActiveAt: Date, currentStreak: number): num
   }
 }
 
-export function getUpdatedStreakOnSession(lastActiveAt: Date, currentStreak: number): number {
-  const now = new Date();
+export function getUpdatedStreakOnSession(lastActiveAt: Date | string | null | undefined, currentStreak: number): number {
+  if (!lastActiveAt) return 1;
   const lastActive = new Date(lastActiveAt);
+  if (isNaN(lastActive.getTime()) || lastActive.getTime() === 0) return 1;
 
+  const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -58,13 +62,76 @@ export function getUpdatedStreakOnSession(lastActiveAt: Date, currentStreak: num
   const lastActiveDate = new Date(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
 
   if (lastActiveDate.getTime() === today.getTime()) {
-    // Already completed a session today, streak stays the same
-    return currentStreak;
+    // Already completed a session today, ensure streak is at least 1 and stays current
+    return Math.max(1, currentStreak);
   } else if (lastActiveDate.getTime() === yesterday.getTime()) {
     // Active yesterday, increment streak
     return currentStreak + 1;
   } else {
-    // Missed a day (or first session), reset/start streak at 1
+    // Missed a day (or new streak), reset/start streak at 1
     return 1;
   }
 }
+
+export interface StreakCountdownInfo {
+  streak: number;
+  isPracticedToday: boolean;
+  isAtRisk: boolean;
+  expiresAt: string;
+  secondsRemaining: number;
+  status: 'extended' | 'at_risk' | 'zero';
+}
+
+export function getStreakCountdownInfo(lastActiveAt: Date | string | null | undefined, currentStreak: number): StreakCountdownInfo {
+  const now = new Date();
+  const midnightTonight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+  const secondsRemaining = Math.max(0, Math.floor((midnightTonight.getTime() - now.getTime()) / 1000));
+
+  let isPracticedToday = false;
+  let isPracticedYesterday = false;
+
+  if (lastActiveAt) {
+    const lastActive = new Date(lastActiveAt);
+    if (!isNaN(lastActive.getTime()) && lastActive.getTime() > 0) {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const lastActiveDate = new Date(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
+
+      isPracticedToday = lastActiveDate.getTime() === today.getTime();
+      isPracticedYesterday = lastActiveDate.getTime() === yesterday.getTime();
+    }
+  }
+
+  const effectiveStreak = isPracticedToday || isPracticedYesterday ? currentStreak : 0;
+
+  if (isPracticedToday) {
+    return {
+      streak: Math.max(1, effectiveStreak),
+      isPracticedToday: true,
+      isAtRisk: false,
+      expiresAt: midnightTonight.toISOString(),
+      secondsRemaining,
+      status: 'extended'
+    };
+  } else if (effectiveStreak > 0) {
+    return {
+      streak: effectiveStreak,
+      isPracticedToday: false,
+      isAtRisk: true,
+      expiresAt: midnightTonight.toISOString(),
+      secondsRemaining,
+      status: 'at_risk'
+    };
+  } else {
+    return {
+      streak: 0,
+      isPracticedToday: false,
+      isAtRisk: false,
+      expiresAt: midnightTonight.toISOString(),
+      secondsRemaining,
+      status: 'zero'
+    };
+  }
+}
+

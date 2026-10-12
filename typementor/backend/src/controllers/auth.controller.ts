@@ -89,6 +89,11 @@ export const register = async (req: Request, res: Response) => {
         xp: newUser.xp,
         streak: newUser.streak,
         longestStreak: newUser.longestStreak,
+        lastActiveAt: newUser.lastActiveAt,
+        totalCharacters: newUser.totalCharacters,
+        lifetimeWpm: newUser.lifetimeWpm,
+        lifetimeAccuracy: newUser.lifetimeAccuracy,
+        practiceHours: newUser.practiceHours,
         academyProgress: newUser.academyProgress
       }
     });
@@ -190,10 +195,16 @@ export const login = async (req: Request, res: Response) => {
         id: updatedUser.id,
         email: updatedUser.email,
         name: updatedUser.name,
+        avatar: updatedUser.avatar,
         level: updatedUser.level,
         xp: updatedUser.xp,
         streak: updatedUser.streak,
         longestStreak: updatedUser.longestStreak,
+        lastActiveAt: updatedUser.lastActiveAt,
+        totalCharacters: updatedUser.totalCharacters,
+        lifetimeWpm: updatedUser.lifetimeWpm,
+        lifetimeAccuracy: updatedUser.lifetimeAccuracy,
+        practiceHours: updatedUser.practiceHours,
         academyProgress: updatedUser.academyProgress
       }
     });
@@ -233,6 +244,16 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 
     if (!user) {
       return res.status(444).json({ error: 'User not found.' });
+    }
+
+    // Refresh and validate streak on profile fetch so frontend always receives true streak
+    const validatedStreak = getStreakOnLogin(user.lastActiveAt, user.streak);
+    if (validatedStreak !== user.streak) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { streak: validatedStreak }
+      });
+      user.streak = validatedStreak;
     }
 
     // Strip passwordHash before sending
@@ -394,6 +415,11 @@ export const googleLogin = async (req: Request, res: Response) => {
         xp: user.xp,
         streak: user.streak,
         longestStreak: user.longestStreak,
+        lastActiveAt: user.lastActiveAt,
+        totalCharacters: user.totalCharacters,
+        lifetimeWpm: user.lifetimeWpm,
+        lifetimeAccuracy: user.lifetimeAccuracy,
+        practiceHours: user.practiceHours,
         academyProgress: user.academyProgress
       }
     });
