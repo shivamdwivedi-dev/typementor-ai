@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
 import { getStorageKey } from '../utils/api';
@@ -297,10 +298,10 @@ export default function AppLayout() {
 
         <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_TOP_SLOT} className="mx-auto w-full max-w-5xl px-4" />
 
-        {isMobileMenuOpen && (isAuthenticated || isGuestSession) && (
-          <div className="fixed inset-0 z-40 md:hidden flex justify-end">
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
-            <div className="relative w-72 max-w-[80vw] h-full bg-zinc-950/95 border-l border-zinc-800 p-6 flex flex-col gap-6 shadow-2xl transition-transform duration-300 transform translate-x-0 overflow-y-auto">
+        {isMobileMenuOpen && (isAuthenticated || isGuestSession) && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[9999] lg:hidden flex justify-end">
+            <div className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
+            <div className="relative w-72 max-w-[85vw] h-full bg-zinc-950/98 border-l border-zinc-800 p-6 flex flex-col gap-6 shadow-2xl transition-transform duration-300 transform translate-x-0 overflow-y-auto z-10">
               <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
                 <div className="flex items-center gap-2">
                   <Brain className="w-5 h-5 text-blue-400" />
@@ -365,7 +366,8 @@ export default function AppLayout() {
                 </button>
               </nav>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Animated Page Transition Container */}

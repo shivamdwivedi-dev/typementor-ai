@@ -290,23 +290,23 @@ export default function StreakFireWidget({ streak: propStreak }: StreakFireWidge
             </div>
 
             {/* Explanatory Trust Card */}
-            <div className="text-left bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-3.5 mb-4 text-xs space-y-1.5">
-              <div className="flex items-start gap-2">
-                <Zap className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                <span className="text-zinc-300">
+            <div className="text-left bg-zinc-900/50 border border-zinc-800/60 rounded-xl p-4 mb-4 text-xs space-y-3">
+              <div className="flex items-start gap-2.5">
+                <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <span className="text-zinc-300 leading-relaxed">
                   <strong className="text-white">How Streaks Work:</strong> Complete at least 1 practice session or academy lesson every calendar day.
                 </span>
               </div>
-              <div className="flex items-start gap-2">
-                <Trophy className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                <span className="text-zinc-300">
+              <div className="flex items-start gap-2.5">
+                <Trophy className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <span className="text-zinc-300 leading-relaxed">
                   <strong className="text-white">Personal Best:</strong> {longestStreak} {longestStreak === 1 ? 'day' : 'days'}.
                 </span>
               </div>
               {daysToMilestone > 0 && currentStreak > 0 && (
-                <div className="flex items-start gap-2 pt-1 border-t border-zinc-800/60">
-                  <span className="text-sm flex-shrink-0">{nextMilestone.icon}</span>
-                  <span className="text-zinc-400">
+                <div className="flex items-start gap-2.5 pt-2.5 border-t border-zinc-800/60">
+                  <span className="text-base flex-shrink-0 leading-none">{nextMilestone.icon}</span>
+                  <span className="text-zinc-400 leading-relaxed">
                     <strong className="text-zinc-200">{daysToMilestone} days</strong> until {nextMilestone.label} badge!
                   </span>
                 </div>

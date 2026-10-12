@@ -5,13 +5,13 @@ interface XPProgressBarProps {
   level: number;
 }
 
-// XP required to go from level N to level N+1
-const xpForLevel = (level: number) => Math.floor(100 * Math.pow(1.4, level - 1));
+// Each level requires 500 XP (matching backend gamification engine)
+const XP_PER_LEVEL = 500;
 
 const XPProgressBar: React.FC<XPProgressBarProps> = ({ xp, level }) => {
-  const xpNeeded = xpForLevel(level);
-  const xpProgress = Math.min(xp, xpNeeded);
-  const pct = Math.min((xpProgress / xpNeeded) * 100, 100);
+  const xpInLevel = xp % XP_PER_LEVEL;
+  const xpNeeded = XP_PER_LEVEL;
+  const pct = Math.min(100, Math.max(0, Math.round((xpInLevel / xpNeeded) * 100)));
   const [displayPct, setDisplayPct] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const prevLevel = useRef(level);
@@ -74,9 +74,10 @@ const XPProgressBar: React.FC<XPProgressBarProps> = ({ xp, level }) => {
 
         {/* XP Text */}
         <div className="flex-shrink-0 text-xs font-mono text-gray-400 whitespace-nowrap">
-          <span className="text-cyan-400 font-bold">{xpProgress}</span>
+          <span className="text-cyan-400 font-bold">{xpInLevel}</span>
           <span className="text-gray-600"> / </span>
           <span>{xpNeeded} XP</span>
+          <span className="hidden sm:inline text-gray-500 text-[11px] ml-1.5 font-normal">({xp.toLocaleString()} total)</span>
         </div>
       </div>
     </>
