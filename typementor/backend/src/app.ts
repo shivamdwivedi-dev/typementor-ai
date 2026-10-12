@@ -106,7 +106,7 @@ const globalLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again in 15 minutes.' },
 });
-app.use('/api/', globalLimiter);
+app.use('/api', globalLimiter);
 
 // ── Strict auth limiter: 30 attempts / 15 min per IP ──────────────────────────
 export const authLimiter = rateLimit({

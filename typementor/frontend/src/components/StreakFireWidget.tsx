@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
 import { X, Clock, ShieldCheck, AlertTriangle, Trophy, Sparkles, ChevronRight, Zap } from 'lucide-react';
@@ -161,13 +162,13 @@ export default function StreakFireWidget({ streak: propStreak }: StreakFireWidge
         </span>
       </button>
 
-      {/* ── Modal Dialog ─────────────────────────────────────────────────── */}
-      {showModal && (
+      {/* ── Modal Dialog (Mounted to document.body via Portal to escape all parent stacking contexts) ── */}
+      {showModal && typeof document !== 'undefined' && createPortal(
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="streak-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto"
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 sm:p-6 overflow-y-auto"
           onClick={() => setShowModal(false)}
           onMouseDown={() => setShowModal(false)}
         >
@@ -358,7 +359,8 @@ export default function StreakFireWidget({ streak: propStreak }: StreakFireWidge
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
