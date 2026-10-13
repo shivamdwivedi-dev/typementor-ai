@@ -14,6 +14,13 @@ Configure the following variables in the host panels:
 - `GOOGLE_CLIENT_ID`: OAuth credentials client token.
 - `ALLOWED_ORIGINS`: Comma-separated CORS origins (e.g. `https://typementor-ai-frontend.vercel.app`).
 - `ADMIN_EMAILS`: Comma-separated list of admin logins for the Ops Dashboard (e.g. `admin@typementor.dev`).
+- `TRUST_PROXY_HOPS`: Number of trusted reverse-proxy hops in front of the Express server (default: `1` for Render/Railway/Heroku/Nginx single-ingress topology; set to `0` or `false` if exposed directly without a reverse proxy). Never set boolean `true`, as Express must only trust the rightmost proxy-appended hop in `X-Forwarded-For` to prevent client IP spoofing against rate limiters.
+- `AI_PROVIDER`: Selected AI coaching provider (`'gemini'` | `'openai'` | `'local'` | `'mock'`). Defaults to `'gemini'` when `GEMINI_API_KEY` is set, or `'local'` rule engine.
+- `AI_MODEL`: Model identifier (e.g. `'gemini-1.5-flash'` for Gemini or `'gpt-4o-mini'` for OpenAI).
+- `AI_TIMEOUT_MS`: Request timeout in milliseconds (default: `10000`).
+- `AI_MAX_RETRIES`: Maximum transient retries for HTTP 429/503 errors (default: `2`).
+- `GEMINI_API_KEY`: Google Gemini API Key (kept backend-only).
+- `OPENAI_API_KEY`: (Optional) OpenAI API Key if using OpenAI provider.
 
 ### Frontend Env Variables
 - `VITE_API_URL`: Backend API root URI (e.g. `https://typementor-ai-backend.herokuapp.com`).

@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { MistakeSummary } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { generateAICoachInsight } from '../services/ai.service';
+import { generateAICoachInsight, generateStructuredCoachInsight } from '../services/ai.service';
 import { predictMistakeRisks } from '../services/prediction.service';
 import { prisma } from '../app';
 
@@ -21,11 +21,13 @@ export const getCoachInsights = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'User ID missing in token.' });
     }
 
-    const insights = await generateAICoachInsight(userId);
+    const coachResult = await generateStructuredCoachInsight(userId);
     const riskKeys = await predictMistakeRisks(userId);
 
     return res.status(200).json({
-      insights,
+      insights: coachResult.summary,
+      insight: coachResult.insight,
+      meta: coachResult.meta,
       riskKeys,
     });
   } catch (error: unknown) {
