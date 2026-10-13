@@ -3,6 +3,7 @@ import {
   calculateSessionXp,
   getLevelFromCumulativeXp,
   getXpProgress,
+  resolveStreakTransition,
   getStreakOnLogin,
   getUpdatedStreakOnSession,
   getStreakCountdownInfo,
@@ -27,6 +28,43 @@ describe('Gamification Service - Streak & Progress', () => {
     expect(prog.percent).toBe(30);
   });
 
+  describe('resolveStreakTransition (Shared Transition Engine)', () => {
+    const fixedNow = new Date(2026, 9, 12, 14, 30, 0); // Oct 12, 2026 14:30 local
+    const sameDayMorning = new Date(2026, 9, 12, 8, 15, 0);
+    const previousDay = new Date(2026, 9, 11, 21, 0, 0);
+    const missedOneDay = new Date(2026, 9, 10, 18, 0, 0);
+    const missedSeveralDays = new Date(2026, 9, 1, 12, 0, 0);
+
+    it('handles first activity ever (login vs qualifying session)', () => {
+      expect(resolveStreakTransition(new Date(0), 0, 'login', fixedNow)).toBe(0);
+      expect(resolveStreakTransition(null, 0, 'login', fixedNow)).toBe(0);
+      expect(resolveStreakTransition(new Date(0), 0, 'session', fixedNow)).toBe(1);
+      expect(resolveStreakTransition(null, 0, 'session', fixedNow)).toBe(1);
+    });
+
+    it('handles activity on the same day without double-incrementing', () => {
+      expect(resolveStreakTransition(sameDayMorning, 6, 'login', fixedNow)).toBe(6);
+      expect(resolveStreakTransition(sameDayMorning, 6, 'session', fixedNow)).toBe(6);
+
+      // Edge case: same-day timestamp but streak was 0
+      expect(resolveStreakTransition(sameDayMorning, 0, 'login', fixedNow)).toBe(0);
+      expect(resolveStreakTransition(sameDayMorning, 0, 'session', fixedNow)).toBe(1);
+    });
+
+    it('handles activity on the previous day (login preserves at-risk streak; session increments)', () => {
+      expect(resolveStreakTransition(previousDay, 4, 'login', fixedNow)).toBe(4);
+      expect(resolveStreakTransition(previousDay, 4, 'session', fixedNow)).toBe(5);
+    });
+
+    it('handles activity after missing one or more days (login resets to 0; session restarts at 1)', () => {
+      expect(resolveStreakTransition(missedOneDay, 9, 'login', fixedNow)).toBe(0);
+      expect(resolveStreakTransition(missedOneDay, 9, 'session', fixedNow)).toBe(1);
+
+      expect(resolveStreakTransition(missedSeveralDays, 25, 'login', fixedNow)).toBe(0);
+      expect(resolveStreakTransition(missedSeveralDays, 25, 'session', fixedNow)).toBe(1);
+    });
+  });
+
   describe('getStreakOnLogin', () => {
     it('returns 0 when current streak is 0 or user never practiced', () => {
       expect(getStreakOnLogin(new Date(0), 0)).toBe(0);
@@ -39,7 +77,7 @@ describe('Gamification Service - Streak & Progress', () => {
       expect(getStreakOnLogin(today, 7)).toBe(7);
     });
 
-    it('keeps streak intact when last active was yesterday', () => {
+    it('keeps streak intact (without incrementing) when last active was yesterday', () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       expect(getStreakOnLogin(yesterday, 7)).toBe(7);
@@ -71,7 +109,11 @@ describe('Gamification Service - Streak & Progress', () => {
       expect(getUpdatedStreakOnSession(yesterday, 3)).toBe(4);
     });
 
-    it('resets streak to 1 when a day was missed', () => {
+    it('resets streak to 1 when one or more days were missed', () => {
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      expect(getUpdatedStreakOnSession(twoDaysAgo, 15)).toBe(1);
+
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
       expect(getUpdatedStreakOnSession(threeDaysAgo, 15)).toBe(1);

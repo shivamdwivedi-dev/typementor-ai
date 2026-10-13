@@ -28,49 +28,73 @@ export function getXpProgress(totalXp: number, level: number) {
   };
 }
 
-export function getStreakOnLogin(lastActiveAt: Date | string | null | undefined, currentStreak: number): number {
-  if (!lastActiveAt || currentStreak <= 0) return 0;
-  const lastActive = new Date(lastActiveAt);
-  if (isNaN(lastActive.getTime()) || lastActive.getTime() === 0) return 0;
+export type StreakActivityType = 'login' | 'session';
 
-  const now = new Date();
+/**
+ * Shared streak transition function for both login/profile checks ('login')
+ * and completed qualifying practice sessions ('session').
+ */
+export function resolveStreakTransition(
+  lastActiveAt: Date | string | null | undefined,
+  currentStreak: number,
+  activityType: StreakActivityType,
+  now: Date = new Date()
+): number {
+  const safeStreak = Number.isFinite(currentStreak) && currentStreak > 0 ? Math.floor(currentStreak) : 0;
+
+  let lastActiveDate: Date | null = null;
+  if (lastActiveAt) {
+    const parsed = new Date(lastActiveAt);
+    if (!isNaN(parsed.getTime()) && parsed.getTime() > 0) {
+      lastActiveDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+  }
+
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
-  const lastActiveDate = new Date(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
 
-  if (lastActiveDate.getTime() === today.getTime() || lastActiveDate.getTime() === yesterday.getTime()) {
-    // Session completed today or yesterday, streak is still active
-    return currentStreak;
-  } else {
-    // Missed a day, streak is broken
+  const isSameDay = lastActiveDate !== null && lastActiveDate.getTime() === today.getTime();
+  const isPreviousDay = lastActiveDate !== null && lastActiveDate.getTime() === yesterday.getTime();
+
+  if (activityType === 'login') {
+    if (safeStreak === 0 || !lastActiveDate) {
+      return 0;
+    }
+    if (isSameDay || isPreviousDay) {
+      return safeStreak;
+    }
     return 0;
   }
-}
 
-export function getUpdatedStreakOnSession(lastActiveAt: Date | string | null | undefined, currentStreak: number): number {
-  if (!lastActiveAt) return 1;
-  const lastActive = new Date(lastActiveAt);
-  if (isNaN(lastActive.getTime()) || lastActive.getTime() === 0) return 1;
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  
-  const lastActiveDate = new Date(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
-
-  if (lastActiveDate.getTime() === today.getTime()) {
-    // Already completed a session today, ensure streak is at least 1 and stays current
-    return Math.max(1, currentStreak);
-  } else if (lastActiveDate.getTime() === yesterday.getTime()) {
-    // Active yesterday, increment streak
-    return currentStreak + 1;
-  } else {
-    // Missed a day (or new streak), reset/start streak at 1
+  // Qualifying practice session completed ('session')
+  if (safeStreak === 0 || !lastActiveDate) {
     return 1;
   }
+  if (isSameDay) {
+    return safeStreak;
+  }
+  if (isPreviousDay) {
+    return safeStreak + 1;
+  }
+  // Missed one or more calendar days
+  return 1;
+}
+
+export function getStreakOnLogin(
+  lastActiveAt: Date | string | null | undefined,
+  currentStreak: number,
+  now: Date = new Date()
+): number {
+  return resolveStreakTransition(lastActiveAt, currentStreak, 'login', now);
+}
+
+export function getUpdatedStreakOnSession(
+  lastActiveAt: Date | string | null | undefined,
+  currentStreak: number,
+  now: Date = new Date()
+): number {
+  return resolveStreakTransition(lastActiveAt, currentStreak, 'session', now);
 }
 
 export interface StreakCountdownInfo {
@@ -82,32 +106,29 @@ export interface StreakCountdownInfo {
   status: 'extended' | 'at_risk' | 'zero';
 }
 
-export function getStreakCountdownInfo(lastActiveAt: Date | string | null | undefined, currentStreak: number): StreakCountdownInfo {
-  const now = new Date();
+export function getStreakCountdownInfo(
+  lastActiveAt: Date | string | null | undefined,
+  currentStreak: number,
+  now: Date = new Date()
+): StreakCountdownInfo {
   const midnightTonight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
   const secondsRemaining = Math.max(0, Math.floor((midnightTonight.getTime() - now.getTime()) / 1000));
 
+  const effectiveStreak = resolveStreakTransition(lastActiveAt, currentStreak, 'login', now);
   let isPracticedToday = false;
-  let isPracticedYesterday = false;
 
-  if (lastActiveAt) {
+  if (effectiveStreak > 0 && lastActiveAt) {
     const lastActive = new Date(lastActiveAt);
     if (!isNaN(lastActive.getTime()) && lastActive.getTime() > 0) {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
       const lastActiveDate = new Date(lastActive.getFullYear(), lastActive.getMonth(), lastActive.getDate());
-
       isPracticedToday = lastActiveDate.getTime() === today.getTime();
-      isPracticedYesterday = lastActiveDate.getTime() === yesterday.getTime();
     }
   }
 
-  const effectiveStreak = isPracticedToday || isPracticedYesterday ? currentStreak : 0;
-
   if (isPracticedToday) {
     return {
-      streak: Math.max(1, effectiveStreak),
+      streak: effectiveStreak,
       isPracticedToday: true,
       isAtRisk: false,
       expiresAt: midnightTonight.toISOString(),
@@ -134,4 +155,5 @@ export function getStreakCountdownInfo(lastActiveAt: Date | string | null | unde
     };
   }
 }
+
 

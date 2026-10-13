@@ -4,8 +4,12 @@ import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.post('/', authenticateToken as any, submitSession as any);
-router.get('/', authenticateToken as any, getUserSessions as any);
+router.post('/', authenticateToken as any, (req, res, next) => {
+  Promise.resolve(submitSession(req as any, res)).catch(next);
+});
+router.get('/', authenticateToken as any, (req, res, next) => {
+  Promise.resolve(getUserSessions(req as any, res)).catch(next);
+});
 
 export default router;
 

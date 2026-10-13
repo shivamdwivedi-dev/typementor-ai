@@ -13,7 +13,47 @@ if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('statement_ca
 }
 
 const app = express();
-app.set('trust proxy', 1);
+
+/**
+ * Production proxy assumption:
+ * TypeMentor API runs behind a single managed reverse proxy (Render/Railway/Heroku/Nginx).
+ * Default to 1 hop so Express extracts the rightmost proxy-appended IP in X-Forwarded-For
+ * rather than trusting arbitrary client-supplied leftmost entries.
+ * Never allow boolean `true`, which would let clients spoof X-Forwarded-For to bypass rate limits.
+ */
+export function resolveTrustProxyConfig(rawEnv: string | undefined = process.env.TRUST_PROXY_HOPS ?? process.env.TRUST_PROXY): number | boolean {
+  if (rawEnv === undefined || rawEnv.trim() === '') {
+    return 1;
+  }
+  const normalized = rawEnv.trim().toLowerCase();
+  if (normalized === 'false' || normalized === '0') {
+    return false;
+  }
+  if (normalized === 'true') {
+    // Reject permissive boolean trust proxy; clamp to single trusted reverse proxy hop
+    return 1;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 10) {
+    return parsed;
+  }
+  return 1;
+}
+
+/**
+ * Extracts normalized client IP using Express's bounded trust-proxy evaluation (`req.ip`),
+ * never trusting raw X-Forwarded-For leftmost entries or arbitrary X-Client-IP/X-Real-IP headers.
+ */
+export function resolveClientIp(req: Request): string {
+  const rawIp = (typeof req.ip === 'string' && req.ip.trim().length > 0)
+    ? req.ip.trim()
+    : (req.socket?.remoteAddress || '127.0.0.1');
+
+  const withoutMappedPrefix = rawIp.startsWith('::ffff:') ? rawIp.slice(7) : rawIp;
+  return withoutMappedPrefix || '127.0.0.1';
+}
+
+app.set('trust proxy', resolveTrustProxyConfig());
 
 // ── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({
@@ -28,6 +68,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
   .filter(Boolean);
 
 const isProduction = process.env.NODE_ENV === "production";
+const isTest = process.env.NODE_ENV === "test";
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://typementor-ai-frontend.vercel.app",
@@ -77,7 +118,15 @@ const corsOptions: cors.CorsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "authorization"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "authorization",
+    "Idempotency-Key",
+    "idempotency-key",
+    "X-Idempotency-Key",
+    "x-idempotency-key",
+  ],
   optionsSuccessStatus: 204,
 };
 
@@ -91,7 +140,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(sanitizeBody);
 
 // Debug log middleware - Dev only
-if (!isProduction) {
+if (!isProduction && !isTest) {
   app.use((req: Request, _res: Response, next: NextFunction) => {
     console.log(`[REQUEST] ${req.method} ${req.url} - Origin: ${req.headers.origin || 'None'}`);
     next();
@@ -99,11 +148,13 @@ if (!isProduction) {
 }
 
 // ── Global rate limiter: 200 req / 15 min per IP ─────────────────────────────
-const globalLimiter = rateLimit({
+export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: resolveClientIp,
+  validate: { trustProxy: false, xForwardedForHeader: false },
   message: { error: 'Too many requests. Please try again in 15 minutes.' },
 });
 app.use('/api', globalLimiter);
@@ -114,6 +165,8 @@ export const authLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: resolveClientIp,
+  validate: { trustProxy: false, xForwardedForHeader: false },
   message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
   skipSuccessfulRequests: true, // Only count failed requests
 });
@@ -264,23 +317,25 @@ const DDL_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS "RecoveryHistory_userId_idx" ON "RecoveryHistory"("userId");`
 ];
 
-// Connect the database and initialize tables idempotently
-prisma.$connect()
-  .then(async () => {
-    console.log('TypeMentor AI Database connected successfully.');
-    // Run DDL statements asynchronously to ensure tables exist in target PostgreSQL DB
-    try {
-      for (const stmt of DDL_STATEMENTS) {
-        await prisma.$executeRawUnsafe(stmt);
+// Connect the database and initialize tables idempotently (skipped during automated unit/integration tests)
+if (!isTest) {
+  prisma.$connect()
+    .then(async () => {
+      console.log('TypeMentor AI Database connected successfully.');
+      // Run DDL statements asynchronously to ensure tables exist in target PostgreSQL DB
+      try {
+        for (const stmt of DDL_STATEMENTS) {
+          await prisma.$executeRawUnsafe(stmt);
+        }
+        console.log('TypeMentor AI Database schema tables initialized and verified.');
+      } catch (schemaErr: any) {
+        console.warn('Database schema DDL warning:', schemaErr.message || schemaErr);
       }
-      console.log('TypeMentor AI Database schema tables initialized and verified.');
-    } catch (schemaErr: any) {
-      console.warn('Database schema DDL warning:', schemaErr.message || schemaErr);
-    }
-  })
-  .catch((err: any) => {
-    console.error('Failed to connect to the database on startup:', err.message || err);
-  });
+    })
+    .catch((err: any) => {
+      console.error('Failed to connect to the database on startup:', err.message || err);
+    });
+}
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 import authRoutes from './routes/auth.routes';

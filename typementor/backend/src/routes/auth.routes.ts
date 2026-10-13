@@ -14,10 +14,18 @@ function authHandler(
   };
 }
 
+const applyAuthLimiter: RequestHandler = (req, res, next) => authLimiter(req, res, next);
+
 // Apply strict rate limiter to login and register (brute-force protection)
-router.post('/register', authLimiter, register as RequestHandler);
-router.post('/login', authLimiter, login as RequestHandler);
-router.post('/google', authLimiter, googleLogin as RequestHandler);
+router.post('/register', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(register(req, res)).catch(next);
+});
+router.post('/login', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(login(req, res)).catch(next);
+});
+router.post('/google', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(googleLogin(req, res)).catch(next);
+});
 
 // Profile requires valid JWT
 router.use('/profile', authenticateToken);

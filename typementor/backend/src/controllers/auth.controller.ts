@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { Challenge } from '@prisma/client';
 import { prisma } from '../app';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { getStreakOnLogin } from '../services/gamification.service';
+import { getStreakOnLogin, resolveStreakTransition } from '../services/gamification.service';
 
 import { JWT_SECRET } from '../config/env';
 
@@ -146,8 +146,8 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: `Invalid email or password. ${5 - newAttempts} attempt(s) remaining.` });
     }
 
-    // ── Successful login: reset lockout counters ──────────────────────────────
-    const newStreak = getStreakOnLogin(user.lastActiveAt, user.streak);
+    // ── Successful login: reset lockout counters & validate streak without incrementing ──
+    const newStreak = resolveStreakTransition(user.lastActiveAt, user.streak, 'login');
     const newLongestStreak = Math.max(user.longestStreak, newStreak);
 
     const updatedUser = await prisma.user.update({
@@ -246,14 +246,19 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       return res.status(444).json({ error: 'User not found.' });
     }
 
-    // Refresh and validate streak on profile fetch so frontend always receives true streak
-    const validatedStreak = getStreakOnLogin(user.lastActiveAt, user.streak);
-    if (validatedStreak !== user.streak) {
-      await prisma.user.update({
+    // Refresh and validate streak on profile fetch so frontend always receives true DB streak
+    const validatedStreak = resolveStreakTransition(user.lastActiveAt, user.streak, 'login');
+    const validatedLongestStreak = Math.max(user.longestStreak, validatedStreak);
+    if (validatedStreak !== user.streak || validatedLongestStreak !== user.longestStreak) {
+      const updated = await prisma.user.update({
         where: { id: user.id },
-        data: { streak: validatedStreak }
+        data: {
+          streak: validatedStreak,
+          longestStreak: validatedLongestStreak
+        }
       });
-      user.streak = validatedStreak;
+      user.streak = updated.streak;
+      user.longestStreak = updated.longestStreak;
     }
 
     // Strip passwordHash before sending
@@ -351,7 +356,7 @@ export const googleLogin = async (req: Request, res: Response) => {
         updates.avatar = payload.picture;
       }
       
-      const newStreak = getStreakOnLogin(user.lastActiveAt || new Date(0), user.streak || 0);
+      const newStreak = resolveStreakTransition(user.lastActiveAt || new Date(0), user.streak || 0, 'login');
       const newLongestStreak = Math.max(user.longestStreak || 0, newStreak);
       updates.streak = newStreak;
       updates.longestStreak = newLongestStreak;
@@ -444,11 +449,11 @@ export const updateLastActivity = async (req: AuthRequest, res: Response) => {
 
     const lastActivityString = typeof activity === 'object' ? JSON.stringify(activity) : activity;
 
+    // Only persist resume metadata; do not update lastActiveAt (reserved for qualifying practice sessions)
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        lastActivity: lastActivityString,
-        lastActiveAt: new Date()
+        lastActivity: lastActivityString
       }
     });
 
@@ -476,11 +481,11 @@ export const updateAcademyProgress = async (req: AuthRequest, res: Response) => 
 
     const progressString = typeof progress === 'object' ? JSON.stringify(progress) : progress;
 
+    // Only persist academy progress state; do not update lastActiveAt (reserved for qualifying practice sessions)
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        academyProgress: progressString,
-        lastActiveAt: new Date()
+        academyProgress: progressString
       }
     });
 
@@ -516,11 +521,11 @@ export const spendXp = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Insufficient XP.' });
     }
 
+    // Deduct XP without updating lastActiveAt or streak
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        xp: currentXp - amount,
-        lastActiveAt: new Date()
+        xp: currentXp - amount
       }
     });
 
