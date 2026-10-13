@@ -6,7 +6,7 @@ import CursorDrivenParticleTypography from '../components/ui/particle-typography
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Trophy, TrendingUp, Clock, AlertTriangle, ShieldCheck, Flame, Compass, Sparkles, Award, Star, Activity, Play } from 'lucide-react';
 import { getSmartResumeTarget, ResumeTarget } from '../utils/ResumeTracker';
-import { getApiUrl, getStorageKey } from '../utils/api';
+import { getStorageKey, safeFetch } from '../utils/api';
 
 // Fallback mock history if no sessions exist
 const MOCK_SESSION_HISTORY: any[] = [];
@@ -31,7 +31,7 @@ interface DashboardProps {
 
 export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }: DashboardProps) {
   const { user } = useAuthStore();
-  const { keystrokes, wpm } = useTypingStore();
+  const { wpm, isCompleted } = useTypingStore();
 
   const completedLessons = useMemo(() => {
     const saved = localStorage.getItem(getStorageKey('academy_completed_lessons', user?.id));
@@ -69,10 +69,10 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
 
     try {
       const [heatmapRes, sessionsRes, recoveryRes, enduranceRes] = await Promise.all([
-        fetch(getApiUrl('/api/analytics/heatmap'), { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(getApiUrl('/api/sessions?limit=20'), { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(getApiUrl('/api/analytics/recovery-report'), { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(getApiUrl('/api/analytics/endurance'), { headers: { Authorization: `Bearer ${token}` } }),
+        safeFetch('/api/analytics/heatmap', { headers: { Authorization: `Bearer ${token}` } }),
+        safeFetch('/api/sessions?limit=20', { headers: { Authorization: `Bearer ${token}` } }),
+        safeFetch('/api/analytics/recovery-report', { headers: { Authorization: `Bearer ${token}` } }),
+        safeFetch('/api/analytics/endurance', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (heatmapRes.ok) {
@@ -98,7 +98,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
 
   useEffect(() => {
     fetchAnalytics();
-  }, [keystrokes]); // Refetch when a new practice session ends
+  }, [user?.id, isCompleted]); // Refresh on account changes and completed sessions, not every keypress
 
   // Extrapolate goal time
   const getGoalEstimates = () => {
@@ -210,7 +210,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
   const graphData = getGraphData();
 
   // Load heatmap statistics (use real database telemetry or empty fallback only, no mock data)
-  const heatmapData = (analytics && sessionHistory.length > 0) ? analytics : {
+  const heatmapData = analytics || {
     keyUsage: {},
     keyMistakes: {},
     weakKeys: {},

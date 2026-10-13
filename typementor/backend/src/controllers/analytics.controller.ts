@@ -82,6 +82,17 @@ export const getHeatmapData = async (req: AuthRequest, res: Response) => {
       weakKeys[key] = total > 0 ? parseFloat((mistakes / total).toFixed(3)) : 0;
     });
 
+    // Risk is a normalized coaching signal rather than a second source of truth.
+    // Keep it derived from observed error rate so the UI is useful even before
+    // the predictive model has enough history to make a separate prediction.
+    const riskKeys: Record<string, number> = {};
+    Object.keys(keyUsage).forEach(key => {
+      const sampleSize = keyUsage[key];
+      const errorRate = weakKeys[key] || 0;
+      const sampleConfidence = Math.min(1, sampleSize / 50);
+      riskKeys[key] = Math.round(Math.min(100, errorRate * 100 * (0.7 + sampleConfidence * 0.3)));
+    });
+
     // Compute finger mistakes
     const fingerUsageCount: Record<string, number> = {};
     const fingerMistakeCount: Record<string, number> = {};
@@ -170,6 +181,7 @@ export const getHeatmapData = async (req: AuthRequest, res: Response) => {
       keyUsage,
       keyMistakes,
       weakKeys,
+      riskKeys,
       fingerReport,
       rowReport,
       handReport,

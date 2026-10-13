@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface KeyboardHeatmapProps {
   keyUsage?: Record<string, number>;
@@ -23,6 +23,12 @@ export default function KeyboardHeatmap({
   mode
 }: KeyboardHeatmapProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedKey(null);
+    setHoveredKey(null);
+  }, [mode]);
 
   // Helper to calculate key heat colors
   const getKeyStyle = (key: string) => {
@@ -71,6 +77,18 @@ export default function KeyboardHeatmap({
     return { usage, mistakes, errorRate, risk };
   };
 
+  const selectedStats = selectedKey ? getKeyStats(selectedKey) : null;
+  const metricLabel = mode === 'usage' ? 'times typed' : mode === 'mistakes' ? 'mistakes' : 'risk score';
+  const metricValue = (key: string) => {
+    const stats = getKeyStats(key);
+    return mode === 'usage' ? stats.usage : mode === 'mistakes' ? stats.mistakes : stats.risk;
+  };
+  const maxMetric = useMemo(
+    () => Math.max(1, ...ROWS.flat().map(metricValue), metricValue(' ')),
+    [keyUsage, keyMistakes, weakKeys, riskKeys, mode]
+  );
+  const activeKey = selectedKey || hoveredKey;
+
   return (
     <div className="w-full relative select-none">
       {/* Keyboard Grid */}
@@ -86,8 +104,6 @@ export default function KeyboardHeatmap({
             {row.map((key) => {
               const style = getKeyStyle(key);
               const stats = getKeyStats(key);
-              const isHovered = hoveredKey === key;
-              
               // Calculate boundary-aware tooltip placement classes
               const isTopRow = rowIndex <= 1; // First 2 rows (numbers and QWERTY)
               const keyIndex = row.indexOf(key);
@@ -123,16 +139,20 @@ export default function KeyboardHeatmap({
                   onMouseLeave={() => setHoveredKey(null)}
                   onFocus={() => setHoveredKey(key)}
                   onBlur={() => setHoveredKey(null)}
-                  onClick={() => setHoveredKey(isHovered ? null : key)}
+                  onClick={() => setSelectedKey(selectedKey === key ? null : key)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') setSelectedKey(null);
+                  }}
+                  aria-pressed={selectedKey === key}
                   aria-label={`${key} key statistics: ${stats.usage} typed, ${stats.mistakes} mistakes, ${stats.errorRate}% error rate`}
                   className={`w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 border border-brand-border/40 rounded-lg flex flex-col items-center justify-center font-bold font-mono text-xs sm:text-sm transition-all duration-200 cursor-pointer relative ${style} ${
-                    isHovered ? 'scale-105 z-10 border-white ring-1 ring-white/20' : ''
+                    activeKey === key ? 'scale-105 z-10 border-white ring-1 ring-white/20' : ''
                   }`}
                 >
                   <span>{key}</span>
                   
                   {/* Tooltip Popup */}
-                  {isHovered && (
+                  {activeKey === key && (
                     <div className={`${tooltipPositionClass} bg-slate-950 border border-brand-border p-3 rounded-xl shadow-2xl z-50 w-44 text-left pointer-events-none`}>
                       <div className="font-extrabold text-sm text-white mb-1.5 border-b border-brand-border/50 pb-1 flex items-center justify-between">
                         <span>Key "{key}"</span>
@@ -180,14 +200,18 @@ export default function KeyboardHeatmap({
             onMouseLeave={() => setHoveredKey(null)}
             onFocus={() => setHoveredKey('Space')}
             onBlur={() => setHoveredKey(null)}
-            onClick={() => setHoveredKey(hoveredKey === 'Space' ? null : 'Space')}
+            onClick={() => setSelectedKey(selectedKey === ' ' ? null : ' ')}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setSelectedKey(null);
+            }}
+            aria-pressed={selectedKey === ' '}
             aria-label={`Spacebar statistics: ${getKeyStats(' ').usage} typed, ${getKeyStats(' ').mistakes} mistakes, ${getKeyStats(' ').errorRate}% error rate`}
             className={`w-36 sm:w-56 md:w-80 h-7 sm:h-10 md:h-12 border border-brand-border/40 rounded-lg flex items-center justify-center font-bold font-mono text-xs sm:text-sm transition-all duration-200 cursor-pointer relative ${getKeyStyle(' ')} ${
-              hoveredKey === 'Space' ? 'scale-105 z-10 border-white ring-1 ring-white/20' : ''
+              activeKey === ' ' || activeKey === 'Space' ? 'scale-105 z-10 border-white ring-1 ring-white/20' : ''
             }`}
           >
             <span>SPACEBAR</span>
-            {hoveredKey === 'Space' && (
+            {(activeKey === ' ' || activeKey === 'Space') && (
               <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-slate-950 border border-brand-border p-3 rounded-xl shadow-2xl z-50 w-44 text-left pointer-events-none">
                 <div className="font-extrabold text-sm text-white mb-1.5 border-b border-brand-border/50 pb-1">
                   Spacebar
@@ -209,6 +233,25 @@ export default function KeyboardHeatmap({
               </div>
             )}
           </button>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between rounded-xl border border-brand-border/30 bg-brand-bg/40 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3 text-[10px] text-brand-muted">
+            <span className="font-bold uppercase tracking-wider text-white">Intensity</span>
+            <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-brand-card border border-brand-border/40" />Low</span>
+            <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-brand-primary" />High</span>
+            <span className="text-brand-border">•</span>
+            <span>Click a key to pin its details</span>
+          </div>
+          {selectedStats && selectedKey && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-mono">
+              <span className="text-white font-bold">Key {selectedKey === ' ' ? 'SPACE' : `"${selectedKey}"`}</span>
+              <span className="text-brand-primary">{selectedStats.usage} typed</span>
+              <span className="text-brand-danger">{selectedStats.mistakes} mistakes</span>
+              <span className="text-brand-warning">{selectedStats.errorRate}% error</span>
+              <span className="text-brand-muted">{Math.round((metricValue(selectedKey) / maxMetric) * 100)}% {metricLabel}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
