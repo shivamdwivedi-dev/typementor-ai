@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
-import { FingerId, FINGER_DATA, KEY_TO_FINGER_ID } from '../utils/fingerMapping';
+import {
+  FingerId,
+  FINGER_DATA,
+  KEY_TO_FINGER_ID,
+  getBaseKeyForChar,
+  isShiftedChar,
+} from '../utils/fingerMapping';
 
 interface VirtualKeyboardProps {
   currentExpectedChar: string | null;
@@ -88,7 +94,7 @@ const ROWS: KeyDef[][] = [
   ],
 ];
 
-export default function VirtualKeyboard({
+export function VirtualKeyboard({
   currentExpectedChar,
   recentlyTypedChar,
   isCorrect,
@@ -96,28 +102,32 @@ export default function VirtualKeyboard({
   highlightHomeRow = true,
   className = '',
 }: VirtualKeyboardProps) {
-  // Normalize expected character to base keyboard key
-  const normalizedExpected = useMemo(() => {
-    if (!currentExpectedChar) return null;
-    if (currentExpectedChar === ' ') return ' ';
-    return currentExpectedChar.toUpperCase();
-  }, [currentExpectedChar]);
+  // Normalize expected character (including shifted symbols) to its physical base key
+  const normalizedExpected = useMemo(
+    () => getBaseKeyForChar(currentExpectedChar),
+    [currentExpectedChar]
+  );
+
+  const normalizedRecentlyTyped = useMemo(
+    () => getBaseKeyForChar(recentlyTypedChar),
+    [recentlyTypedChar]
+  );
 
   // Check if character requires Shift modifier
-  const requiresShift = useMemo(() => {
-    if (!currentExpectedChar || currentExpectedChar.length !== 1) return false;
-    const isUpper = /[A-Z]/.test(currentExpectedChar);
-    const shiftSymbols = '~!@#$%^&*()_+{}|:"<>?';
-    return isUpper || shiftSymbols.includes(currentExpectedChar);
-  }, [currentExpectedChar]);
+  const requiresShift = useMemo(
+    () => isShiftedChar(currentExpectedChar),
+    [currentExpectedChar]
+  );
 
   // Determine which Shift key lights up (opposite hand)
   const targetShiftSide = useMemo(() => {
     if (!requiresShift || !currentExpectedChar) return null;
-    const fingerId = KEY_TO_FINGER_ID[currentExpectedChar];
+    const fingerId =
+      KEY_TO_FINGER_ID[currentExpectedChar] ||
+      (normalizedExpected ? KEY_TO_FINGER_ID[normalizedExpected] : undefined);
     if (!fingerId) return 'ShiftRight';
     return FINGER_DATA[fingerId].hand === 'left' ? 'ShiftRight' : 'ShiftLeft';
-  }, [requiresShift, currentExpectedChar]);
+  }, [requiresShift, currentExpectedChar, normalizedExpected]);
 
   return (
     <div className={`w-full bg-slate-950/70 p-3 sm:p-4 rounded-2xl border border-brand-border/40 select-none ${className}`}>
@@ -127,16 +137,14 @@ export default function VirtualKeyboard({
           <div key={rIdx} className="flex justify-center gap-1 sm:gap-1.5 min-w-max">
             {row.map((k) => {
               const finger = FINGER_DATA[k.fingerId];
-              const isTargetChar =
-                normalizedExpected === k.char ||
-                (currentExpectedChar && k.char.toLowerCase() === currentExpectedChar.toLowerCase());
+              const isTargetChar = normalizedExpected === k.char;
               const isShiftTarget = k.char === targetShiftSide;
               const isTarget = isTargetChar || isShiftTarget;
 
               // Error flash indicator on recent mismatch
               const isRecentMistake =
-                recentlyTypedChar &&
-                recentlyTypedChar.toUpperCase() === k.char &&
+                Boolean(normalizedRecentlyTyped) &&
+                normalizedRecentlyTyped === k.char &&
                 isCorrect === false;
 
               // Key width sizing
@@ -147,6 +155,8 @@ export default function VirtualKeyboard({
               return (
                 <div
                   key={k.char}
+                  data-key={k.char}
+                  data-active={isTarget ? 'true' : 'false'}
                   style={{
                     width: smWidth,
                     minWidth: smWidth,
@@ -193,6 +203,8 @@ export default function VirtualKeyboard({
           </div>
 
           <div
+            data-key=" "
+            data-active={normalizedExpected === ' ' ? 'true' : 'false'}
             className={`h-9 sm:h-11 rounded-lg border text-xs font-bold flex items-center justify-center transition-all duration-150 uppercase tracking-widest ${
               normalizedExpected === ' '
                 ? `${FINGER_DATA.right_thumb.tailwindActiveBg} ring-2 ring-white/50 scale-[1.02] z-10`
@@ -211,3 +223,6 @@ export default function VirtualKeyboard({
     </div>
   );
 }
+
+export default VirtualKeyboard;
+

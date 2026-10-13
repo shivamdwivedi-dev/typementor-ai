@@ -285,7 +285,7 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
             </div>
             <h3 className="text-xl font-bold text-white">Interactive Typing AI</h3>
             <p className="text-xs text-zinc-400 max-w-xs leading-relaxed">
-              Real-time WPM analytics, posture tracking, error heatmaps, and adaptive AI lessons.
+              Real-time WPM analytics, 3D finger guidance, error heatmaps, and adaptive AI lessons.
             </p>
           </div>
 

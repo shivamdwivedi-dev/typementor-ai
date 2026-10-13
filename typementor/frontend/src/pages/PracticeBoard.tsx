@@ -73,6 +73,9 @@ export default function PracticeBoard() {
 
   const handleSessionComplete = async (metrics: any) => {
     const token = localStorage.getItem('typementor_token');
+    const sessionStart = useTypingStore.getState().startTime || Date.now();
+    const durationSec = Math.max(0.1, (Date.now() - sessionStart) / 1000);
+    const idempotencyKey = `practice-${sessionStart}-${mode}-${metrics.keystrokes?.length || 0}`;
 
     if (isAuthenticated && token) {
       try {
@@ -93,8 +96,10 @@ export default function PracticeBoard() {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
+            'Idempotency-Key': idempotencyKey,
           },
           body: JSON.stringify({
+            idempotencyKey,
             mode,
             difficulty,
             wpm: metrics.wpm,
@@ -102,7 +107,7 @@ export default function PracticeBoard() {
             accuracy: metrics.accuracy,
             consistency: metrics.consistency,
             focusScore: metrics.focusScore,
-            duration: (Date.now() - (useTypingStore.getState().startTime || Date.now())) / 1000,
+            duration: durationSec,
             backspaceCount: metrics.backspaceCount,
             correctionCount: metrics.correctionCount,
             keystrokes: metrics.keystrokes,
@@ -145,6 +150,7 @@ export default function PracticeBoard() {
         const currentQueue = currentQueueStr ? JSON.parse(currentQueueStr) : [];
         
         currentQueue.push({
+          idempotencyKey,
           mode,
           difficulty,
           wpm: metrics.wpm,
@@ -152,7 +158,7 @@ export default function PracticeBoard() {
           accuracy: metrics.accuracy,
           consistency: metrics.consistency,
           focusScore: metrics.focusScore,
-          duration: (Date.now() - (useTypingStore.getState().startTime || Date.now())) / 1000,
+          duration: durationSec,
           backspaceCount: metrics.backspaceCount,
           correctionCount: metrics.correctionCount,
           keystrokes: metrics.keystrokes,

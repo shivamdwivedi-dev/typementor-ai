@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/AuthStore';
 import { getStorageKey } from '../utils/api';
 import { getLastActivity, getSmartResumeTarget, ResumeTarget, logResumeAnalytics } from '../utils/ResumeTracker';
 import { registerToastListener, ToastMessage } from '../utils/toastHelper';
+import { useBodyScrollLock } from '../utils/scrollLock';
 import { motion, AnimatePresence } from 'framer-motion';
 import TubesBackground from './ui/neon-flow';
 
@@ -48,10 +49,14 @@ export default function AppLayout() {
   const hasShownWelcome = useRef(false);
   const { current: currentAchievement, addAchievement, dismiss: dismissAchievement } = useAchievementToast();
 
-  // Clear guest session when authenticated
+  // Clear guest session when authenticated, or sync from localStorage on route change
   useEffect(() => {
-    if (isAuthenticated) setIsGuestSession(false);
-  }, [isAuthenticated]);
+    if (isAuthenticated) {
+      setIsGuestSession(false);
+    } else {
+      setIsGuestSessionState(localStorage.getItem('typementor_is_guest') === 'true');
+    }
+  }, [isAuthenticated, location.pathname]);
 
   // Register local toast listener
   useEffect(() => {
@@ -59,21 +64,18 @@ export default function AppLayout() {
     return unbind;
   }, []);
 
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
-    return () => { document.body.style.overflow = ''; };
-  }, [isMobileMenuOpen]);
+  // Lock body scroll when mobile menu is open (reference-counted across overlays)
+  useBodyScrollLock(isMobileMenuOpen);
 
   // Close mobile menu on Escape
   useEffect(() => {
+    if (!isMobileMenuOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsMobileMenuOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isMobileMenuOpen]);
 
   // Mobile touch warning
   useEffect(() => {

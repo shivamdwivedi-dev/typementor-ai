@@ -302,7 +302,9 @@ export default function TypingAcademy() {
 
       // 2. Submit session telemetry to count towards XP, Level, and Streak!
       const durationSec = Math.max(1, ((endTime || Date.now()) - (startTime || Date.now() - 30000)) / 1000);
+      const idempotencyKey = `academy-${id}-${startTime || Date.now()}`;
       const sessionPayload = {
+        idempotencyKey,
         mode: `Academy`,
         difficulty: activeTab === 'beginner' ? 1 : 2,
         wpm,
@@ -341,6 +343,7 @@ export default function TypingAcademy() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify(sessionPayload),
       })

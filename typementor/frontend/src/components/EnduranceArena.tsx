@@ -332,9 +332,16 @@ export default function EnduranceArena() {
       // Save session payload to local server if authenticated
       const token = localStorage.getItem('typementor_token');
       if (token && user) {
+        const idempotencyKey = `endurance-${startTime || Date.now()}-${selectedCategory}-${selectedLength}`;
         const payload = {
+          idempotencyKey,
           wpm: finalResult?.wpm || averageWpm,
+          rawWpm: finalResult?.wpm || averageWpm,
           accuracy: finalResult?.accuracy || accuracy,
+          consistency: finalResult?.consistency || 85,
+          duration: Math.max(1, finalResult?.duration || durationInSeconds || 1),
+          backspaceCount: finalResult?.backspaceCount || backspaceCount || 0,
+          correctionCount: finalResult?.errorCount || errorCount || 0,
           mode: `Endurance: ${selectedCategory} ${selectedLength}`,
           difficulty: 1,
           keystrokes: keystrokesLog
@@ -343,7 +350,8 @@ export default function EnduranceArena() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Idempotency-Key': idempotencyKey
           },
           body: JSON.stringify(payload)
         }).then(res => {

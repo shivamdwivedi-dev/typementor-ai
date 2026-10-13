@@ -197,24 +197,67 @@ export const KEY_TO_FINGER_ID: Record<string, FingerId> = {
   'Enter': 'right_pinky', 'Backspace': 'right_pinky', 'ShiftRight': 'right_pinky',
 };
 
+// Explicit shifted-symbol to physical base key mapping (US QWERTY)
+export const SHIFTED_SYMBOL_TO_BASE_KEY: Record<string, string> = {
+  '~': '`',
+  '!': '1',
+  '@': '2',
+  '#': '3',
+  '$': '4',
+  '%': '5',
+  '^': '6',
+  '&': '7',
+  '*': '8',
+  '(': '9',
+  ')': '0',
+  '_': '-',
+  '+': '=',
+  '{': '[',
+  '}': ']',
+  '|': '\\',
+  ':': ';',
+  '"': "'",
+  '<': ',',
+  '>': '.',
+  '?': '/',
+};
+
+export function getBaseKeyForChar(char: string | undefined | null): string | null {
+  if (!char) return null;
+  if (char === ' ') return ' ';
+  if (Object.prototype.hasOwnProperty.call(SHIFTED_SYMBOL_TO_BASE_KEY, char)) {
+    return SHIFTED_SYMBOL_TO_BASE_KEY[char];
+  }
+  if (char.length === 1) {
+    return char.toUpperCase();
+  }
+  return char;
+}
+
+export function isShiftedChar(char: string | undefined | null): boolean {
+  if (!char || char.length !== 1) return false;
+  if (/[A-Z]/.test(char)) return true;
+  return Object.prototype.hasOwnProperty.call(SHIFTED_SYMBOL_TO_BASE_KEY, char);
+}
+
 export interface ShiftHelper {
   requiresShift: boolean;
   shiftFingerId?: FingerId;
   charFingerId: FingerId;
+  baseKey: string;
 }
 
 export function getFingerForChar(char: string | undefined | null): ShiftHelper | null {
   if (!char) return null;
 
-  const charFinger = KEY_TO_FINGER_ID[char] || KEY_TO_FINGER_ID[char.toLowerCase()];
-  if (!charFinger) return null;
+  const baseKey = getBaseKeyForChar(char);
+  const charFinger =
+    KEY_TO_FINGER_ID[char] ||
+    KEY_TO_FINGER_ID[char.toLowerCase()] ||
+    (baseKey ? KEY_TO_FINGER_ID[baseKey] || KEY_TO_FINGER_ID[baseKey.toLowerCase()] : undefined);
+  if (!charFinger || !baseKey) return null;
 
-  // Check if character requires Shift modifier
-  const isUpper = char.length === 1 && char !== char.toLowerCase() && char === char.toUpperCase() && /[A-Z]/.test(char);
-  const shiftSymbols = '~!@#$%^&*()_+{}|:"<>?';
-  const isShiftSymbol = shiftSymbols.includes(char);
-
-  if (isUpper || isShiftSymbol) {
+  if (isShiftedChar(char)) {
     const isLeftHandChar = FINGER_DATA[charFinger].hand === 'left';
     // Shift is pressed on opposite hand
     const shiftFingerId: FingerId = isLeftHandChar ? 'right_pinky' : 'left_pinky';
@@ -222,11 +265,14 @@ export function getFingerForChar(char: string | undefined | null): ShiftHelper |
       requiresShift: true,
       shiftFingerId,
       charFingerId: charFinger,
+      baseKey,
     };
   }
 
   return {
     requiresShift: false,
     charFingerId: charFinger,
+    baseKey,
   };
 }
+

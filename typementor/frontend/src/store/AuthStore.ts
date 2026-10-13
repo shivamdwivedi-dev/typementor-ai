@@ -226,12 +226,16 @@ export async function syncOfflineSessions(token: string, userId: string) {
 
     for (const session of queue) {
       try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        };
+        if (session.idempotencyKey) {
+          headers['Idempotency-Key'] = String(session.idempotencyKey);
+        }
         const response = await safeFetch('/api/sessions', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
           body: JSON.stringify(session),
         });
 

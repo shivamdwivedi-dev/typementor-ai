@@ -1,4 +1,4 @@
-import { Shield, ArrowLeft, Lock, Camera, MessageSquare, Database } from 'lucide-react';
+import { Shield, ArrowLeft, Lock, MessageSquare, Database } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 
 interface PrivacyPolicyProps {
@@ -10,7 +10,7 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
     <div className="max-w-4xl mx-auto px-4 py-8 text-brand-text select-text">
       <SEOMeta
         title="Privacy Policy — TypeMentor AI"
-        description="TypeMentor AI privacy policy. Learn how we handle typing analytics, Google authentication, posture camera data, and beta feedback. Your data is never sold or shared."
+        description="TypeMentor AI privacy policy. Learn how we handle typing analytics, Google authentication, local browser storage, and beta feedback. Your data is never sold or shared."
         canonical="https://typementor-ai-frontend.vercel.app/privacy"
       />
       <button
@@ -69,10 +69,10 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
         <section className="space-y-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Camera className="w-4 h-4 text-brand-danger" /> Camera / Finger Mode Privacy
+            <Lock className="w-4 h-4 text-brand-danger" /> Interactive 3D Finger Guide & Device Privacy
           </h2>
           <p className="text-sm text-brand-muted leading-relaxed">
-            The optional Hand / Finger tracking camera mode is completely sandboxed in your browser. All computer vision processing is performed locally on your device via TensorFlow.js. The video stream is processed in real time and discarded instantly. **No video feed or image frames are ever captured, saved, or sent over the network.**
+            TypeMentor AI provides an interactive 3D finger-positioning and virtual keyboard guide rendered locally in your browser using WebGL. TypeMentor AI does not request, access, capture, or transmit any camera, webcam, or microphone feeds from your device.
           </p>
         </section>
 

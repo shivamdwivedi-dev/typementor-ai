@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
+import { useBodyScrollLock } from '../utils/scrollLock';
 import { X, Clock, ShieldCheck, AlertTriangle, Trophy, Sparkles, ChevronRight, Zap } from 'lucide-react';
 
 interface StreakFireWidgetProps {
@@ -35,17 +36,8 @@ export default function StreakFireWidget({ streak: propStreak }: StreakFireWidge
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showModal]);
 
-  // Prevent background scrolling when modal is open
-  useEffect(() => {
-    if (showModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [showModal]);
+  // Prevent background scrolling when modal is open (reference-counted across overlays)
+  useBodyScrollLock(showModal);
 
   // ── Real-Time Local Midnight Countdown ────────────────────────────────────
   const [now, setNow] = useState<Date>(new Date());
@@ -62,16 +54,16 @@ export default function StreakFireWidget({ streak: propStreak }: StreakFireWidge
 
   // Determine whether the user practiced TODAY in their local timezone
   const isPracticedToday = useMemo(() => {
-    if (!user?.lastActiveAt) return false;
+    if (!user?.lastActiveAt || currentStreak <= 0) return false;
     const lastActive = new Date(user.lastActiveAt);
-    if (isNaN(lastActive.getTime()) || lastActive.getTime() === 0) return false;
+    if (isNaN(lastActive.getTime()) || lastActive.getTime() <= 0) return false;
 
     return (
       lastActive.getFullYear() === now.getFullYear() &&
       lastActive.getMonth() === now.getMonth() &&
       lastActive.getDate() === now.getDate()
     );
-  }, [user?.lastActiveAt, now]);
+  }, [user?.lastActiveAt, currentStreak, now]);
 
   // Countdown to next local midnight
   const timeDetails = useMemo(() => {

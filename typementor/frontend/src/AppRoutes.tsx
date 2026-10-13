@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store/AuthStore';
 
@@ -6,33 +6,55 @@ import { useAuthStore } from './store/AuthStore';
 import AppLayout from './components/AppLayout';
 import AdSenseSlot from './components/AdSenseSlot';
 
-// ── Lazy-loaded pages (code splitting by route) ────────────────────────────
-// This reduces the initial JS bundle by only loading page code when navigated to.
-const LandingPage    = React.lazy(() => import('./pages/LandingPage'));
-const AuthPage       = React.lazy(() => import('./pages/AuthPage'));
-const PracticeBoard  = React.lazy(() => import('./pages/PracticeBoard'));
-const Dashboard      = React.lazy(() => import('./pages/Dashboard'));
-const LearningPath   = React.lazy(() => import('./components/LearningPath'));
-const Profile        = React.lazy(() => import('./pages/Profile'));
-const EnduranceArena = React.lazy(() => import('./components/EnduranceArena'));
-const InterviewRoom  = React.lazy(() => import('./pages/InterviewRoom'));
-const TypingAcademy  = React.lazy(() => import('./pages/TypingAcademy'));
-const PrivacyPolicy  = React.lazy(() => import('./pages/PrivacyPolicy'));
-const TermsOfService = React.lazy(() => import('./pages/TermsOfService'));
-const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+export const routeLoaders = {
+  loadLandingPage: () => import('./pages/LandingPage'),
+  loadAuthPage: () => import('./pages/AuthPage'),
+  loadPracticeBoard: () => import('./pages/PracticeBoard'),
+  loadDashboard: () => import('./pages/Dashboard'),
+  loadLearningPath: () => import('./components/LearningPath'),
+  loadProfile: () => import('./pages/Profile'),
+  loadEnduranceArena: () => import('./components/EnduranceArena'),
+  loadInterviewRoom: () => import('./pages/InterviewRoom'),
+  loadTypingAcademy: () => import('./pages/TypingAcademy'),
+  loadPrivacyPolicy: () => import('./pages/PrivacyPolicy'),
+  loadTermsOfService: () => import('./pages/TermsOfService'),
+  loadAdminDashboard: () => import('./pages/AdminDashboard'),
+};
 
-// Preload core practice routes so tab transitions are instant
-if (typeof window !== 'undefined') {
-  const preloadRoutes = () => {
-    import('./pages/PracticeBoard');
-    import('./pages/TypingAcademy');
-    import('./pages/Dashboard');
-  };
-  if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(preloadRoutes);
-  } else {
-    setTimeout(preloadRoutes, 1000);
-  }
+// ── Lazy-loaded pages (code splitting by route) ────────────────────────────
+const LandingPage    = React.lazy(() => routeLoaders.loadLandingPage());
+const AuthPage       = React.lazy(() => routeLoaders.loadAuthPage());
+const PracticeBoard  = React.lazy(() => routeLoaders.loadPracticeBoard());
+const Dashboard      = React.lazy(() => routeLoaders.loadDashboard());
+const LearningPath   = React.lazy(() => routeLoaders.loadLearningPath());
+const Profile        = React.lazy(() => routeLoaders.loadProfile());
+const EnduranceArena = React.lazy(() => routeLoaders.loadEnduranceArena());
+const InterviewRoom  = React.lazy(() => routeLoaders.loadInterviewRoom());
+const TypingAcademy  = React.lazy(() => routeLoaders.loadTypingAcademy());
+const PrivacyPolicy  = React.lazy(() => routeLoaders.loadPrivacyPolicy());
+const TermsOfService = React.lazy(() => routeLoaders.loadTermsOfService());
+const AdminDashboard = React.lazy(() => routeLoaders.loadAdminDashboard());
+
+let hasPreloadedCoreRoutes = false;
+
+export function resetRoutePreloadForTests(): void {
+  hasPreloadedCoreRoutes = false;
+}
+
+export function hasPreloadedAuthenticatedRoutes(): boolean {
+  return hasPreloadedCoreRoutes;
+}
+
+/**
+ * Preloads core app routes (Practice, Academy, Dashboard) only after the
+ * authenticated/guest app shell is active or right as the user enters the app.
+ */
+export function preloadCoreAppRoutes(): void {
+  if (hasPreloadedCoreRoutes) return;
+  hasPreloadedCoreRoutes = true;
+  void routeLoaders.loadPracticeBoard();
+  void routeLoaders.loadTypingAcademy();
+  void routeLoaders.loadDashboard();
 }
 
 // ── Shared loading fallback ─────────────────────────────────────────────────
@@ -47,10 +69,20 @@ function PageLoader() {
   );
 }
 
+function isGuestSessionActive(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function'
+      ? localStorage.getItem('typementor_is_guest') === 'true'
+      : false;
+  } catch {
+    return false;
+  }
+}
+
 // ── Protected route wrapper ─────────────────────────────────────────────────
 const ProtectedRoute = ({ children, requireAuth = false }: { children: React.ReactNode, requireAuth?: boolean }) => {
   const { isAuthenticated } = useAuthStore();
-  const isGuestSession = localStorage.getItem('typementor_is_guest') === 'true';
+  const isGuestSession = isGuestSessionActive();
 
   if (!isAuthenticated && !isGuestSession) {
     return <Navigate to="/" replace />;
@@ -64,22 +96,42 @@ const ProtectedRoute = ({ children, requireAuth = false }: { children: React.Rea
 };
 
 // ── App routes ──────────────────────────────────────────────────────────────
-export default function AppRoutes() {
+export function AppRoutes() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
-  const isGuestSession = localStorage.getItem('typementor_is_guest') === 'true';
+  const { isAuthenticated, user } = useAuthStore();
+  const isGuestSession = isGuestSessionActive();
 
-  // Helper for LandingPage props based on original App.tsx
+  // Only preload core app routes when the user is authenticated or in an active guest session
+  useEffect(() => {
+    if (!isAuthenticated && !isGuestSession) return;
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = (window as any).requestIdleCallback(() => preloadCoreAppRoutes());
+      return () => {
+        if ('cancelIdleCallback' in window) {
+          (window as any).cancelIdleCallback(id);
+        }
+      };
+    }
+
+    const timer = setTimeout(() => preloadCoreAppRoutes(), 250);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, isGuestSession]);
+
   const handleLandingGetStarted = () => {
-    window.location.href = '/auth';
+    navigate('/auth');
   };
   const handleLandingTryAcademy = () => {
     localStorage.setItem('typementor_is_guest', 'true');
-    window.location.href = '/academy';
+    preloadCoreAppRoutes();
+    navigate('/academy');
   };
   const handleLandingNavigateToPage = (page: string) => {
-    localStorage.setItem('typementor_is_guest', 'true');
-    window.location.href = `/${page}`;
+    if (page !== 'privacy' && page !== 'terms' && page !== 'auth') {
+      localStorage.setItem('typementor_is_guest', 'true');
+      preloadCoreAppRoutes();
+    }
+    navigate(`/${page}`);
   };
 
   return (
@@ -119,7 +171,7 @@ export default function AppRoutes() {
           isAuthenticated ? <Navigate to="/dashboard" replace /> :
           <div className="min-h-screen bg-transparent flex flex-col font-sans select-none text-brand-text">
             <header className="border-b border-brand-border bg-brand-card/30 backdrop-blur-md px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = '/'}>
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
                 <div className="bg-brand-primary p-2.5 rounded-xl text-white shadow-lg shadow-brand-primary/20">
                   <svg className="w-6 h-6 lucide lucide-brain" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/></svg>
                 </div>
@@ -131,16 +183,16 @@ export default function AppRoutes() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => window.location.href = '/'} className="text-xs text-brand-muted hover:text-white font-semibold border border-brand-border px-3 py-1.5 rounded-lg bg-brand-card/25">
+                <button onClick={() => navigate('/')} className="text-xs text-brand-muted hover:text-white font-semibold border border-brand-border px-3 py-1.5 rounded-lg bg-brand-card/25">
                   ← Back
                 </button>
               </div>
             </header>
             <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
-              <AuthPage onSuccess={() => { window.location.href = '/dashboard'; }} />
+              <AuthPage onSuccess={() => { preloadCoreAppRoutes(); navigate('/dashboard'); }} />
               {import.meta.env.VITE_ENABLE_GUEST_MODE === 'true' && (
                 <div className="mt-4 text-center">
-                  <button onClick={() => { localStorage.setItem('typementor_is_guest', 'true'); window.location.href = '/practice'; }} className="text-xs text-brand-muted hover:text-brand-text underline underline-offset-2 transition-colors">
+                  <button onClick={() => { localStorage.setItem('typementor_is_guest', 'true'); preloadCoreAppRoutes(); navigate('/practice'); }} className="text-xs text-brand-muted hover:text-brand-text underline underline-offset-2 transition-colors">
                     Continue as Guest (progress not saved)
                   </button>
                 </div>
@@ -154,8 +206,8 @@ export default function AppRoutes() {
           {/* Guest OR Authenticated */}
           <Route path="/practice" element={<ProtectedRoute><PracticeBoard /></ProtectedRoute>} />
           <Route path="/academy" element={<ProtectedRoute><TypingAcademy /></ProtectedRoute>} />
-          <Route path="/privacy" element={<PrivacyPolicy onBack={() => window.history.back()} />} />
-          <Route path="/terms" element={<TermsOfService onBack={() => window.history.back()} />} />
+          <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
+          <Route path="/terms" element={<TermsOfService onBack={() => navigate(-1)} />} />
 
           {/* Authenticated ONLY */}
           <Route path="/dashboard" element={
@@ -181,12 +233,12 @@ export default function AppRoutes() {
               />
             </ProtectedRoute>
           } />
-          <Route path="/path" element={<ProtectedRoute requireAuth><LearningPath currentLevel={useAuthStore.getState().user?.level ?? 1} onSelectNode={() => window.location.href = '/practice'} /></ProtectedRoute>} />
+          <Route path="/path" element={<ProtectedRoute requireAuth><LearningPath currentLevel={user?.level ?? 1} onSelectNode={() => navigate('/practice')} /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute requireAuth><Profile /></ProtectedRoute>} />
           <Route path="/endurance" element={<ProtectedRoute requireAuth><EnduranceArena /></ProtectedRoute>} />
           <Route path="/interview" element={<ProtectedRoute requireAuth>
             <div className="max-w-4xl mx-auto space-y-6">
-              <button onClick={() => window.location.href = '/practice'} className="text-xs text-brand-primary font-bold hover:underline mb-2">
+              <button onClick={() => navigate('/practice')} className="text-xs text-brand-primary font-bold hover:underline mb-2">
                 ← Back to Practice Board
               </button>
               <InterviewRoom />
@@ -200,3 +252,7 @@ export default function AppRoutes() {
     </Suspense>
   );
 }
+
+export default AppRoutes;
+
+

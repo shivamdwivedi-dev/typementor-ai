@@ -518,8 +518,8 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
               a: 'Most users see measurable improvement in 2–4 weeks of daily 15-minute sessions. The key is consistent practice targeting your specific weak areas, which TypeMentor automates for you.'
             },
             {
-              q: 'Is my camera data private?',
-              a: 'Completely. The optional posture camera mode runs entirely in your browser using TensorFlow.js. No video frames are ever uploaded, stored, or sent to our servers.'
+              q: 'How does the interactive 3D finger guide work?',
+              a: 'TypeMentor renders an interactive 3D hand and color-coded keyboard guide directly in your browser. It highlights the exact finger and key zone for every character in real time without requiring any webcam or camera access.'
             }
           ].map((item, i) => (
             <details key={i} className="glass-panel border border-brand-border/40 rounded-2xl group">
