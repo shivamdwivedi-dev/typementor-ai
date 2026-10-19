@@ -2,8 +2,11 @@ import app, { prisma } from './app';
 
 const PORT = process.env.PORT || 5000;
 
+// Temporary diagnostic check: verifies repository deploy hook & sync on Render
+const DEPLOY_CHECK_ID = 'render-test-deploy-sync';
+
 const server = app.listen(PORT, () => {
-  console.log(`TypeMentor AI Server is running on port ${PORT}`);
+  console.log(`TypeMentor AI Server [${DEPLOY_CHECK_ID}] running on port ${PORT}`);
 
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     console.warn('⚠️  WARNING: JWT_SECRET is weak or missing. Set a strong 64-char secret in .env before deploying to production.');
