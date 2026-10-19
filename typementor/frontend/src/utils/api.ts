@@ -1,6 +1,6 @@
 import { trackException } from './monitoring';
 
-const DEFAULT_PROD_BACKEND = 'https://typementor-backend1.onrender.com';
+const DEFAULT_PROD_BACKEND = 'https://typementor-backend.onrender.com';
 
 export function getApiUrl(path: string): string {
   let baseUrl = (import.meta.env.VITE_API_URL || '').trim();
