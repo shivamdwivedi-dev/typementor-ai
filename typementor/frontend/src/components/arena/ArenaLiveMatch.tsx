@@ -109,6 +109,65 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
   const oppWpm = opponentProgress?.wpm ?? opponentParticipant?.wpm ?? 0;
   const oppAccuracy = opponentProgress?.accuracy ?? opponentParticipant?.accuracy ?? 100;
 
+  // High-performance passage rendering: groups correct text and collapses untyped remainder into 1 span (60-120 FPS)
+  const renderedPassage = React.useMemo(() => {
+    if (!passage) return null;
+    const typedLen = typedText.length;
+    const elements: React.ReactNode[] = [];
+    let currentCorrectRun = '';
+
+    for (let i = 0; i < typedLen; i++) {
+      const char = passage[i] || '';
+      const typed = typedText[i];
+      if (typed === char) {
+        currentCorrectRun += char;
+      } else {
+        if (currentCorrectRun) {
+          elements.push(
+            <span key={`c-${i - currentCorrectRun.length}`} className="text-emerald-400 font-medium">
+              {currentCorrectRun}
+            </span>
+          );
+          currentCorrectRun = '';
+        }
+        elements.push(
+          <span key={`e-${i}`} className="text-red-400 font-bold bg-red-500/20 rounded">
+            {char}
+          </span>
+        );
+      }
+    }
+
+    if (currentCorrectRun) {
+      elements.push(
+        <span key="c-end" className="text-emerald-400 font-medium">
+          {currentCorrectRun}
+        </span>
+      );
+    }
+
+    if (typedLen < passage.length) {
+      elements.push(
+        <span
+          key="cursor"
+          className="text-white font-bold underline decoration-blue-500 decoration-2 underline-offset-4 bg-blue-500/20 rounded"
+        >
+          {passage[typedLen]}
+        </span>
+      );
+    }
+
+    if (typedLen + 1 < passage.length) {
+      elements.push(
+        <span key="remainder" className="text-zinc-600">
+          {passage.slice(typedLen + 1)}
+        </span>
+      );
+    }
+
+    return elements;
+  }, [passage, typedText]);
+
   return (
     <div className="max-w-4xl mx-auto w-full space-y-6 animate-in fade-in duration-300">
       {/* Live Match Top Status Bar */}
@@ -162,7 +221,7 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
           </div>
           <div className="relative h-4 w-full bg-zinc-950/80 rounded-full overflow-hidden border border-zinc-800">
             <div
-              className="h-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-300 ease-out rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+              className="h-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-[width] duration-150 ease-out rounded-full shadow-[0_0_10px_rgba(99,102,241,0.4)] will-change-[width]"
               style={{ width: `${oppProgressPercent}%` }}
             />
           </div>
@@ -183,7 +242,7 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
           </div>
           <div className="relative h-4 w-full bg-zinc-950/80 rounded-full overflow-hidden border border-zinc-800">
             <div
-              className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-150 ease-out rounded-full shadow-[0_0_15px_rgba(59,130,246,0.6)]"
+              className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-[width] duration-150 ease-out rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] will-change-[width]"
               style={{ width: `${localProgress}%` }}
             />
           </div>
@@ -196,28 +255,7 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
         className="p-6 sm:p-8 rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl relative cursor-text select-none min-h-[160px]"
       >
         <p className="font-mono text-lg sm:text-xl leading-relaxed tracking-wide">
-          {passage.split('').map((char, index) => {
-            let color = 'text-zinc-600';
-            let bg = '';
-
-            if (index < typedText.length) {
-              if (typedText[index] === char) {
-                color = 'text-emerald-400 font-medium';
-              } else {
-                color = 'text-red-400 font-bold';
-                bg = 'bg-red-500/20 rounded';
-              }
-            } else if (index === typedText.length) {
-              color = 'text-white font-bold underline decoration-blue-500 decoration-2 underline-offset-4';
-              bg = 'bg-blue-500/20 rounded';
-            }
-
-            return (
-              <span key={index} className={`${color} ${bg}`}>
-                {char}
-              </span>
-            );
-          })}
+          {renderedPassage}
         </p>
 
         {/* Hidden active typing input */}

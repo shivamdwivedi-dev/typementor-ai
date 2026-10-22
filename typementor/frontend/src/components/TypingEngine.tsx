@@ -41,49 +41,98 @@ const CharSpan = React.memo(({ char, charClass, showCaret }: CharSpanProps) => (
 ));
 CharSpan.displayName = 'CharSpan';
 
+// ─── Memoized token component ─────────────────────────────────────────────────
+interface TokenItemProps {
+  token: string;
+  start: number;
+  end: number;
+  currentIndex: number;
+  keystrokes: { isMistake: boolean }[];
+}
+
+const TokenItem = React.memo(({ token, start, currentIndex, keystrokes }: TokenItemProps) => {
+  // Pending token: user hasn't reached it yet
+  if (currentIndex < start) {
+    return (
+      <span className="inline-block whitespace-nowrap text-brand-muted">
+        {token === ' ' ? '␣' : token}
+      </span>
+    );
+  }
+
+  // Active or Completed token: render character-by-character
+  return (
+    <span className="inline-block whitespace-nowrap">
+      {token.split('').map((char, offset) => {
+        const index = start + offset;
+        let charClass = 'text-brand-muted';
+
+        if (index < currentIndex) {
+          const keyLog = keystrokes[index];
+          charClass = keyLog && !keyLog.isMistake
+            ? 'text-brand-success font-semibold border-b-2 border-brand-success/30'
+            : 'text-brand-danger font-semibold bg-brand-danger/10 border-b-2 border-brand-danger/30';
+        } else if (index === currentIndex) {
+          charClass = 'text-white bg-brand-primary/20 font-bold';
+        }
+
+        return (
+          <CharSpan
+            key={index}
+            char={char}
+            charClass={charClass}
+            showCaret={index === currentIndex}
+          />
+        );
+      })}
+    </span>
+  );
+}, (prev, next) => {
+  if (prev.token !== next.token || prev.start !== next.start || prev.end !== next.end) {
+    return false;
+  }
+  const wasPending = prev.currentIndex < prev.start;
+  const isPending = next.currentIndex < next.start;
+  if (wasPending && isPending) return true;
+
+  const wasCompleted = prev.currentIndex >= prev.end;
+  const isCompleted = next.currentIndex >= next.end;
+  if (wasCompleted && isCompleted) return true;
+
+  return false;
+});
+TokenItem.displayName = 'TokenItem';
+
 // ─── Memoized text board ───────────────────────────────────────────────────────
 interface TextBoardProps {
   words: string;
   currentIndex: number;
-  keystrokesSnapshot: { isMistake: boolean }[];
+  keystrokes: { isMistake: boolean }[];
 }
 
-const TextBoard = React.memo(({ words, currentIndex, keystrokesSnapshot }: TextBoardProps) => {
-  let characterOffset = 0;
+const TextBoard = React.memo(({ words, currentIndex, keystrokes }: TextBoardProps) => {
+  const parsedTokens = useMemo(() => {
+    const matches = words.match(/\S+|\s+/g) ?? [];
+    let offset = 0;
+    return matches.map((token, tokenIndex) => {
+      const start = offset;
+      offset += token.length;
+      return { token, tokenIndex, start, end: offset };
+    });
+  }, [words]);
 
   return (
     <div className="text-xl md:text-2xl leading-relaxed tracking-wide font-mono select-none break-normal whitespace-normal [overflow-wrap:normal]">
-      {(words.match(/\S+|\s+/g) ?? []).map((token, tokenIndex) => {
-        const tokenStart = characterOffset;
-        characterOffset += token.length;
-
-        return (
-          <span key={`${token}-${tokenIndex}`} className="inline-block whitespace-nowrap">
-            {token.split('').map((char, offset) => {
-              const index = tokenStart + offset;
-              let charClass = 'text-brand-muted';
-
-              if (index < currentIndex) {
-                const keyLog = keystrokesSnapshot[index];
-                charClass = keyLog && !keyLog.isMistake
-                  ? 'text-brand-success font-semibold border-b-2 border-brand-success/30'
-                  : 'text-brand-danger font-semibold bg-brand-danger/10 border-b-2 border-brand-danger/30';
-              } else if (index === currentIndex) {
-                charClass = 'text-white bg-brand-primary/20 font-bold';
-              }
-
-              return (
-                <CharSpan
-                  key={index}
-                  char={char}
-                  charClass={charClass}
-                  showCaret={index === currentIndex}
-                />
-              );
-            })}
-          </span>
-        );
-      })}
+      {parsedTokens.map((t) => (
+        <TokenItem
+          key={`${t.start}-${t.tokenIndex}`}
+          token={t.token}
+          start={t.start}
+          end={t.end}
+          currentIndex={currentIndex}
+          keystrokes={keystrokes}
+        />
+      ))}
     </div>
   );
 });
@@ -172,9 +221,18 @@ export default function TypingEngine({
     resetSessionState();
   }, [words]);
 
-  // Feed metrics to coaching processor reactively
+  const lastPulseCheckRef = useRef<number>(0);
+
+  // Feed metrics to coaching processor reactively (throttled to avoid keystroke micro-stutter)
   useEffect(() => {
     if (isCompleted || !isActive) return;
+
+    const now = Date.now();
+    // Throttle checks to once every 1200ms unless completing, saving massive CPU cycles
+    if (now - lastPulseCheckRef.current < 1200 && !isCompleted) {
+      return;
+    }
+    lastPulseCheckRef.current = now;
 
     const typedChars = keystrokes.map(k => ({
       expected: k.expectedKey,
@@ -196,12 +254,6 @@ export default function TypingEngine({
       isCompleted
     });
   }, [keystrokes.length, backspaceCount, isCompleted, isActive]);
-
-  // Snapshot only isMistake per keystroke — avoids passing full objects to TextBoard
-  const keystrokesSnapshot = useMemo(
-    () => keystrokes.map(k => ({ isMistake: k.isMistake })),
-    [keystrokes.length, currentIndex]
-  );
 
   const focusInput = useCallback(() => {
     if (inputRef.current && !isCompleted && !cheatDetected) {
@@ -448,11 +500,11 @@ export default function TypingEngine({
               spellCheck={false}
             />
 
-            {/* Memoized text render — only re-renders changed chars */}
+            {/* Memoized text render — token-level virtualization for 120 FPS */}
             <TextBoard
               words={words}
               currentIndex={currentIndex}
-              keystrokesSnapshot={keystrokesSnapshot}
+              keystrokes={keystrokes}
             />
           </div>
         )}

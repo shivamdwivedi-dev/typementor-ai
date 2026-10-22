@@ -4,6 +4,7 @@ import { useAuthStore } from './store/AuthStore';
 import AppRoutes from './AppRoutes';
 import { Brain, Loader2 } from 'lucide-react';
 import { trackPageView } from './utils/monitoring';
+import { Analytics } from '@vercel/analytics/react';
 
 const SLOW_THRESHOLD_MS = 4000; // Show "server waking up" hint after 4s
 
@@ -30,7 +31,7 @@ export default function App() {
   useEffect(() => {
     const PING_INTERVAL = 13 * 60 * 1000; // 13 minutes
     const ping = () => {
-      fetch('https://typementor-backend1.onrender.com/health', { method: 'GET' }).catch(() => {});
+      fetch('https://typementor-backend.onrender.com/health', { method: 'GET' }).catch(() => {});
     };
     const interval = setInterval(ping, PING_INTERVAL);
     return () => clearInterval(interval);
@@ -57,5 +58,10 @@ export default function App() {
   }
 
   // Once bootstrap completes, hand off routing to AppRoutes
-  return <AppRoutes />;
+  return (
+    <>
+      <AppRoutes />
+      <Analytics />
+    </>
+  );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Hands3DCanvas from './Hands3DCanvas';
 import VirtualKeyboard from './VirtualKeyboard';
 import { getFingerForChar, FINGER_DATA, FingerId } from '../utils/fingerMapping';
@@ -15,7 +15,7 @@ export interface TypingFingerGuideProps {
   className?: string;
 }
 
-export default function TypingFingerGuide({
+export function TypingFingerGuide({
   targetCharacter,
   typedCharacter,
   isCorrect,
@@ -176,3 +176,5 @@ export default function TypingFingerGuide({
     </div>
   );
 }
+
+export default React.memo(TypingFingerGuide);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { FingerId, FINGER_DATA } from '../utils/fingerMapping';
 import { Rotate3d, Sun, Check, RefreshCw } from 'lucide-react';
@@ -326,7 +326,7 @@ function createRealisticHand(
 
 // ── Hands3DCanvas Component ───────────────────────────────────────────────────
 
-export default function Hands3DCanvas({
+function Hands3DCanvas({
   activeFingerId,
   shiftFingerId,
   isCorrect,
@@ -407,9 +407,9 @@ export default function Hands3DCanvas({
       powerPreference: 'high-performance',
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
 
@@ -420,12 +420,12 @@ export default function Hands3DCanvas({
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     scene.add(ambientLight);
 
-    // Warm Key Light (Simulates studio softbox from front-top)
+    // Warm Key Light (Optimized shadow map for 60-120 FPS buttery rendering)
     const keyLight = new THREE.DirectionalLight(0xfff5ea, 2.0);
     keyLight.position.set(3.5, 9.0, 5.5);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 1024;
-    keyLight.shadow.mapSize.height = 1024;
+    keyLight.shadow.mapSize.width = 512;
+    keyLight.shadow.mapSize.height = 512;
     keyLight.shadow.camera.near = 0.5;
     keyLight.shadow.camera.far = 25;
     keyLight.shadow.bias = -0.0006;
@@ -478,11 +478,25 @@ export default function Hands3DCanvas({
     shadowPlane.receiveShadow = true;
     scene.add(shadowPlane);
 
-    // ── 5. 60 FPS Biomechanical Render Loop ──────────────────────────────────
+    // ── 5. 60-120 FPS Biomechanical Render Loop ─────────────────────────────
     let lastTime = performance.now();
+
+    // Reusable color instances to eliminate garbage collection frame stutter (60-120 FPS optimization)
+    const tempColor = new THREE.Color();
+    const defaultSkinColor = new THREE.Color(skinConfig.baseColor);
+    const blackColor = new THREE.Color(0x000000);
+    const mistakeColor = new THREE.Color(0xf43f5e);
+    const defaultHighlightColor = new THREE.Color(0x6366f1);
+
+    let isPageVisible = typeof document !== 'undefined' ? !document.hidden : true;
+    const onVisibilityChange = () => {
+      isPageVisible = typeof document !== 'undefined' ? !document.hidden : true;
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     const animate = (time: number) => {
       animationFrameId.current = requestAnimationFrame(animate);
+      if (!isPageVisible) return;
 
       const delta = (time - lastTime) / 1000;
       lastTime = time;
@@ -509,19 +523,21 @@ export default function Hands3DCanvas({
         const isShift = fingerId === currentShift;
         const targetHighlight = isActive || isShift;
 
-        // Color & Biometric Glow update
+        // Color & Biometric Glow update (Zero allocations per frame)
         finger.materials.forEach((mat) => {
           if (targetHighlight) {
             const data = FINGER_DATA[fingerId as FingerId];
-            const activeColor = new THREE.Color(
-              isMistake ? 0xf43f5e : data ? data.colorHex : 0x6366f1
-            );
+            const activeColor = isMistake
+              ? mistakeColor
+              : data
+              ? tempColor.set(data.colorHex)
+              : defaultHighlightColor;
             mat.color.lerp(activeColor, 0.22);
             mat.emissive.lerp(activeColor, 0.25);
             mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, 0.48, 0.22);
           } else {
-            mat.color.lerp(new THREE.Color(skinConfig.baseColor), 0.15);
-            mat.emissive.lerp(new THREE.Color(0x000000), 0.2);
+            mat.color.lerp(defaultSkinColor, 0.15);
+            mat.emissive.lerp(blackColor, 0.2);
             mat.emissiveIntensity = THREE.MathUtils.lerp(mat.emissiveIntensity, 0, 0.2);
           }
         });
@@ -575,6 +591,7 @@ export default function Hands3DCanvas({
     // ── Cleanup ──────────────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(animationFrameId.current);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       resizeObserver.disconnect();
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement);
@@ -748,3 +765,5 @@ export default function Hands3DCanvas({
     </div>
   );
 }
+
+export default React.memo(Hands3DCanvas);

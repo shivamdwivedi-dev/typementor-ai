@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   FingerId,
   FINGER_DATA,
@@ -94,7 +94,7 @@ const ROWS: KeyDef[][] = [
   ],
 ];
 
-export function VirtualKeyboard({
+export const VirtualKeyboard = React.memo(function VirtualKeyboard({
   currentExpectedChar,
   recentlyTypedChar,
   isCorrect,
@@ -222,7 +222,7 @@ export function VirtualKeyboard({
       </div>
     </div>
   );
-}
+});
 
 export default VirtualKeyboard;
 

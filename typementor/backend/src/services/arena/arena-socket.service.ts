@@ -60,6 +60,14 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   }
 }
 
+interface InFlightMatchState {
+  matchId: string;
+  status: string;
+  passageText: string;
+  startedAt: Date;
+  maxDuration: number;
+}
+
 export class ArenaSocketService {
   private wss: WebSocketServer | null = null;
   private socketSessions = new Map<WebSocket, SocketSession>();
@@ -67,6 +75,7 @@ export class ArenaSocketService {
   private matchRooms = new Map<string, Set<WebSocket>>();
   private matchTimers = new Map<string, NodeJS.Timeout>();
   private disconnectTimers = new Map<string, NodeJS.Timeout>(); // key: `${matchId}_${userId}`
+  private inFlightMatches = new Map<string, InFlightMatchState>(); // In-memory hot state (0 DB queries during gameplay)
   private recoveryInterval: NodeJS.Timeout | null = null;
 
   constructor(
@@ -384,6 +393,15 @@ export class ArenaSocketService {
       },
     });
 
+    // Cache hot match state in memory for zero-database latency during real-time typing
+    this.inFlightMatches.set(matchId, {
+      matchId,
+      status: 'ACTIVE',
+      passageText: match.passageText,
+      startedAt,
+      maxDuration: match.maxDuration,
+    });
+
     this.broadcastToRoom(matchId, 'MATCH_STARTED', {
       startedAt: startedAt.toISOString(),
       deadlineAt: deadlineAt.toISOString(),
@@ -401,6 +419,7 @@ export class ArenaSocketService {
 
   /**
    * Validates and throttles in-flight progress updates and broadcasts to opponent.
+   * Uses in-memory state for zero-database overhead in the critical typing loop.
    */
   private async handleProgressUpdate(
     ws: WebSocket,
@@ -416,16 +435,28 @@ export class ArenaSocketService {
     const { matchId, charsTyped } = payload;
     if (!matchId || typeof charsTyped !== 'number') return;
 
-    const match = await this.prisma.arenaMatch.findUnique({
-      where: { id: matchId },
-      select: { status: true, passageText: true, startedAt: true },
-    });
+    let inFlight = this.inFlightMatches.get(matchId);
+    if (!inFlight) {
+      const match = await this.prisma.arenaMatch.findUnique({
+        where: { id: matchId },
+        select: { status: true, passageText: true, startedAt: true, maxDuration: true },
+      });
+      if (!match || match.status !== 'ACTIVE' || !match.startedAt) return;
+      inFlight = {
+        matchId,
+        status: match.status,
+        passageText: match.passageText,
+        startedAt: match.startedAt,
+        maxDuration: match.maxDuration,
+      };
+      this.inFlightMatches.set(matchId, inFlight);
+    }
 
-    if (!match || match.status !== 'ACTIVE' || !match.startedAt) return;
+    if (inFlight.status !== 'ACTIVE') return;
 
     const evalResult = ArenaScoringService.evaluateProgress(
-      match.passageText,
-      match.startedAt,
+      inFlight.passageText,
+      inFlight.startedAt,
       charsTyped,
       0,
       new Date(now)
@@ -433,20 +464,7 @@ export class ArenaSocketService {
 
     if (!evalResult.isValid) return;
 
-    // Update participant progress in DB asynchronously
-    this.prisma.arenaParticipant
-      .updateMany({
-        where: { matchId, userId: session.userId },
-        data: {
-          charsTyped: evalResult.correctChars,
-          progressPercent: evalResult.progressPercent,
-          wpm: evalResult.wpm,
-          accuracy: evalResult.accuracy,
-        },
-      })
-      .catch((err) => console.warn('[Arena WS] Progress persist warning:', err.message));
-
-    // Broadcast snapshot to opponent
+    // Broadcast snapshot to opponent instantly (0 DB queries in the hot path!)
     this.broadcastToRoom(
       matchId,
       'OPPONENT_PROGRESS',
@@ -726,6 +744,7 @@ export class ArenaSocketService {
   }
 
   private clearMatchTimers(matchId: string): void {
+    this.inFlightMatches.delete(matchId);
     const cd = this.matchTimers.get(`countdown_${matchId}`);
     if (cd) {
       clearInterval(cd);
