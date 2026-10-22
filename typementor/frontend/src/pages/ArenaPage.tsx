@@ -222,13 +222,6 @@ export const ArenaPage: React.FC = () => {
 
   return (
     <div className="min-h-[85vh] py-6 px-4 sm:px-6 flex flex-col justify-center">
-      {socketStatus !== 'connected' && (
-        <div className="fixed top-20 right-6 z-40 px-3 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 animate-pulse">
-          <span className="w-2 h-2 rounded-full bg-amber-400" />
-          <span>Realtime: {socketStatus}</span>
-        </div>
-      )}
-
       {/* 1. Countdown Overlay */}
       {countdownSeconds !== null && countdownSeconds > 0 && (
         <ArenaCountdown secondsRemaining={countdownSeconds} />
@@ -245,6 +238,7 @@ export const ArenaPage: React.FC = () => {
           openMatches={openMatches}
           isLoadingHistory={isLoadingHistory}
           isLoadingOpenMatches={isLoadingOpenMatches}
+          socketStatus={socketStatus}
         />
       ) : activeMatch.status === 'FINISHED' ? (
         <ArenaResults

@@ -96,9 +96,9 @@ export async function safeFetch(path: string, options: SafeFetchOptions = {}): P
       trackException(err);
 
       if (isTimeout) {
-        throw new Error('Connection timed out. The server took too long to respond. Please try again.');
+        throw new Error('Connection timed out. The server is waking up from sleep — please wait a few seconds and try again.');
       } else {
-        throw new Error('Unable to connect to the server. Please check your internet connection and try again.');
+        throw new Error('Unable to reach the server. The backend may be starting up from sleep — please wait a moment and try again.');
       }
     }
   }

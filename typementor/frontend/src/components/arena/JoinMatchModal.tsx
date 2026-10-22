@@ -23,6 +23,8 @@ export const JoinMatchModal: React.FC<JoinMatchModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isColdStartError = error !== null && /waking up|timed out/i.test(error);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = matchCode.trim().toUpperCase();
@@ -86,7 +88,14 @@ export const JoinMatchModal: React.FC<JoinMatchModalProps> = ({
           {error && (
             <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
+              <div className="space-y-1">
+                <span className="block">{error}</span>
+                {isColdStartError && (
+                  <span className="block text-amber-300">
+                    The backend server is waking up from sleep. Please wait ~15 seconds and try again.
+                  </span>
+                )}
+              </div>
             </div>
           )}
 

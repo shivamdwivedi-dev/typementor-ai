@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { PublicArenaMatch, MatchHistoryItem } from '../../types/arena';
+import { SocketStatus } from '../../utils/arenaSocket';
 
 interface ArenaLobbyProps {
   userBalance: number;
@@ -20,6 +21,7 @@ interface ArenaLobbyProps {
   openMatches: PublicArenaMatch[];
   isLoadingHistory: boolean;
   isLoadingOpenMatches: boolean;
+  socketStatus?: SocketStatus;
 }
 
 export const ArenaLobby: React.FC<ArenaLobbyProps> = ({
@@ -31,9 +33,15 @@ export const ArenaLobby: React.FC<ArenaLobbyProps> = ({
   openMatches,
   isLoadingHistory,
   isLoadingOpenMatches,
+  socketStatus = 'disconnected',
 }) => {
   const [activeTab, setActiveTab] = useState<'open' | 'history'>('open');
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const connectionState = socketStatus === 'connected'
+    ? { label: 'Connected', dotClass: 'bg-emerald-400', textClass: 'text-emerald-300', pulse: false }
+    : socketStatus === 'disconnected'
+      ? { label: 'Offline', dotClass: 'bg-red-400', textClass: 'text-red-300', pulse: false }
+      : { label: 'Reconnecting / Server Waking Up', dotClass: 'bg-amber-400', textClass: 'text-amber-300', pulse: true };
 
   return (
     <div className="max-w-4xl mx-auto w-full space-y-8 animate-in fade-in duration-300">
@@ -41,6 +49,14 @@ export const ArenaLobby: React.FC<ArenaLobbyProps> = ({
       <div className="relative p-6 sm:p-10 rounded-3xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-xl shadow-2xl overflow-hidden">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div
+          className={`absolute top-4 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-zinc-700/80 bg-zinc-950/80 px-3 py-1.5 text-[10px] font-bold ${connectionState.textClass}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className={`h-2 w-2 rounded-full ${connectionState.dotClass} ${connectionState.pulse ? 'animate-pulse' : ''}`} />
+          <span>{connectionState.label}</span>
+        </div>
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2">

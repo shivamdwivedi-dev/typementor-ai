@@ -31,7 +31,7 @@ export default function App() {
   useEffect(() => {
     const PING_INTERVAL = 13 * 60 * 1000; // 13 minutes
     const ping = () => {
-      fetch('https://typementor-backend.onrender.com/health', { method: 'GET' }).catch(() => {});
+      fetch('https://typementor-backend1.onrender.com/health', { method: 'GET' }).catch(() => {});
     };
     const interval = setInterval(ping, PING_INTERVAL);
     return () => clearInterval(interval);
