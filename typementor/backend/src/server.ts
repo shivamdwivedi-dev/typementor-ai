@@ -1,4 +1,7 @@
 import app, { prisma } from './app';
+import { ArenaPointsService } from './services/arena/arena-points.service';
+import { ArenaMatchService } from './services/arena/arena-match.service';
+import { ArenaSocketService } from './services/arena/arena-socket.service';
 
 const PORT = process.env.PORT || 5000;
 
@@ -13,9 +16,20 @@ const server = app.listen(PORT, () => {
   }
 });
 
+// Initialize Real-time Arena WebSocket service
+const arenaPointsService = new ArenaPointsService(prisma);
+const arenaMatchService = new ArenaMatchService(prisma, arenaPointsService);
+export const arenaSocketService = new ArenaSocketService(prisma, arenaPointsService, arenaMatchService);
+arenaSocketService.init(server);
+
 // Graceful shutdown handling
 const shutdown = async () => {
   console.log('Shutdown signal received. Closing HTTP server and database connection...');
+  try {
+    arenaSocketService.shutdown();
+  } catch (err) {
+    console.warn('Error during Arena WebSocket shutdown:', err);
+  }
   server.close(async () => {
     console.log('HTTP server closed.');
     try {

@@ -19,6 +19,7 @@ export const routeLoaders = {
   loadPrivacyPolicy: () => import('./pages/PrivacyPolicy'),
   loadTermsOfService: () => import('./pages/TermsOfService'),
   loadAdminDashboard: () => import('./pages/AdminDashboard'),
+  loadArenaPage: () => import('./pages/ArenaPage'),
 };
 
 // ── Lazy-loaded pages (code splitting by route) ────────────────────────────
@@ -34,6 +35,7 @@ const TypingAcademy  = React.lazy(() => routeLoaders.loadTypingAcademy());
 const PrivacyPolicy  = React.lazy(() => routeLoaders.loadPrivacyPolicy());
 const TermsOfService = React.lazy(() => routeLoaders.loadTermsOfService());
 const AdminDashboard = React.lazy(() => routeLoaders.loadAdminDashboard());
+const ArenaPage      = React.lazy(() => routeLoaders.loadArenaPage());
 
 let hasPreloadedCoreRoutes = false;
 
@@ -236,6 +238,7 @@ export function AppRoutes() {
           <Route path="/path" element={<ProtectedRoute requireAuth><LearningPath currentLevel={user?.level ?? 1} onSelectNode={() => navigate('/practice')} /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute requireAuth><Profile /></ProtectedRoute>} />
           <Route path="/endurance" element={<ProtectedRoute requireAuth><EnduranceArena /></ProtectedRoute>} />
+          <Route path="/arena" element={<ProtectedRoute requireAuth><ArenaPage /></ProtectedRoute>} />
           <Route path="/interview" element={<ProtectedRoute requireAuth>
             <div className="max-w-4xl mx-auto space-y-6">
               <button onClick={() => navigate('/practice')} className="text-xs text-brand-primary font-bold hover:underline mb-2">

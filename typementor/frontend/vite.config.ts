@@ -39,6 +39,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/arena-ws': {
+        target: 'ws://localhost:5000',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });

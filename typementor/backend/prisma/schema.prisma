@@ -28,6 +28,7 @@ model User {
   academyProgress   String?           @db.Text
   failedLoginAttempts Int             @default(0)
   lockoutUntil        DateTime?
+  arenaPoints         Int               @default(100)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -36,6 +37,9 @@ model User {
   challenges        UserChallengeProgress[]
   mistakes          MistakeSummary[]
   recoveryHistory   RecoveryHistory[]
+  arenaMatchesCreated ArenaMatch[]    @relation("MatchCreator")
+  arenaParticipations ArenaParticipant[]
+  arenaLedgerEntries  ArenaPointLedger[]
 }
 
 model TypingSession {
@@ -164,3 +168,82 @@ model Feedback {
   suggestion   String   @db.Text
   createdAt    DateTime @default(now())
 }
+
+model ArenaMatch {
+  id                 String             @id @default(uuid())
+  matchCode          String             @unique
+  creatorId          String
+  creator            User               @relation("MatchCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  status             String             @default("WAITING") // WAITING | READY | COUNTDOWN | ACTIVE | FINISHED | CANCELLED | EXPIRED
+  passageId          String
+  passageText        String             @db.Text
+  passageTitle       String
+  passageWordCount   Int
+  stakeAmount        Int                @default(0)
+  isRanked           Boolean            @default(false)
+  maxDuration        Int                @default(120)
+  countdownSeconds   Int                @default(5)
+  winnerId           String?
+  isTie              Boolean            @default(false)
+  settlementStatus   String             @default("PENDING") // PENDING | SETTLED | REFUNDED
+  cancellationReason String?
+  idempotencyKey     String?            @unique
+  createdAt          DateTime           @default(now())
+  joinedAt           DateTime?
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  expiresAt          DateTime?
+
+  participants       ArenaParticipant[]
+  ledgerEntries      ArenaPointLedger[]
+
+  @@index([status])
+  @@index([creatorId])
+  @@index([matchCode])
+  @@index([createdAt])
+}
+
+model ArenaParticipant {
+  id               String       @id @default(uuid())
+  matchId          String
+  match            ArenaMatch   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seat             Int          // 1 (creator) or 2 (challenger)
+  isReady          Boolean      @default(false)
+  isConnected      Boolean      @default(true)
+  lastPingAt       DateTime     @default(now())
+  progressPercent  Float        @default(0)
+  charsTyped       Int          @default(0)
+  wpm              Float        @default(0)
+  accuracy         Float        @default(0)
+  completedAt      DateTime?
+  completionTimeMs Int?
+  outcome          String?      // WIN | LOSS | TIE | ABANDONED | CANCELLED
+  stakeLocked      Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([matchId, userId])
+  @@unique([matchId, seat])
+  @@index([userId])
+}
+
+model ArenaPointLedger {
+  id             String      @id @default(uuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchId        String?
+  match          ArenaMatch? @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  amount         Int         // Signed integer change: -50 for lock, +100 for win
+  type           String      // WELCOME_GRANT | STAKE_LOCK | MATCH_WIN | MATCH_REFUND | ADMIN_ADJUSTMENT
+  idempotencyKey String      @unique
+  balanceAfter   Int
+  metadata       String?     @db.Text
+  createdAt      DateTime    @default(now())
+
+  @@index([userId])
+  @@index([matchId])
+  @@index([createdAt])
+}
+

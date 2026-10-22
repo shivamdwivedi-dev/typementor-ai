@@ -314,7 +314,80 @@ const DDL_STATEMENTS = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "Achievement_code_key" ON "Achievement"("code");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "UserAchievement_userId_achievementId_key" ON "UserAchievement"("userId", "achievementId");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "UserChallengeProgress_userId_challengeId_key" ON "UserChallengeProgress"("userId", "challengeId");`,
-  `CREATE INDEX IF NOT EXISTS "RecoveryHistory_userId_idx" ON "RecoveryHistory"("userId");`
+  `CREATE INDEX IF NOT EXISTS "RecoveryHistory_userId_idx" ON "RecoveryHistory"("userId");`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "arenaPoints" INTEGER NOT NULL DEFAULT 100;`,
+  `CREATE TABLE IF NOT EXISTS "ArenaMatch" (
+    "id" TEXT NOT NULL,
+    "matchCode" TEXT NOT NULL,
+    "creatorId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'WAITING',
+    "passageId" TEXT NOT NULL,
+    "passageText" TEXT NOT NULL,
+    "passageTitle" TEXT NOT NULL,
+    "passageWordCount" INTEGER NOT NULL,
+    "stakeAmount" INTEGER NOT NULL DEFAULT 0,
+    "isRanked" BOOLEAN NOT NULL DEFAULT false,
+    "maxDuration" INTEGER NOT NULL DEFAULT 120,
+    "countdownSeconds" INTEGER NOT NULL DEFAULT 5,
+    "winnerId" TEXT,
+    "isTie" BOOLEAN NOT NULL DEFAULT false,
+    "settlementStatus" TEXT NOT NULL DEFAULT 'PENDING',
+    "cancellationReason" TEXT,
+    "idempotencyKey" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "joinedAt" TIMESTAMP(3),
+    "startedAt" TIMESTAMP(3),
+    "finishedAt" TIMESTAMP(3),
+    "expiresAt" TIMESTAMP(3),
+    CONSTRAINT "ArenaMatch_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "ArenaMatch_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
+  );`,
+  `CREATE TABLE IF NOT EXISTS "ArenaParticipant" (
+    "id" TEXT NOT NULL,
+    "matchId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "seat" INTEGER NOT NULL,
+    "isReady" BOOLEAN NOT NULL DEFAULT false,
+    "isConnected" BOOLEAN NOT NULL DEFAULT true,
+    "lastPingAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "progressPercent" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "charsTyped" INTEGER NOT NULL DEFAULT 0,
+    "wpm" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "accuracy" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "completedAt" TIMESTAMP(3),
+    "completionTimeMs" INTEGER,
+    "outcome" TEXT,
+    "stakeLocked" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ArenaParticipant_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "ArenaParticipant_matchId_fkey" FOREIGN KEY ("matchId") REFERENCES "ArenaMatch"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ArenaParticipant_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
+  );`,
+  `CREATE TABLE IF NOT EXISTS "ArenaPointLedger" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "matchId" TEXT,
+    "amount" INTEGER NOT NULL,
+    "type" TEXT NOT NULL,
+    "idempotencyKey" TEXT NOT NULL,
+    "balanceAfter" INTEGER NOT NULL,
+    "metadata" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ArenaPointLedger_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "ArenaPointLedger_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ArenaPointLedger_matchId_fkey" FOREIGN KEY ("matchId") REFERENCES "ArenaMatch"("id") ON DELETE SET NULL ON UPDATE CASCADE
+  );`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ArenaMatch_matchCode_key" ON "ArenaMatch"("matchCode");`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ArenaMatch_idempotencyKey_key" ON "ArenaMatch"("idempotencyKey");`,
+  `CREATE INDEX IF NOT EXISTS "ArenaMatch_status_idx" ON "ArenaMatch"("status");`,
+  `CREATE INDEX IF NOT EXISTS "ArenaMatch_creatorId_idx" ON "ArenaMatch"("creatorId");`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ArenaParticipant_matchId_userId_key" ON "ArenaParticipant"("matchId", "userId");`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ArenaParticipant_matchId_seat_key" ON "ArenaParticipant"("matchId", "seat");`,
+  `CREATE INDEX IF NOT EXISTS "ArenaParticipant_userId_idx" ON "ArenaParticipant"("userId");`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ArenaPointLedger_idempotencyKey_key" ON "ArenaPointLedger"("idempotencyKey");`,
+  `CREATE INDEX IF NOT EXISTS "ArenaPointLedger_userId_idx" ON "ArenaPointLedger"("userId");`,
+  `CREATE INDEX IF NOT EXISTS "ArenaPointLedger_matchId_idx" ON "ArenaPointLedger"("matchId");`
 ];
 
 // Connect the database and initialize tables idempotently (skipped during automated unit/integration tests)
@@ -322,12 +395,28 @@ if (!isTest) {
   prisma.$connect()
     .then(async () => {
       console.log('TypeMentor AI Database connected successfully.');
-      // Run DDL statements asynchronously to ensure tables exist in target PostgreSQL DB
+      // Run DDL statements asynchronously with PostgreSQL advisory lock serialization (Audit B)
       try {
-        for (const stmt of DDL_STATEMENTS) {
-          await prisma.$executeRawUnsafe(stmt);
+        let lockAcquired = false;
+        try {
+          await prisma.$executeRawUnsafe(`SELECT pg_advisory_lock(74294821);`);
+          lockAcquired = true;
+        } catch {
+          // Non-PostgreSQL or pooler without advisory lock support: proceed without lock
         }
-        console.log('TypeMentor AI Database schema tables initialized and verified.');
+
+        try {
+          for (const stmt of DDL_STATEMENTS) {
+            await prisma.$executeRawUnsafe(stmt);
+          }
+          console.log('TypeMentor AI Database schema tables initialized and verified.');
+        } finally {
+          if (lockAcquired) {
+            try {
+              await prisma.$executeRawUnsafe(`SELECT pg_advisory_unlock(74294821);`);
+            } catch {}
+          }
+        }
       } catch (schemaErr: any) {
         console.warn('Database schema DDL warning:', schemaErr.message || schemaErr);
       }
@@ -344,6 +433,7 @@ import analyticsRoutes from './routes/analytics.routes';
 import coachRoutes from './routes/coach.routes';
 import feedbackRoutes from './routes/feedback.routes';
 import adminRoutes from './routes/admin.routes';
+import arenaRoutes from './routes/arena.routes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
@@ -351,6 +441,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/coach', coachRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/arena', arenaRoutes);
 
 // ── Health & Database Readiness check ──────────────────────────────────────────
 const checkHealth = async (_req: Request, res: Response) => {
