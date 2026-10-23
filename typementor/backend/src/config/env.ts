@@ -4,7 +4,7 @@ dotenv.config();
 export const JWT_SECRET = process.env.JWT_SECRET || 'typementor_secret_key_12345';
 export const ADMIN_SECRET = process.env.ADMIN_SECRET || 'typementor_feedback_secret_key_2026';
 
-const adminEmailsRaw = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || 'shivamdwivedi.dev@gmail.com';
+const adminEmailsRaw = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || 'shivamdwivedi.dev@gmail.com,shivamdwivedi280708@gmail.com';
 export const ADMIN_EMAILS = adminEmailsRaw
   .split(',')
   .map(e => e.trim().toLowerCase())

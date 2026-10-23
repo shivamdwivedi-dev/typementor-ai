@@ -12,6 +12,7 @@ export default function BetaFeedback() {
 
   const isDevAdmin = user && (
     user.email.toLowerCase() === 'shivamdwivedi.dev@gmail.com' ||
+    user.email.toLowerCase() === 'shivamdwivedi280708@gmail.com' ||
     (import.meta.env.VITE_ADMIN_EMAIL && user.email.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL.toLowerCase())
   );
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
 import { safeFetch } from '../utils/api';
-import { ShieldAlert, Users, Zap, RefreshCw, Cpu, Activity, Clock, LogIn, ChevronLeft } from 'lucide-react';
+import { ShieldAlert, Users, Zap, RefreshCw, Cpu, Activity, Clock, LogIn, ChevronLeft, Mail, MessageSquare, Calendar } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 
 interface ServerHealth {
@@ -16,6 +16,19 @@ interface ServerHealth {
 interface PopularMode {
   mode: string;
   count: number;
+}
+
+interface FeedbackItem {
+  id: string;
+  name: string;
+  email: string | null;
+  device: string;
+  rating: number;
+  whatWorked: string;
+  whatConfused: string;
+  bugFound: string;
+  suggestion: string;
+  createdAt: string;
 }
 
 interface AdminStats {
@@ -35,6 +48,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { token } = useAuthStore();
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [messages, setMessages] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +71,21 @@ export default function AdminDashboard() {
 
       const data = await response.json();
       setStats(data);
+
+      // Fetch feedback / contact inquiries
+      try {
+        const feedbackRes = await safeFetch('/api/feedback', {
+          headers: {
+            Authorization: `Bearer ${token || ''}`,
+          },
+        });
+        if (feedbackRes.ok) {
+          const feedbackData = await feedbackRes.json();
+          setMessages(Array.isArray(feedbackData) ? feedbackData : []);
+        }
+      } catch (err) {
+        console.warn('Failed to load feedback inquiries:', err);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to connect to the administration API.');
     } finally {
@@ -249,6 +278,92 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* ── 4. Contact Form Inquiries & Feedback Inbox ── */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-brand-border/40 space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-brand-border/30 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-brand-primary/10 p-2.5 rounded-xl text-brand-primary">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    Contact Inquiries & Feedback Inbox
+                    <span className="text-xs bg-brand-primary/20 text-brand-primary px-2 py-0.5 rounded-full font-mono font-bold">
+                      {messages.length} received
+                    </span>
+                  </h2>
+                  <p className="text-xs text-brand-muted">
+                    Messages submitted through the public Contact Us page and in-app feedback modal.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={fetchStats}
+                className="text-xs font-semibold text-brand-muted hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border/40 hover:bg-white/5 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh Inbox
+              </button>
+            </div>
+
+            {messages.length === 0 ? (
+              <div className="text-center py-10 space-y-2">
+                <Mail className="w-8 h-8 text-brand-muted mx-auto opacity-50" />
+                <p className="text-xs text-brand-muted">No messages received yet. Submit a test message on /contact to see it appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((item) => {
+                  const subject = item.whatWorked || 'General Feedback';
+                  const content = item.suggestion || item.bugFound || item.whatWorked;
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 md:p-5 rounded-2xl bg-brand-bg/60 border border-brand-border/30 hover:border-brand-primary/40 transition-all space-y-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white text-sm">{item.name}</span>
+                            {item.email && (
+                              <a
+                                href={`mailto:${item.email}?subject=Re: TypeMentor AI Inquiry`}
+                                className="text-xs text-brand-primary hover:underline flex items-center gap-1"
+                              >
+                                <Mail className="w-3 h-3" />
+                                {item.email}
+                              </a>
+                            )}
+                          </div>
+                          <p className="text-[11px] font-semibold text-brand-primary mt-0.5">{subject}</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-brand-muted">
+                          <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>{new Date(item.createdAt).toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-zinc-300 leading-relaxed bg-black/30 p-3 rounded-xl border border-white/5 font-mono whitespace-pre-wrap">
+                        {content}
+                      </p>
+
+                      <div className="flex flex-wrap items-center justify-between text-[10px] text-brand-muted pt-1">
+                        <span className="truncate max-w-xs opacity-70">Client: {item.device}</span>
+                        {item.email && (
+                          <a
+                            href={`mailto:${item.email}?subject=Re: TypeMentor AI Inquiry`}
+                            className="text-brand-primary font-bold hover:underline"
+                          >
+                            Reply via Email →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       ) : null}
