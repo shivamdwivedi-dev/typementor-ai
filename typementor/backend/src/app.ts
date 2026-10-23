@@ -155,10 +155,12 @@ if (!isProduction && !isTest) {
   });
 }
 
-// ── Global rate limiter: 200 req / 15 min per IP ─────────────────────────────
+// ── Global rate limiter: 1500 req / 15 min per IP (configurable for scale) ──
+const GLOBAL_RATE_LIMIT = parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || '1500', 10) || 1500;
+
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: GLOBAL_RATE_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: resolveClientIp,

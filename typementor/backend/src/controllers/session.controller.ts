@@ -169,12 +169,16 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
       duration === undefined ||
       !Number.isFinite(wpmVal) ||
       wpmVal < 0 ||
+      wpmVal > 400 ||
       !Number.isFinite(accuracyVal) ||
       accuracyVal < 0 ||
+      accuracyVal > 100 ||
       !Number.isFinite(durationVal) ||
       durationVal < 0 ||
+      durationVal > 7200 ||
       !keystrokes ||
-      !Array.isArray(keystrokes)
+      !Array.isArray(keystrokes) ||
+      keystrokes.length > 5000
     ) {
       return res.status(400).json({ error: 'Invalid session data.' });
     }
