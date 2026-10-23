@@ -28,6 +28,14 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- Contact Us — required communication channel for Google AdSense compliance -->
+  <url>
+    <loc>https://typementor-ai-frontend.vercel.app/contact</loc>
+    <lastmod>2026-10-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
   <!-- Privacy Policy — required for trust signals and compliance -->
   <url>
     <loc>https://typementor-ai-frontend.vercel.app/privacy</loc>

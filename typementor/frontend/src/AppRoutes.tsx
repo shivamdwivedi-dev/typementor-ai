@@ -17,6 +17,7 @@ export const routeLoaders = {
   loadInterviewRoom: () => import('./pages/InterviewRoom'),
   loadTypingAcademy: () => import('./pages/TypingAcademy'),
   loadAboutUs: () => import('./pages/AboutUs'),
+  loadContactUs: () => import('./pages/ContactUs'),
   loadPrivacyPolicy: () => import('./pages/PrivacyPolicy'),
   loadTermsOfService: () => import('./pages/TermsOfService'),
   loadAdminDashboard: () => import('./pages/AdminDashboard'),
@@ -34,6 +35,7 @@ const EnduranceArena = React.lazy(() => routeLoaders.loadEnduranceArena());
 const InterviewRoom  = React.lazy(() => routeLoaders.loadInterviewRoom());
 const TypingAcademy  = React.lazy(() => routeLoaders.loadTypingAcademy());
 const AboutUs        = React.lazy(() => routeLoaders.loadAboutUs());
+const ContactUs      = React.lazy(() => routeLoaders.loadContactUs());
 const PrivacyPolicy  = React.lazy(() => routeLoaders.loadPrivacyPolicy());
 const TermsOfService = React.lazy(() => routeLoaders.loadTermsOfService());
 const AdminDashboard = React.lazy(() => routeLoaders.loadAdminDashboard());
@@ -131,7 +133,7 @@ export function AppRoutes() {
     navigate('/academy');
   };
   const handleLandingNavigateToPage = (page: string) => {
-    if (page !== 'privacy' && page !== 'terms' && page !== 'about' && page !== 'auth') {
+    if (page !== 'privacy' && page !== 'terms' && page !== 'about' && page !== 'contact' && page !== 'auth') {
       localStorage.setItem('typementor_is_guest', 'true');
       preloadCoreAppRoutes();
     }
@@ -211,6 +213,7 @@ export function AppRoutes() {
           <Route path="/practice" element={<ProtectedRoute><PracticeBoard /></ProtectedRoute>} />
           <Route path="/academy" element={<ProtectedRoute><TypingAcademy /></ProtectedRoute>} />
           <Route path="/about" element={<AboutUs onBack={() => navigate(-1)} />} />
+          <Route path="/contact" element={<ContactUs onBack={() => navigate(-1)} />} />
           <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
           <Route path="/terms" element={<TermsOfService onBack={() => navigate(-1)} />} />
 

@@ -398,6 +398,8 @@ export default function AppLayout() {
           <div className="flex justify-center gap-4 text-[11px]">
             <Link to="/about" className="hover:text-white hover:underline transition-colors">About Us</Link>
             <span>•</span>
+            <Link to="/contact" className="hover:text-white hover:underline transition-colors">Contact Us</Link>
+            <span>•</span>
             <Link to="/privacy" className="hover:text-white hover:underline transition-colors">Privacy Policy</Link>
             <span>•</span>
             <Link to="/terms" className="hover:text-white hover:underline transition-colors">Terms of Service</Link>
