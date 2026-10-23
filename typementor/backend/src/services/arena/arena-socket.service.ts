@@ -23,6 +23,7 @@ interface SocketSession {
   lastSequenceNumber: number;
   messageWindowStart: number;
   messageCount: number;
+  isAlive: boolean;
 }
 
 export function isAllowedOrigin(origin: string | undefined): boolean {
@@ -77,6 +78,7 @@ export class ArenaSocketService {
   private disconnectTimers = new Map<string, NodeJS.Timeout>(); // key: `${matchId}_${userId}`
   private inFlightMatches = new Map<string, InFlightMatchState>(); // In-memory hot state (0 DB queries during gameplay)
   private recoveryInterval: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private prisma: PrismaClient,
@@ -158,10 +160,40 @@ export class ArenaSocketService {
       this.recoveryInterval.unref();
     }
 
+    // 5. Heartbeat sweeper: terminate dead/unresponsive sockets every 30 seconds
+    this.heartbeatInterval = setInterval(() => {
+      for (const [ws, session] of this.socketSessions.entries()) {
+        if (!session.isAlive) {
+          try {
+            ws.terminate();
+          } catch {}
+          continue;
+        }
+        session.isAlive = false;
+        try {
+          ws.ping();
+        } catch {}
+      }
+    }, 30 * 1000);
+    if (this.heartbeatInterval.unref) {
+      this.heartbeatInterval.unref();
+    }
+
     console.log('✅ Arena WebSocket server initialized on /arena-ws');
   }
 
   private handleConnection(ws: WebSocket, userId: string, email: string): void {
+    // Enforce max 5 concurrent sockets per user to prevent connection exhaustion at 400K scale
+    const existingSockets = this.userSockets.get(userId);
+    if (existingSockets && existingSockets.size >= 5) {
+      const oldest = existingSockets.values().next().value;
+      if (oldest) {
+        try {
+          oldest.close(4000, 'Exceeded max concurrent connections per account');
+        } catch {}
+      }
+    }
+
     const session: SocketSession = {
       userId,
       email,
@@ -169,6 +201,7 @@ export class ArenaSocketService {
       lastSequenceNumber: 0,
       messageWindowStart: Date.now(),
       messageCount: 0,
+      isAlive: true,
     };
 
     this.socketSessions.set(ws, session);
@@ -177,6 +210,11 @@ export class ArenaSocketService {
       this.userSockets.set(userId, new Set());
     }
     this.userSockets.get(userId)!.add(ws);
+
+    // Register pong handler to keep connection alive
+    ws.on('pong', () => {
+      session.isAlive = true;
+    });
 
     // Send initial handshake confirmation
     this.send(ws, 'PONG', { message: 'Authenticated successfully', userId });
@@ -796,6 +834,11 @@ export class ArenaSocketService {
    * Gracefully shuts down all active match timers, intervals, and sockets.
    */
   shutdown(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+
     if (this.recoveryInterval) {
       clearInterval(this.recoveryInterval);
       this.recoveryInterval = null;
