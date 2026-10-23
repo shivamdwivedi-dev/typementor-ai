@@ -84,6 +84,25 @@ export const ArenaPage: React.FC = () => {
     }
   }, [token]);
 
+  // Fetch active/waiting match on load so user is never stuck in lobby
+  const fetchActiveMatch = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await safeFetch('/api/arena/active', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.match) {
+          setActiveMatch(data.match);
+          arenaSocket.send('JOIN_MATCH', { matchId: data.match.id });
+        }
+      }
+    } catch (err) {
+      console.warn('[Arena] Failed to load active match:', err);
+    }
+  }, [token]);
+
   // Connect socket and register listeners
   useEffect(() => {
     if (!token) return;
@@ -147,7 +166,7 @@ export const ArenaPage: React.FC = () => {
       unbindCancelled();
       arenaSocket.disconnect();
     };
-  }, [token, fetchBalance, fetchHistory, fetchOpenMatches]);
+  }, [token, fetchBalance, fetchHistory, fetchOpenMatches, fetchActiveMatch]);
 
   // Initial data loading
   useEffect(() => {
@@ -155,8 +174,9 @@ export const ArenaPage: React.FC = () => {
       fetchBalance();
       fetchOpenMatches();
       fetchHistory();
+      fetchActiveMatch();
     }
-  }, [isAuthenticated, fetchBalance, fetchOpenMatches, fetchHistory]);
+  }, [isAuthenticated, fetchBalance, fetchOpenMatches, fetchHistory, fetchActiveMatch]);
 
   // Handle joining a match room via WebSocket
   const enterMatchRoom = (match: PublicArenaMatch) => {

@@ -47,18 +47,39 @@ export class ArenaMatchService {
       }
     }
 
-    // 2. Prevent creating conflicting active matches
-    const activeMatch = await this.prisma.arenaParticipant.findFirst({
+    // 2. Prevent creating conflicting active matches, auto-cleaning stale/solitary waiting matches
+    const activeParticipation = await this.prisma.arenaParticipant.findFirst({
       where: {
         userId: creatorId,
         match: {
           status: { in: ['WAITING', 'READY', 'COUNTDOWN', 'ACTIVE'] },
         },
       },
+      include: {
+        match: {
+          include: { participants: true },
+        },
+      },
     });
 
-    if (activeMatch) {
-      throw new Error('You are already participating in an active or waiting Arena match. Complete or cancel it first.');
+    if (activeParticipation) {
+      const activeMatch = activeParticipation.match;
+      const isExpired = activeMatch.expiresAt && activeMatch.expiresAt.getTime() < Date.now();
+      const isLoneWaiting = activeMatch.status === 'WAITING' && activeMatch.participants.length <= 1;
+
+      // If the existing match is expired OR is an unjoined WAITING match created by this user, auto-cancel it safely
+      if (isExpired || (isLoneWaiting && activeMatch.creatorId === creatorId)) {
+        await this.prisma.arenaMatch.update({
+          where: { id: activeMatch.id },
+          data: {
+            status: 'CANCELLED',
+            cancellationReason: isExpired ? 'Expired before new match creation' : 'Replaced by creator with new match',
+          },
+        });
+        await this.pointsService.refundMatchStakes(activeMatch.id, 'CANCELLED');
+      } else {
+        throw new Error('You are already participating in an active or waiting Arena match. Complete or cancel it first.');
+      }
     }
 
     // 3. Resolve passage
@@ -272,6 +293,45 @@ export class ArenaMatchService {
     });
 
     await this.pointsService.refundMatchStakes(matchId, 'CANCELLED');
+  }
+
+  /**
+   * Retrieves the current active, waiting, ready, or countdown match for a user (if any).
+   * Automatically resolves/expires stale waiting matches.
+   */
+  async getActiveMatch(userId: string): Promise<PublicArenaMatch | null> {
+    const participation = await this.prisma.arenaParticipant.findFirst({
+      where: {
+        userId,
+        match: {
+          status: { in: ['WAITING', 'READY', 'COUNTDOWN', 'ACTIVE'] },
+        },
+      },
+      include: {
+        match: {
+          include: {
+            creator: true,
+            participants: { include: { user: true } },
+          },
+        },
+      },
+    });
+
+    if (!participation) return null;
+
+    const match = participation.match;
+
+    // Auto-expire stale waiting matches
+    if (match.status === 'WAITING' && match.expiresAt && match.expiresAt.getTime() < Date.now()) {
+      await this.prisma.arenaMatch.update({
+        where: { id: match.id },
+        data: { status: 'EXPIRED', cancellationReason: 'Invitation expired' },
+      });
+      await this.pointsService.refundMatchStakes(match.id, 'EXPIRED');
+      return null;
+    }
+
+    return this.formatPublicMatch(match, userId);
   }
 
   /**

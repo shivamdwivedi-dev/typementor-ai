@@ -42,6 +42,10 @@ router.get('/open', (req: Request, res: Response, next: NextFunction) => {
   arenaController.getOpenMatches(req as AuthRequest, res).catch(next);
 });
 
+router.get('/active', (req: Request, res: Response, next: NextFunction) => {
+  arenaController.getActiveMatch(req as AuthRequest, res).catch(next);
+});
+
 router.post('/matches', arenaActionLimiter, (req: Request, res: Response, next: NextFunction) => {
   arenaController.createMatch(req as AuthRequest, res).catch(next);
 });

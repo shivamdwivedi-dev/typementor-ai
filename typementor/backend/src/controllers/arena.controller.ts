@@ -136,6 +136,21 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getActiveMatch = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const match = await getMatchService().getActiveMatch(userId);
+    res.json({ match });
+  } catch (err: any) {
+    console.error('[Arena Controller] getActiveMatch error:', err);
+    res.status(500).json({ error: err.message || 'Failed to fetch active match' });
+  }
+};
+
 export const cancelMatch = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;

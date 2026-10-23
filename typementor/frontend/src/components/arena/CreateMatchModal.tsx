@@ -28,6 +28,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   if (!isOpen) return null;
 
   const isColdStartError = error !== null && /waking up|timed out/i.test(error);
+  const isExistingMatchError = error !== null && /already participating/i.test(error);
 
   const hasInsufficientBalance = stake > userBalance;
 
@@ -106,6 +107,18 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
                   <span className="block text-amber-300">
                     The backend server is waking up from sleep. Please wait ~15 seconds and try again.
                   </span>
+                )}
+                {isExistingMatchError && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      window.location.reload();
+                    }}
+                    className="inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold hover:bg-amber-500/30 transition-all cursor-pointer"
+                  >
+                    <span>View / Resume Match →</span>
+                  </button>
                 )}
               </div>
             </div>
