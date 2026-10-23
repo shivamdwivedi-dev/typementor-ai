@@ -6,11 +6,13 @@ Allow: /
 Allow: /academy
 Allow: /privacy
 Allow: /terms
+Allow: /ads.txt
 
 # Disallow private/auth-required routes
 Disallow: /dashboard
 Disallow: /profile
 Disallow: /endurance
+Disallow: /arena
 Disallow: /path
 Disallow: /interview
 

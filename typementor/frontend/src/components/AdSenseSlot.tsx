@@ -52,6 +52,9 @@ export default function AdSenseSlot({ slot, className = '' }: AdSenseSlotProps) 
 
   return (
     <aside className={`adsense-slot ${className}`} aria-label="Advertisement">
+      <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-1 select-none text-center">
+        Advertisement
+      </div>
       <ins
         ref={adRef}
         className="adsbygoogle"

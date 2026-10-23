@@ -5,6 +5,7 @@ import AppRoutes from './AppRoutes';
 import { Brain, Loader2 } from 'lucide-react';
 import { trackPageView } from './utils/monitoring';
 import { Analytics } from '@vercel/analytics/react';
+import CookieConsent from './components/CookieConsent';
 
 const SLOW_THRESHOLD_MS = 4000; // Show "server waking up" hint after 4s
 
@@ -62,6 +63,7 @@ export default function App() {
     <>
       <AppRoutes />
       <Analytics />
+      <CookieConsent />
     </>
   );
 }

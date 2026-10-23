@@ -67,8 +67,30 @@ export default function TermsOfService({ onBack }: TermsOfServiceProps) {
           </p>
         </section>
 
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <FileText className="w-4 h-4 text-amber-400" /> 5. Third-Party Services & Advertising
+          </h2>
+          <p className="text-sm text-brand-muted leading-relaxed">
+            TypeMentor AI may incorporate third-party services, including Google AdSense advertising and Google OAuth authentication. Your use of third-party features is subject to the respective terms and privacy policies of those providers.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-indigo-400" /> 6. Contact & Support
+          </h2>
+          <p className="text-sm text-brand-muted leading-relaxed">
+            For terms inquiries, support, or beta feedback, contact{' '}
+            <a href="mailto:shivamdwivedi.dev@gmail.com" className="text-brand-primary font-semibold underline hover:text-white">
+              shivamdwivedi.dev@gmail.com
+            </a>
+            .
+          </p>
+        </section>
+
         <div className="border-t border-brand-border/30 pt-6 flex justify-between items-center text-[11px] text-brand-muted">
-          <span>Last updated: June 2026</span>
+          <span>Last updated: October 2026</span>
           <span>© 2026 TypeMentor AI</span>
         </div>
       </div>

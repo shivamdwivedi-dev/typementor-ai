@@ -60,11 +60,71 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
         <section className="space-y-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Shield className="w-4 h-4 text-brand-primary" /> Advertising & Cookies
+            <Shield className="w-4 h-4 text-brand-primary" /> Third-Party Advertising & Cookies (Google AdSense)
           </h2>
-          <p className="text-sm text-brand-muted leading-relaxed">
-            When enabled, TypeMentor AI uses Google AdSense to display advertisements. Google and its partners may use cookies or similar technologies to deliver, measure, and personalize ads, subject to your choices and applicable law. You can manage ad personalization through Google's Ads Settings and your browser controls. We do not sell your typing metrics or use them to target advertising.
-          </p>
+          <div className="text-sm text-brand-muted leading-relaxed space-y-3">
+            <p>
+              When advertising is enabled, TypeMentor AI partners with third-party vendors, including Google, to serve advertisements when you visit our website.
+            </p>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>
+                <strong className="text-white">Third-Party Cookies:</strong> Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites across the internet.
+              </li>
+              <li>
+                <strong className="text-white">Advertising Cookies:</strong> Google's use of advertising cookies enables it and its partners to serve ads to users based on their visits to TypeMentor AI and/or other sites on the internet.
+              </li>
+              <li>
+                <strong className="text-white">Personalized Ad Opt-Out:</strong> Users may opt out of personalized advertising by visiting{' '}
+                <a
+                  href="https://adssettings.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-primary underline hover:text-white"
+                >
+                  Google Ads Settings
+                </a>
+                . Alternatively, you can opt out of a third-party vendor's use of cookies for personalized advertising by visiting{' '}
+                <a
+                  href="https://www.aboutads.info/choices/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-primary underline hover:text-white"
+                >
+                  www.aboutads.info
+                </a>{' '}
+                or the{' '}
+                <a
+                  href="https://optout.networkadvertising.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-primary underline hover:text-white"
+                >
+                  Network Advertising Initiative Opt-Out Page
+                </a>
+                .
+              </li>
+              <li>
+                <strong className="text-white">Zero Typing Data Targeting:</strong> We do NOT sell, license, or provide your keystroke metrics, typing speed, mistake patterns, or code snippets to advertisers or third-party data brokers.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Lock className="w-4 h-4 text-emerald-400" /> User Rights (GDPR, UK GDPR & CCPA/CPRA)
+          </h2>
+          <div className="text-sm text-brand-muted leading-relaxed space-y-2">
+            <p>
+              Depending on your jurisdiction, you possess specific privacy rights under applicable data protection laws:
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li><strong className="text-white">Right of Access & Portability:</strong> You can view and export your typing history and profile at any time.</li>
+              <li><strong className="text-white">Right to Erasure (Deletion):</strong> You may request the complete deletion of your account and associated typing records.</li>
+              <li><strong className="text-white">Right to Opt Out of Sale/Sharing:</strong> TypeMentor AI does not sell or share personal information for monetary compensation.</li>
+              <li><strong className="text-white">Cookie Control:</strong> You can manage or withdraw consent for non-essential cookies at any time via your browser settings or our on-site cookie choices.</li>
+            </ul>
+          </div>
         </section>
 
         <section className="space-y-4">
@@ -85,8 +145,21 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </p>
         </section>
 
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Shield className="w-4 h-4 text-indigo-400" /> Contact & Data Protection Inquiries
+          </h2>
+          <p className="text-sm text-brand-muted leading-relaxed">
+            If you have questions about this Privacy Policy, your personal data, or wish to exercise your data protection rights, please contact the developer directly at{' '}
+            <a href="mailto:shivamdwivedi.dev@gmail.com" className="text-brand-primary font-semibold underline hover:text-white">
+              shivamdwivedi.dev@gmail.com
+            </a>
+            .
+          </p>
+        </section>
+
         <div className="border-t border-brand-border/30 pt-6 flex justify-between items-center text-[11px] text-brand-muted">
-          <span>Last updated: June 2026</span>
+          <span>Last updated: October 2026</span>
           <span> शिवम द्विवेदी (Shivam Dwivedi)</span>
         </div>
       </div>
