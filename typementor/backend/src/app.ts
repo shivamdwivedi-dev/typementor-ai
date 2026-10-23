@@ -134,7 +134,8 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // ── Body parser (Must come BEFORE sanitization) ──────────────────────────────
-app.use(express.json({ limit: '10mb' }));
+// Limit payload size to 2MB to prevent memory abuse at scale (was 10MB)
+app.use(express.json({ limit: '2mb' }));
 
 // ── Input sanitization ────────────────────────────────────────────────────────
 app.use(sanitizeBody);
@@ -173,8 +174,47 @@ export const authLimiter = rateLimit({
 
 // ── Prisma client & DDL Initialization ─────────────────────────────────────────
 import { PrismaClient } from '@prisma/client';
+
+/**
+ * Production-tuned Prisma client for 400K-user scale.
+ *
+ * Connection pool sizing rationale:
+ *   - Supabase free/pro connection limit is typically 60-100 connections
+ *   - PgBouncer pooler allows many more, but each serverless function/instance
+ *     should claim a modest share to avoid exhaustion
+ *   - Default: 20 connections (adjustable via DB_POOL_SIZE env var)
+ *
+ * Query timeout:
+ *   - Prevents long-running queries from holding connections indefinitely
+ *   - Default: 10 seconds (adjustable via DB_QUERY_TIMEOUT_MS env var)
+ *
+ * Connection timeout:
+ *   - How long to wait for a free connection from the pool before erroring
+ *   - Default: 5 seconds (adjustable via DB_CONNECTION_TIMEOUT_MS env var)
+ */
+const DB_POOL_SIZE = Math.max(2, Math.min(50, parseInt(process.env.DB_POOL_SIZE || '20', 10) || 20));
+const DB_QUERY_TIMEOUT_MS = parseInt(process.env.DB_QUERY_TIMEOUT_MS || '10000', 10) || 10000;
+const DB_CONNECTION_TIMEOUT_MS = parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '5000', 10) || 5000;
+
+function buildDatasourceUrl(): string | undefined {
+  const baseUrl = process.env.DATABASE_URL;
+  if (!baseUrl) return undefined;
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  const params: string[] = [];
+  if (!baseUrl.includes('connection_limit=')) {
+    params.push(`connection_limit=${DB_POOL_SIZE}`);
+  }
+  if (!baseUrl.includes('pool_timeout=')) {
+    params.push(`pool_timeout=${Math.ceil(DB_CONNECTION_TIMEOUT_MS / 1000)}`);
+  }
+  return params.length > 0 ? `${baseUrl}${separator}${params.join('&')}` : baseUrl;
+}
+
 export const prisma = new PrismaClient({
-  datasources: process.env.DATABASE_URL ? { db: { url: process.env.DATABASE_URL } } : undefined,
+  datasources: process.env.DATABASE_URL ? { db: { url: buildDatasourceUrl() } } : undefined,
+  log: isProduction
+    ? [{ level: 'error', emit: 'stdout' }]
+    : [{ level: 'query', emit: 'stdout' }, { level: 'error', emit: 'stdout' }],
 });
 
 const DDL_STATEMENTS = [
@@ -387,7 +427,11 @@ const DDL_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS "ArenaParticipant_userId_idx" ON "ArenaParticipant"("userId");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "ArenaPointLedger_idempotencyKey_key" ON "ArenaPointLedger"("idempotencyKey");`,
   `CREATE INDEX IF NOT EXISTS "ArenaPointLedger_userId_idx" ON "ArenaPointLedger"("userId");`,
-  `CREATE INDEX IF NOT EXISTS "ArenaPointLedger_matchId_idx" ON "ArenaPointLedger"("matchId");`
+  `CREATE INDEX IF NOT EXISTS "ArenaPointLedger_matchId_idx" ON "ArenaPointLedger"("matchId");`,
+  // Production scale indexes (Stage 1: 400K optimization)
+  `CREATE INDEX IF NOT EXISTS "TypingSession_userId_createdAt_idx" ON "TypingSession"("userId", "createdAt");`,
+  `CREATE INDEX IF NOT EXISTS "KeystrokeLog_sessionId_isMistake_idx" ON "KeystrokeLog"("sessionId", "isMistake");`,
+  `CREATE INDEX IF NOT EXISTS "User_lastActiveAt_idx" ON "User"("lastActiveAt");`
 ];
 
 // Connect the database and initialize tables idempotently (skipped during automated unit/integration tests)

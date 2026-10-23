@@ -40,6 +40,8 @@ model User {
   arenaMatchesCreated ArenaMatch[]    @relation("MatchCreator")
   arenaParticipations ArenaParticipant[]
   arenaLedgerEntries  ArenaPointLedger[]
+
+  @@index([lastActiveAt])        // Index: optimizes DAU (daily active users) count queries
 }
 
 model TypingSession {
@@ -62,6 +64,7 @@ model TypingSession {
   keystrokes         KeystrokeLog[]
 
   @@index([userId])
+  @@index([userId, createdAt])   // Composite index: optimizes sorted session queries (getUserSessions, heatmap lookups)
 }
 
 model KeystrokeLog {
@@ -80,6 +83,7 @@ model KeystrokeLog {
   timestamp     DateTime      @default(now())
 
   @@index([sessionId])
+  @@index([sessionId, isMistake]) // Composite index: optimizes heatmap & recovery mistake aggregation queries
 }
 
 model MistakeSummary {
