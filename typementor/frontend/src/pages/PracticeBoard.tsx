@@ -4,7 +4,7 @@ import { useTypingStore } from '../store/TypingStore';
 import { useAuthStore } from '../store/AuthStore';
 import TypingEngine from '../components/TypingEngine';
 const AICoach = React.lazy(() => import('../components/AICoach'));
-import { getApiUrl } from '../utils/api';
+import { getApiUrl, getStorageKey } from '../utils/api';
 import { CODING_TEMPLATES } from '../utils/codingTemplates';
 import { selectNextLesson, extractWeakKeys } from '../utils/lessonEngine';
 import { showPrToast } from '../utils/toastHelper';
@@ -77,20 +77,74 @@ export default function PracticeBoard() {
     const durationSec = Math.max(0.1, (Date.now() - sessionStart) / 1000);
     const idempotencyKey = `practice-${sessionStart}-${mode}-${metrics.keystrokes?.length || 0}`;
 
+    // ── 1. Optimistic Update (0ms latency for numbers on the site) ─────────────
+    const currentUser = useAuthStore.getState().user;
+    if (currentUser) {
+      const gainedChars = metrics.keystrokes?.length || 0;
+      const baseDifficultyMultiplier = difficulty === 1 ? 1.0 : difficulty === 2 ? 1.2 : difficulty === 3 ? 1.4 : difficulty === 4 ? 1.7 : 2.0;
+      const estimatedXp = Math.max(10, Math.round(metrics.wpm * (metrics.accuracy / 100) * baseDifficultyMultiplier));
+      const nextXp = (currentUser.xp || 0) + estimatedXp;
+      const nextLevel = Math.min(100, Math.floor(nextXp / 500) + 1);
+      const nextTotalChars = (currentUser.totalCharacters || 0) + gainedChars;
+      const nextHours = (currentUser.practiceHours || 0) + (durationSec / 3600);
+      const nextWpm = currentUser.lifetimeWpm > 0 ? (currentUser.lifetimeWpm * 0.9 + metrics.wpm * 0.1) : metrics.wpm;
+      const nextAcc = currentUser.lifetimeAccuracy > 0 ? (currentUser.lifetimeAccuracy * 0.9 + metrics.accuracy * 0.1) : metrics.accuracy;
+
+      useAuthStore.getState().updateUserStats({
+        xp: nextXp,
+        level: nextLevel,
+        totalCharacters: nextTotalChars,
+        practiceHours: nextHours,
+        lifetimeWpm: Math.round(nextWpm * 10) / 10,
+        lifetimeAccuracy: Math.round(nextAcc * 10) / 10,
+      });
+
+      // Update local dashboard cache immediately
+      try {
+        const cacheKey = getStorageKey('typementor_dashboard_cache', currentUser.id);
+        const cachedStr = localStorage.getItem(cacheKey);
+        const cached = cachedStr ? JSON.parse(cachedStr) : {};
+        const newSessionItem = {
+          id: idempotencyKey,
+          wpm: Math.round(metrics.wpm),
+          rawWpm: Math.round(metrics.rawWpm || metrics.wpm),
+          accuracy: Math.round(metrics.accuracy),
+          consistency: Math.round(metrics.consistency || 100),
+          mode,
+          duration: Math.round(durationSec),
+          createdAt: new Date().toISOString(),
+          _count: { keystrokes: gainedChars },
+        };
+        const updatedHistory = [newSessionItem, ...(cached.sessionHistory || [])].slice(0, 20);
+        localStorage.setItem(cacheKey, JSON.stringify({ ...cached, sessionHistory: updatedHistory, updatedAt: Date.now() }));
+      } catch (err) {
+        console.warn('Failed to update local dashboard cache:', err);
+      }
+    }
+
     if (isAuthenticated && token) {
       try {
-        const preSessionsRes = await fetch(getApiUrl('/api/sessions?limit=20'), {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        let preSessions: any[] = [];
-        if (preSessionsRes.ok) {
-          preSessions = await preSessionsRes.json();
-        }
+        // Read cached history for instant personal-record comparison
+        let maxWpmBefore = 0;
+        let maxAccBefore = 0;
+        let preTodaySessionsCount = 0;
+        try {
+          const cacheKey = getStorageKey('typementor_dashboard_cache', currentUser?.id);
+          const cachedStr = localStorage.getItem(cacheKey);
+          if (cachedStr) {
+            const cached = JSON.parse(cachedStr);
+            const history = cached.sessionHistory || [];
+            const sameModeRuns = history.filter((s: any) => s.mode === mode && s.id !== idempotencyKey);
+            if (sameModeRuns.length > 0) {
+              maxWpmBefore = Math.max(...sameModeRuns.map((s: any) => s.wpm));
+              maxAccBefore = Math.max(...sameModeRuns.map((s: any) => s.accuracy));
+            }
+            const todayStr = new Date().toDateString();
+            preTodaySessionsCount = history.filter((s: any) => new Date(s.createdAt).toDateString() === todayStr && s.id !== idempotencyKey).length;
+          }
+        } catch {}
 
-        const sameModeRuns = preSessions.filter((s: any) => s.mode === mode);
-        const maxWpmBefore = sameModeRuns.length > 0 ? Math.max(...sameModeRuns.map((s: any) => s.wpm)) : 0;
-        const maxAccBefore = sameModeRuns.length > 0 ? Math.max(...sameModeRuns.map((s: any) => s.accuracy)) : 0;
-
+        // Submit session immediately without blocking on a pre-fetch
         const submitRes = await fetch(getApiUrl('/api/sessions'), {
           method: 'POST',
           headers: {
@@ -124,13 +178,11 @@ export default function PracticeBoard() {
           if (submitData.unlockedAchievements?.length > 0) {
             submitData.unlockedAchievements.forEach((ach: any) => showPrToast(`🏅 ACHIEVEMENT UNLOCKED: ${ach.name}!`));
           }
-          const todayStr = new Date().toDateString();
-          const preTodaySessionsCount = preSessions.filter((s: any) => new Date(s.createdAt).toDateString() === todayStr).length;
           if (preTodaySessionsCount === 2) showPrToast(`🏆 DAILY GOAL COMPLETED! Completed 3 sessions today!`);
         }
 
-        const beatsWpm = metrics.wpm > maxWpmBefore;
-        const beatsAcc = metrics.accuracy > maxAccBefore;
+        const beatsWpm = metrics.wpm > maxWpmBefore && maxWpmBefore > 0;
+        const beatsAcc = metrics.accuracy > maxAccBefore && maxAccBefore > 0;
         if (beatsWpm || beatsAcc) {
           let prMsg = '';
           if (beatsWpm && beatsAcc) prMsg = `👑 NEW PERSONAL RECORD! Mode: ${mode} - Best WPM: ${Math.round(metrics.wpm)} & Best Accuracy: ${Math.round(metrics.accuracy)}%!`;
@@ -139,7 +191,8 @@ export default function PracticeBoard() {
           showPrToast(prMsg);
         }
 
-        useAuthStore.getState().fetchProfile();
+        // Silently refresh profile in background
+        useAuthStore.getState().fetchProfile().catch(() => {});
       } catch (e) {
         console.error('Failed to submit session telemetry, storing locally:', e);
         

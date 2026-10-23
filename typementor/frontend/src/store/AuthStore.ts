@@ -284,6 +284,7 @@ interface AuthState {
 }
 
 const TOKEN_KEY = 'typementor_token';
+const PROFILE_KEY = 'typementor_user_profile';
 
 const safeStorage = {
   getItem: (key: string): string | null => {
@@ -310,22 +311,39 @@ const safeStorage = {
   },
 };
 
+const getInitialCachedUser = (): UserProfile | null => {
+  const raw = safeStorage.getItem(PROFILE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const initialCachedToken = safeStorage.getItem(TOKEN_KEY);
+const initialCachedUser = initialCachedToken ? getInitialCachedUser() : null;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
+  user: initialCachedUser,
+  token: initialCachedToken,
+  isAuthenticated: !!(initialCachedToken && initialCachedUser),
   isOffline: false,
-  // Start true so the app waits for token validation before rendering
-  isBootstrapping: true,
+  // If we already have a cached token and user profile, don't block the UI
+  isBootstrapping: !!initialCachedToken && !initialCachedUser,
   isLoading: false,
   error: null,
 
   clearError: () => set({ error: null }),
   setOffline: (offline: boolean) => set({ isOffline: offline }),
   updateUserStats: (partialUser: Partial<UserProfile>) => {
-    set((state) => ({
-      user: state.user ? { ...state.user, ...partialUser } : null,
-    }));
+    set((state) => {
+      const updated = state.user ? { ...state.user, ...partialUser } : null;
+      if (updated) {
+        safeStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
+      }
+      return { user: updated };
+    });
   },
 
   // ── Validate stored token on app startup ──────────────────────────────────
@@ -346,6 +364,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (response.ok) {
         const data = await response.json();
+        safeStorage.setItem(PROFILE_KEY, JSON.stringify(data));
         await syncAndMigrateAcademyProgress(data, savedToken);
         set({
           token: savedToken,
@@ -360,6 +379,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (response.status === 401 || response.status === 403 || response.status === 444) {
           // Token is expired, invalid, or belongs to a deleted user — purge it
           safeStorage.removeItem(TOKEN_KEY);
+          safeStorage.removeItem(PROFILE_KEY);
           set({ token: null, user: null, isAuthenticated: false, isBootstrapping: false, isOffline: false });
         } else {
           // Server error (500, etc.) — do NOT delete token, assume offline/temporary issue
@@ -403,6 +423,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       safeStorage.setItem(TOKEN_KEY, data.token);
+      safeStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
       set({
         token: data.token,
         user: data.user,
@@ -448,6 +469,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       safeStorage.setItem(TOKEN_KEY, data.token);
+      safeStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
       set({
         token: data.token,
         user: data.user,
@@ -492,6 +514,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       safeStorage.setItem(TOKEN_KEY, data.token);
+      safeStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
       set({
         token: data.token,
         user: data.user,
@@ -518,6 +541,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // ── Logout ────────────────────────────────────────────────────────────────
   logout: () => {
     safeStorage.removeItem(TOKEN_KEY);
+    safeStorage.removeItem(PROFILE_KEY);
     set({ token: null, user: null, isAuthenticated: false, error: null });
   },
 
@@ -542,6 +566,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(data.error || 'Failed to fetch profile.');
       }
 
+      safeStorage.setItem(PROFILE_KEY, JSON.stringify(data));
       await syncAndMigrateAcademyProgress(data, token);
       set({ user: data, isLoading: false, isOffline: false });
     } catch (err: unknown) {

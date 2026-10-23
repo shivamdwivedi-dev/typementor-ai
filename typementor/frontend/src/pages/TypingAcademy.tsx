@@ -303,6 +303,23 @@ export default function TypingAcademy() {
       // 2. Submit session telemetry to count towards XP, Level, and Streak!
       const durationSec = Math.max(1, ((endTime || Date.now()) - (startTime || Date.now() - 30000)) / 1000);
       const idempotencyKey = `academy-${id}-${startTime || Date.now()}`;
+
+      // Optimistic update for 0ms UI latency
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        const estXp = Math.max(15, Math.round(wpm * (accuracy / 100) * 1.2));
+        const nXp = (currentUser.xp || 0) + estXp;
+        const nLevel = Math.min(100, Math.floor(nXp / 500) + 1);
+        const nChars = (currentUser.totalCharacters || 0) + (selectedLesson?.text?.length || 50);
+        const nHours = (currentUser.practiceHours || 0) + (durationSec / 3600);
+        useAuthStore.getState().updateUserStats({
+          xp: nXp,
+          level: nLevel,
+          totalCharacters: nChars,
+          practiceHours: nHours,
+        });
+      }
+
       const sessionPayload = {
         idempotencyKey,
         mode: `Academy`,

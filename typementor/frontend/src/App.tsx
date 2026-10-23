@@ -28,12 +28,13 @@ export default function App() {
     trackPageView(location.pathname + location.search);
   }, [location.pathname, location.search]);
 
-  // ── Keep-Alive ping every 13 minutes to prevent Render cold starts ──────────
+  // ── Keep-Alive ping immediately on load + every 13 minutes to prevent Render cold starts ──────────
   useEffect(() => {
     const PING_INTERVAL = 13 * 60 * 1000; // 13 minutes
     const ping = () => {
       fetch('https://typementor-backend1.onrender.com/health', { method: 'GET' }).catch(() => {});
     };
+    ping(); // Immediate background wake-up ping on initial visit
     const interval = setInterval(ping, PING_INTERVAL);
     return () => clearInterval(interval);
   }, []);

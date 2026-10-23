@@ -87,5 +87,41 @@ describe('AuthStore Zustand Store', () => {
     expect(state.user?.totalCharacters).toBe(120);
     expect(state.user?.name).toBe('Tester'); // original fields preserved
   });
+
+  it('should immediately reflect optimistic metric changes without waiting for server response', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'user-xyz',
+        email: 'speed@typementor.ai',
+        name: 'Flash',
+        level: 5,
+        xp: 2200,
+        streak: 10,
+        longestStreak: 12,
+        totalCharacters: 15000,
+        lifetimeWpm: 82,
+        lifetimeAccuracy: 97,
+        practiceHours: 4.5,
+        createdAt: new Date().toISOString(),
+      },
+      isAuthenticated: true,
+    });
+
+    // Simulate optimistic finish of a 95 WPM session
+    useAuthStore.getState().updateUserStats({
+      xp: 2320,
+      level: 5,
+      totalCharacters: 15250,
+      lifetimeWpm: 83.3,
+      lifetimeAccuracy: 97.2,
+      practiceHours: 4.52,
+    });
+
+    const updated = useAuthStore.getState().user;
+    expect(updated?.xp).toBe(2320);
+    expect(updated?.totalCharacters).toBe(15250);
+    expect(updated?.lifetimeWpm).toBe(83.3);
+    expect(updated?.lifetimeAccuracy).toBe(97.2);
+  });
 });
 

@@ -235,25 +235,42 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
           });
 
           const mistakeKeys = formattedKeystrokes.filter((k) => k.isMistake);
-          for (const m of mistakeKeys) {
-            await tx.mistakeSummary.upsert({
-              where: {
-                userId_expectedKey_pressedKey: {
-                  userId,
-                  expectedKey: m.expectedKey.toUpperCase(),
-                  pressedKey: m.actualKey.toUpperCase(),
-                },
-              },
-              update: {
-                count: { increment: 1 },
-              },
-              create: {
-                userId,
-                expectedKey: m.expectedKey.toUpperCase(),
-                pressedKey: m.actualKey.toUpperCase(),
-                count: 1,
-              },
-            });
+          if (mistakeKeys.length > 0) {
+            const aggregatedMistakes = new Map<string, { expectedKey: string; pressedKey: string; count: number }>();
+            for (const m of mistakeKeys) {
+              const expectedKey = m.expectedKey.toUpperCase();
+              const pressedKey = m.actualKey.toUpperCase();
+              const key = `${expectedKey}:${pressedKey}`;
+              const existing = aggregatedMistakes.get(key);
+              if (existing) {
+                existing.count += 1;
+              } else {
+                aggregatedMistakes.set(key, { expectedKey, pressedKey, count: 1 });
+              }
+            }
+
+            await Promise.all(
+              Array.from(aggregatedMistakes.values()).map((entry) =>
+                tx.mistakeSummary.upsert({
+                  where: {
+                    userId_expectedKey_pressedKey: {
+                      userId,
+                      expectedKey: entry.expectedKey,
+                      pressedKey: entry.pressedKey,
+                    },
+                  },
+                  update: {
+                    count: { increment: entry.count },
+                  },
+                  create: {
+                    userId,
+                    expectedKey: entry.expectedKey,
+                    pressedKey: entry.pressedKey,
+                    count: entry.count,
+                  },
+                })
+              )
+            );
           }
         }
 

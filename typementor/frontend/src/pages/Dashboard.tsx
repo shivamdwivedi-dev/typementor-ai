@@ -44,56 +44,101 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
 
   const progressPercent = Math.min(100, Math.round((completedLessons.length / 50) * 100));
   const [heatmapMode, setHeatmapMode] = useState<'usage' | 'mistakes' | 'risk'>('usage');
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [sessionHistory, setSessionHistory] = useState<SessionRow[]>([]);
-  const [recoveryReport, setRecoveryReport] = useState<any>({
-    mostMistypedKey: 'None',
-    confusionKey: 'None',
-    accuracyLoss: 0,
-    predictedWpmGain: 0,
-    weakKeyToday: 'None',
-    weakKeyLastWeek: 'None',
-    improvementRate: 0,
-    history: [],
-  });
-  const [enduranceStats, setEnduranceStats] = useState<any>({
-    longestSession: 0,
-    bestWpm: 0,
-    totalWords: 0
-  });
 
-  // Fetch heatmap data and session history from backend
+  // Load cached dashboard metrics from localStorage immediately for 0ms initial render latency
+  const getCachedDashboard = () => {
+    try {
+      const key = getStorageKey('typementor_dashboard_cache', user?.id);
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const initialCache = useMemo(() => getCachedDashboard(), [user?.id]);
+
+  const [analytics, setAnalytics] = useState<any>(initialCache?.analytics || null);
+  const [sessionHistory, setSessionHistory] = useState<SessionRow[]>(initialCache?.sessionHistory || []);
+  const [recoveryReport, setRecoveryReport] = useState<any>(
+    initialCache?.recoveryReport || {
+      mostMistypedKey: 'None',
+      confusionKey: 'None',
+      accuracyLoss: 0,
+      predictedWpmGain: 0,
+      weakKeyToday: 'None',
+      weakKeyLastWeek: 'None',
+      improvementRate: 0,
+      history: [],
+    }
+  );
+  const [enduranceStats, setEnduranceStats] = useState<any>(
+    initialCache?.enduranceStats || {
+      longestSession: 0,
+      bestWpm: 0,
+      totalWords: 0,
+    }
+  );
+
+  // Helper to persist updated partial dashboard cache
+  const updateDashboardCache = (partial: Record<string, any>) => {
+    try {
+      const key = getStorageKey('typementor_dashboard_cache', user?.id);
+      const current = getCachedDashboard() || {};
+      localStorage.setItem(key, JSON.stringify({ ...current, ...partial, updatedAt: Date.now() }));
+    } catch (e) {
+      console.warn('[Dashboard] Failed to cache metrics:', e);
+    }
+  };
+
+  // Fetch heatmap data and session history from backend independently (no blocking Promise.all)
   const fetchAnalytics = async () => {
     const token = localStorage.getItem('typementor_token');
     if (!token) return;
 
-    try {
-      const [heatmapRes, sessionsRes, recoveryRes, enduranceRes] = await Promise.all([
-        safeFetch('/api/analytics/heatmap', { headers: { Authorization: `Bearer ${token}` } }),
-        safeFetch('/api/sessions?limit=20', { headers: { Authorization: `Bearer ${token}` } }),
-        safeFetch('/api/analytics/recovery-report', { headers: { Authorization: `Bearer ${token}` } }),
-        safeFetch('/api/analytics/endurance', { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+    // 1. Session history (fastest, immediately populates PRs and activity table)
+    safeFetch('/api/sessions?limit=20', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((rows: SessionRow[] | null) => {
+        if (rows && Array.isArray(rows)) {
+          setSessionHistory(rows);
+          updateDashboardCache({ sessionHistory: rows });
+        }
+      })
+      .catch((e) => console.warn('[Dashboard] Failed to load sessions:', e));
 
-      if (heatmapRes.ok) {
-        const data = await heatmapRes.json();
-        setAnalytics(data);
-      }
-      if (sessionsRes.ok) {
-        const rows: SessionRow[] = await sessionsRes.json();
-        setSessionHistory(rows);
-      }
-      if (recoveryRes.ok) {
-        const recoveryData = await recoveryRes.json();
-        setRecoveryReport(recoveryData);
-      }
-      if (enduranceRes.ok) {
-        const enduranceData = await enduranceRes.json();
-        setEnduranceStats(enduranceData);
-      }
-    } catch (e) {
-      console.error('Failed to load analytics', e);
-    }
+    // 2. Heatmap telemetry
+    safeFetch('/api/analytics/heatmap', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setAnalytics(data);
+          updateDashboardCache({ analytics: data });
+        }
+      })
+      .catch((e) => console.warn('[Dashboard] Failed to load heatmap:', e));
+
+    // 3. Recovery weak-key report
+    safeFetch('/api/analytics/recovery-report', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setRecoveryReport(data);
+          updateDashboardCache({ recoveryReport: data });
+        }
+      })
+      .catch((e) => console.warn('[Dashboard] Failed to load recovery report:', e));
+
+    // 4. Endurance mode statistics
+    safeFetch('/api/analytics/endurance', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setEnduranceStats(data);
+          updateDashboardCache({ enduranceStats: data });
+        }
+      })
+      .catch((e) => console.warn('[Dashboard] Failed to load endurance stats:', e));
   };
 
   useEffect(() => {
@@ -308,7 +353,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
           <div className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Lifetime WPM</div>
           <div className="text-3xl font-black text-brand-primary mt-2 font-mono">
-            {sessionHistory.length > 0 ? Math.round(user?.lifetimeWpm || wpm || 0) : 0}
+            {Math.round(user?.lifetimeWpm || (sessionHistory.length > 0 ? bestOverallWpm : wpm) || 0)}
           </div>
           <p className="text-[10px] text-brand-muted mt-1 leading-none">Your long-term average</p>
         </div>
@@ -316,7 +361,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
           <div className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Avg Accuracy</div>
           <div className="text-3xl font-black text-brand-success mt-2 font-mono">
-            {sessionHistory.length > 0 ? Math.round(user?.lifetimeAccuracy || 0) : 0}%
+            {Math.round(user?.lifetimeAccuracy || (sessionHistory.length > 0 ? bestOverallAccuracy : 0) || 0)}%
           </div>
           <p className="text-[10px] text-brand-muted mt-1 leading-none">Across your sessions</p>
         </div>
@@ -324,7 +369,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
           <div className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Characters Typed</div>
           <div className="text-3xl font-black text-white mt-2 font-mono">
-            {sessionHistory.length > 0 ? (user?.totalCharacters || 0).toLocaleString() : '0'}
+            {(user?.totalCharacters || 0).toLocaleString()}
           </div>
           <p className="text-[10px] text-brand-muted mt-1 leading-none">Total characters practiced</p>
         </div>
@@ -332,7 +377,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 relative overflow-hidden">
           <div className="text-xs font-semibold text-brand-muted uppercase tracking-wider">Practice Time</div>
           <div className="text-3xl font-black text-brand-warning mt-2 font-mono">
-            {sessionHistory.length > 0 ? (user?.practiceHours || 0).toFixed(1) : '0.0'} hrs
+            {(user?.practiceHours || 0).toFixed(1)} hrs
           </div>
           <p className="text-[10px] text-brand-muted mt-1 leading-none">Time spent practicing</p>
         </div>
@@ -485,7 +530,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] text-brand-muted uppercase font-extrabold tracking-wider">Best Overall Speed</span>
-            <div className="text-2xl font-black text-brand-primary font-mono">{sessionHistory.length > 0 ? (bestOverallWpm || Math.round(user?.lifetimeWpm || wpm || 0)) : 0} WPM</div>
+            <div className="text-2xl font-black text-brand-primary font-mono">{bestOverallWpm || Math.round(user?.lifetimeWpm || wpm || 0)} WPM</div>
           </div>
           <div className="bg-brand-primary/10 p-2.5 rounded-xl text-brand-primary">
             <Trophy className="w-6 h-6" />
@@ -495,7 +540,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         <div className="glass-panel p-5 rounded-2xl border border-brand-border/40 flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] text-brand-muted uppercase font-extrabold tracking-wider">Best Overall Accuracy</span>
-            <div className="text-2xl font-black text-brand-success font-mono">{sessionHistory.length > 0 ? (bestOverallAccuracy || Math.round(user?.lifetimeAccuracy || 0)) : 0}%</div>
+            <div className="text-2xl font-black text-brand-success font-mono">{bestOverallAccuracy || Math.round(user?.lifetimeAccuracy || 0)}%</div>
           </div>
           <div className="bg-brand-success/10 p-2.5 rounded-xl text-brand-success">
             <Award className="w-6 h-6" />

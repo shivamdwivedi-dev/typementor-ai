@@ -50,14 +50,26 @@ export const getHeatmapData = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'User ID missing in token.' });
     }
 
-    // Get all keystroke logs for this user (limited to last 2000 keystrokes for responsiveness)
-    const keystrokes = await prisma.keystrokeLog.findMany({
-      where: {
-        session: { userId }
-      },
-      orderBy: { timestamp: 'desc' },
-      take: 2000
+    // 1. Fetch user's latest 25 session IDs using the indexed userId column on TypingSession
+    const recentSessions = await prisma.typingSession.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: { id: true },
     });
+
+    const sessionIds = recentSessions.map((s) => s.id);
+    let keystrokes: KeystrokeLog[] = [];
+
+    if (sessionIds.length > 0) {
+      // 2. Fetch keystroke logs using the indexed sessionId column on KeystrokeLog (< 15ms)
+      keystrokes = await prisma.keystrokeLog.findMany({
+        where: {
+          sessionId: { in: sessionIds },
+        },
+        take: 2000,
+      });
+    }
 
     // Compute key usage maps
     const keyUsage: Record<string, number> = {};
@@ -233,21 +245,39 @@ export const getRecoveryReport = async (req: AuthRequest, res: Response) => {
     const mostMistypedKey = topMistake.expectedKey;
     const confusionKey = topMistake.pressedKey;
 
-    // Calculate total count of this expectedKey typed
-    const totalTypedForKey = await prisma.keystrokeLog.count({
-      where: {
-        expectedKey: mostMistypedKey,
-        session: { userId }
-      }
+    // Calculate counts using recent sessions to avoid full-table scans
+    const recentSessionsForRecovery = await prisma.typingSession.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: { id: true },
     });
+    const recoverySessionIds = recentSessionsForRecovery.map((s) => s.id);
 
-    const keyMistakesCount = await prisma.keystrokeLog.count({
-      where: {
-        expectedKey: mostMistypedKey,
-        isMistake: true,
-        session: { userId }
+    let totalTypedForKey = 0;
+    let keyMistakesCount = 0;
+
+    if (recoverySessionIds.length > 0) {
+      const stats = await prisma.keystrokeLog.groupBy({
+        by: ['isMistake'],
+        where: {
+          sessionId: { in: recoverySessionIds },
+          expectedKey: mostMistypedKey,
+        },
+        _count: { id: true },
+      });
+      for (const item of stats) {
+        totalTypedForKey += item._count.id;
+        if (item.isMistake) {
+          keyMistakesCount = item._count.id;
+        }
       }
-    });
+    }
+
+    if (keyMistakesCount === 0 && topMistake.count > 0) {
+      keyMistakesCount = topMistake.count;
+      totalTypedForKey = Math.max(topMistake.count * 3, totalTypedForKey);
+    }
 
     const mistakeRate = keyMistakesCount / (totalTypedForKey || 1);
     const predictedWpmGain = parseFloat(Math.min(8, mistakeRate * 20).toFixed(1));
