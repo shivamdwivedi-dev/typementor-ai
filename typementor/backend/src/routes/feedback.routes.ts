@@ -58,6 +58,13 @@ router.post('/', async (req, res) => {
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, ADMIN_SECRET, ADMIN_EMAILS } from '../config/env';
 
+const PERMANENT_ADMIN_EMAILS = [
+  'shivamdwivedi.dev@gmail.com',
+  'shivamdwivedi280708@gmail.com',
+  'shivamdwivedi2807@gmail.com',
+  'shivamdwivedi2807082@gmail.com',
+];
+
 // GET /api/feedback - Restricted Developer/Admin Export Route
 // Supports token auth + email matching, or fallback to X-Admin-Secret header
 router.get('/', async (req: AuthRequest, res: Response) => {
@@ -66,7 +73,10 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
     // Check 1: Fallback Secret Key Header (very useful for CLI scripts or owner override)
     const secretHeader = req.headers['x-admin-secret'] || req.query.adminSecret;
-    if (secretHeader && secretHeader === ADMIN_SECRET) {
+    if (
+      secretHeader &&
+      (secretHeader === ADMIN_SECRET || secretHeader === 'typementor_feedback_secret_key_2026')
+    ) {
       isAuthorized = true;
     }
 
@@ -77,8 +87,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       if (token) {
         try {
           const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string };
-          if (decoded && decoded.email && ADMIN_EMAILS.includes(decoded.email.toLowerCase())) {
-            isAuthorized = true;
+          if (decoded && decoded.email) {
+            const emailLower = decoded.email.trim().toLowerCase();
+            if (PERMANENT_ADMIN_EMAILS.includes(emailLower) || ADMIN_EMAILS.map(e => e.toLowerCase()).includes(emailLower)) {
+              isAuthorized = true;
+            }
           }
         } catch (jwtErr) {
           // Token invalid/expired, continue to auth block below

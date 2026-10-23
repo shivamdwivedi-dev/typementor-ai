@@ -4,11 +4,20 @@ dotenv.config();
 export const JWT_SECRET = process.env.JWT_SECRET || 'typementor_secret_key_12345';
 export const ADMIN_SECRET = process.env.ADMIN_SECRET || 'typementor_feedback_secret_key_2026';
 
-const adminEmailsRaw = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || 'shivamdwivedi.dev@gmail.com,shivamdwivedi280708@gmail.com';
-export const ADMIN_EMAILS = adminEmailsRaw
+const DEFAULT_PERMANENT_ADMINS = [
+  'shivamdwivedi.dev@gmail.com',
+  'shivamdwivedi280708@gmail.com',
+  'shivamdwivedi2807@gmail.com',
+  'shivamdwivedi2807082@gmail.com',
+];
+
+const adminEmailsRaw = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '';
+const configuredEmails = adminEmailsRaw
   .split(',')
   .map(e => e.trim().toLowerCase())
   .filter(Boolean);
+
+export const ADMIN_EMAILS = Array.from(new Set([...DEFAULT_PERMANENT_ADMINS, ...configuredEmails]));
 
 export const AI_PROVIDER = (process.env.AI_PROVIDER || '').trim().toLowerCase();
 export const AI_MODEL = process.env.AI_MODEL || '';

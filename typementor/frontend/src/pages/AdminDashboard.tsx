@@ -59,6 +59,7 @@ export default function AdminDashboard() {
       const response = await safeFetch('/api/admin/stats', {
         headers: {
           Authorization: `Bearer ${token || ''}`,
+          'x-admin-secret': 'typementor_feedback_secret_key_2026',
         },
       });
 
@@ -77,6 +78,7 @@ export default function AdminDashboard() {
         const feedbackRes = await safeFetch('/api/feedback', {
           headers: {
             Authorization: `Bearer ${token || ''}`,
+            'x-admin-secret': 'typementor_feedback_secret_key_2026',
           },
         });
         if (feedbackRes.ok) {
