@@ -20,21 +20,38 @@ interface CachedSessionResult {
 
 const EXPLICIT_IDEMPOTENCY_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const AUTO_IDEMPOTENCY_TTL_MS = 15 * 1000; // 15 seconds for identical payload retries without explicit key
+const MAX_IDEMPOTENCY_ENTRIES = 5000; // Bound in-memory cache to prevent memory ballooning at 400K scale
 
 const completedIdempotencyCache = new Map<string, CachedSessionResult>();
 const inFlightIdempotencyMap = new Map<string, Promise<CachedSessionResult>>();
 const userSubmissionQueues = new Map<string, Promise<unknown>>();
 
+// Cached achievement definitions to avoid redundant database reads inside transactions
+let cachedAchievements: any[] | null = null;
+let achievementsCacheExpiry = 0;
+
 export function clearSessionIdempotencyCache(): void {
   completedIdempotencyCache.clear();
   inFlightIdempotencyMap.clear();
   userSubmissionQueues.clear();
+  cachedAchievements = null;
+  achievementsCacheExpiry = 0;
 }
 
 function pruneExpiredIdempotencyEntries(now: number): void {
-  for (const [key, entry] of completedIdempotencyCache.entries()) {
-    if (entry.expiresAt <= now) {
-      completedIdempotencyCache.delete(key);
+  // Bound map size to prevent memory exhaustion under high concurrency
+  if (completedIdempotencyCache.size > MAX_IDEMPOTENCY_ENTRIES) {
+    for (const [key, entry] of completedIdempotencyCache.entries()) {
+      if (entry.expiresAt <= now) {
+        completedIdempotencyCache.delete(key);
+      }
+    }
+    // If still above threshold, evict oldest entries
+    if (completedIdempotencyCache.size > MAX_IDEMPOTENCY_ENTRIES) {
+      const keysToEvict = Array.from(completedIdempotencyCache.keys()).slice(0, 1000);
+      for (const k of keysToEvict) {
+        completedIdempotencyCache.delete(k);
+      }
     }
   }
 }
@@ -317,19 +334,34 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
         const newStreak = resolveStreakTransition(user.lastActiveAt, user.streak, 'session', sessionCompletedAt);
         const newLongestStreak = Math.max(user.longestStreak, newStreak);
 
-        const totalSessionsCount = await tx.typingSession.count({ where: { userId } });
-        const allSessions = await tx.typingSession.findMany({
-          where: { userId },
-          select: { wpm: true, accuracy: true },
-        });
+        // 4. Calculate XP, Streak, and Lifetime Stats (Optimized O(1) DB aggregation)
+        let totalSessionsCount = 1;
+        let avgWpm = wpmVal;
+        let avgAccuracy = accuracyVal;
 
-        const safeDivisor = Math.max(1, totalSessionsCount);
-        const avgWpm = allSessions.reduce((sum: number, s: SessionWpmAccuracy) => sum + s.wpm, 0) / safeDivisor;
-        const avgAccuracy = allSessions.reduce((sum: number, s: SessionWpmAccuracy) => sum + s.accuracy, 0) / safeDivisor;
+        if (typeof (tx.typingSession as any).aggregate === 'function') {
+          const stats = await (tx.typingSession as any).aggregate({
+            where: { userId },
+            _avg: { wpm: true, accuracy: true },
+            _count: { id: true },
+          });
+          totalSessionsCount = stats?._count?.id || 1;
+          avgWpm = stats?._avg?.wpm !== null && stats?._avg?.wpm !== undefined ? stats._avg.wpm : wpmVal;
+          avgAccuracy = stats?._avg?.accuracy !== null && stats?._avg?.accuracy !== undefined ? stats._avg.accuracy : accuracyVal;
+        } else {
+          totalSessionsCount = await tx.typingSession.count({ where: { userId } });
+          const allSessions = await tx.typingSession.findMany({
+            where: { userId },
+            select: { wpm: true, accuracy: true },
+          });
+          const safeDivisor = Math.max(1, totalSessionsCount);
+          avgWpm = allSessions.reduce((sum: number, s: SessionWpmAccuracy) => sum + s.wpm, 0) / safeDivisor;
+          avgAccuracy = allSessions.reduce((sum: number, s: SessionWpmAccuracy) => sum + s.accuracy, 0) / safeDivisor;
+        }
 
         const projectedTotalCharacters = user.totalCharacters + keystrokes.length;
 
-        // 5. Check and Award Achievements within the same transaction
+        // 5. Check and Award Achievements with cached definition lookups
         const unlockedAchievements: any[] = [];
         const alreadyUnlocked = await tx.userAchievement.findMany({
           where: { userId },
@@ -337,7 +369,13 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
         });
         const unlockedIds = new Set(alreadyUnlocked.map((a: AchievementIdSelect) => a.achievementId));
 
-        const allAchievements = await tx.achievement.findMany();
+        // Use cached achievement catalog or refresh if expired
+        const now = Date.now();
+        if (!cachedAchievements || achievementsCacheExpiry <= now) {
+          cachedAchievements = await tx.achievement.findMany();
+          achievementsCacheExpiry = now + 60 * 60 * 1000; // 1 hour TTL
+        }
+        const allAchievements = cachedAchievements || [];
 
         let achievementXp = 0;
         for (const ach of allAchievements) {

@@ -42,6 +42,19 @@ const { state, mockPrisma } = vi.hoisted(() => {
           .filter((s) => s.userId === where.userId)
           .map((s) => ({ wpm: s.wpm, accuracy: s.accuracy }));
       }),
+      aggregate: vi.fn(async ({ where }: any) => {
+        const userSessions = state.sessions.filter((s) => s.userId === where.userId);
+        const count = userSessions.length;
+        if (count === 0) {
+          return { _count: { id: 0 }, _avg: { wpm: null, accuracy: null } };
+        }
+        const totalWpm = userSessions.reduce((sum, s) => sum + s.wpm, 0);
+        const totalAcc = userSessions.reduce((sum, s) => sum + s.accuracy, 0);
+        return {
+          _count: { id: count },
+          _avg: { wpm: totalWpm / count, accuracy: totalAcc / count },
+        };
+      }),
     },
     keystrokeLog: {
       createMany: vi.fn(async ({ data }: any) => {
