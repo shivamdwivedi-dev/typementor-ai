@@ -172,13 +172,15 @@ export default function BetaFeedback() {
 
   return (
     <>
-      {/* Floating Send Feedback Button */}
+      {/* Floating Send Feedback Button (Compact & Unobtrusive) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 z-45 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold px-4 py-3 rounded-xl shadow-lg shadow-brand-primary/25 hover:shadow-brand-primary/35 transition-all text-xs flex items-center gap-2 border border-indigo-400/30"
+        className="fixed bottom-4 left-4 z-40 bg-zinc-900/90 hover:bg-zinc-800/95 text-zinc-300 hover:text-white font-medium px-2.5 py-1.5 rounded-lg border border-zinc-700/60 shadow-lg backdrop-blur-md transition-all text-xs flex items-center gap-1.5 active:scale-95 group"
+        title="Send Beta Feedback"
+        aria-label="Send Beta Feedback"
       >
-        <MessageSquare className="w-4 h-4 animate-pulse" />
-        <span>Beta Feedback</span>
+        <MessageSquare className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+        <span className="text-[11px] font-semibold tracking-tight">Feedback</span>
       </button>
 
       {/* Feedback Modal Overlay */}

@@ -56,7 +56,7 @@ export default function AdminDashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await safeFetch('/api/admin/stats', {
+      const response = await safeFetch('/api/admin/stats?adminSecret=typementor_feedback_secret_key_2026', {
         headers: {
           Authorization: `Bearer ${token || ''}`,
           'x-admin-secret': 'typementor_feedback_secret_key_2026',
@@ -75,7 +75,7 @@ export default function AdminDashboard() {
 
       // Fetch feedback / contact inquiries
       try {
-        const feedbackRes = await safeFetch('/api/feedback', {
+        const feedbackRes = await safeFetch('/api/feedback?adminSecret=typementor_feedback_secret_key_2026', {
           headers: {
             Authorization: `Bearer ${token || ''}`,
             'x-admin-secret': 'typementor_feedback_secret_key_2026',
@@ -145,12 +145,22 @@ export default function AdminDashboard() {
       {error ? (
         <div className="glass-panel p-8 rounded-2xl border border-brand-danger/30 bg-brand-danger/5 text-center space-y-4">
           <p className="text-sm text-brand-danger font-bold">{error}</p>
-          <button
-            onClick={() => navigate('/practice')}
-            className="px-4 py-2 rounded-xl bg-brand-card border border-brand-border text-xs font-bold text-white hover:bg-brand-border/40 transition-colors"
-          >
-            Return to practice
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={fetchStats}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white transition-all shadow-md active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              Retry Connection
+            </button>
+            <button
+              onClick={() => navigate('/practice')}
+              className="px-4 py-2 rounded-xl bg-brand-card border border-brand-border text-xs font-bold text-white hover:bg-brand-border/40 transition-colors"
+            >
+              Return to practice
+            </button>
+          </div>
         </div>
       ) : isLoading && !stats ? (
         <div className="min-h-[40vh] flex items-center justify-center">

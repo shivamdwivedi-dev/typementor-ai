@@ -79,6 +79,8 @@ const isTest = process.env.NODE_ENV === "test";
 
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://typementor-ai-frontend.vercel.app",
+  "https://typementor.ai",
+  "https://www.typementor.ai",
   "http://localhost:5173",
   "http://localhost:3000",
   "http://127.0.0.1:5173",
@@ -112,7 +114,11 @@ const corsOptions: cors.CorsOptions = {
       const isVercel =
         hostname.endsWith(".vercel.app");
 
-      if (isLocalhost || isNgrok || isVercel) {
+      const isCustomDomain =
+        hostname === "typementor.ai" ||
+        hostname.endsWith(".typementor.ai");
+
+      if (isLocalhost || isNgrok || isVercel || isCustomDomain) {
         return callback(null, true);
       }
 
@@ -133,6 +139,8 @@ const corsOptions: cors.CorsOptions = {
     "idempotency-key",
     "X-Idempotency-Key",
     "x-idempotency-key",
+    "x-admin-secret",
+    "X-Admin-Secret",
   ],
   optionsSuccessStatus: 204,
 };
