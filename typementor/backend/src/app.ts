@@ -498,11 +498,25 @@ app.use('/api/arena', arenaRoutes);
 
 // ── Health & Database Readiness check ──────────────────────────────────────────
 const checkHealth = async (_req: Request, res: Response) => {
+  const startTime = Date.now();
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.status(200).json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
+    const pingMs = Date.now() - startTime;
+    res.status(200).json({
+      status: 'ok',
+      database: 'connected',
+      dbPingMs: pingMs,
+      uptimeSeconds: Math.round(process.uptime()),
+      memoryHeapMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      timestamp: new Date().toISOString()
+    });
   } catch (err: any) {
-    res.status(503).json({ status: 'degraded', database: 'disconnected', error: err.message });
+    res.status(503).json({
+      status: 'degraded',
+      database: 'disconnected',
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
   }
 };
 
@@ -512,9 +526,15 @@ app.get('/api/health', checkHealth);
 
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Unhandled Server Error:', err.message);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
+  const isProd = process.env.NODE_ENV === 'production';
+  const statusCode = err.status && Number.isInteger(err.status) && err.status >= 400 && err.status < 600
+    ? err.status
+    : 500;
+
+  console.error(`[Unhandled Error ${statusCode}]`, err.message);
+
+  res.status(statusCode).json({
+    error: isProd && statusCode === 500 ? 'Internal Server Error' : err.message || 'Internal Server Error',
   });
 });
 
