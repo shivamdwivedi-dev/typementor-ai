@@ -1,11 +1,18 @@
 import { Request, Response } from 'express';
 import { prisma } from '../app';
+import { adminStatsCache } from '../utils/cache';
 
 /**
  * Retrieves operation telemetry for the administrator dashboard.
+ * Caches output for 10 seconds to avoid repeating 7 aggregate queries on frequent admin polling.
  */
 export async function getAdminStats(req: Request, res: Response) {
   try {
+    const cachedStats = adminStatsCache.get('admin:stats');
+    if (cachedStats) {
+      return res.status(200).json(cachedStats);
+    }
+
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -80,7 +87,7 @@ export async function getAdminStats(req: Request, res: Response) {
     // 7. Error & feedback submissions count
     const feedbackCount = await prisma.feedback.count();
 
-    res.status(200).json({
+    const statsResult = {
       dau: dauCount,
       totalUsers,
       newRegistrations,
@@ -91,7 +98,10 @@ export async function getAdminStats(req: Request, res: Response) {
       serverHealth,
       popularModes,
       feedbackCount,
-    });
+    };
+
+    adminStatsCache.set('admin:stats', statsResult);
+    res.status(200).json(statsResult);
   } catch (error: any) {
     console.error('[Admin Stats Error]', error);
     res.status(500).json({ error: 'Failed to retrieve administrator telemetry.' });

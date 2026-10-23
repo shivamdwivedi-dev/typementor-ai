@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import * as dotenv from 'dotenv';
 import { sanitizeBody, blockSqlInjection } from './middleware/sanitize.middleware';
@@ -54,6 +55,12 @@ export function resolveClientIp(req: Request): string {
 }
 
 app.set('trust proxy', resolveTrustProxyConfig());
+
+// ── Response compression (gzip/deflate for 400K scale bandwidth reduction) ──
+app.use(compression({
+  threshold: 1024, // Only compress responses larger than 1KB
+  level: 6,        // Balanced compression ratio vs CPU overhead
+}));
 
 // ── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet({

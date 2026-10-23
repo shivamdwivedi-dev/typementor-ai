@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { KeystrokeLog } from '@prisma/client';
 import { prisma } from '../app';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { heatmapCache, recoveryCache } from '../utils/cache';
 
 // QWERTY mappings for fingers
 const KEY_TO_FINGER: Record<string, string> = {
@@ -48,6 +49,12 @@ export const getHeatmapData = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     if (!userId) {
       return res.status(400).json({ error: 'User ID missing in token.' });
+    }
+
+    const cacheKey = `heatmap:${userId}`;
+    const cached = heatmapCache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json(cached);
     }
 
     // 1. Fetch user's latest 25 session IDs using the indexed userId column on TypingSession
@@ -189,7 +196,7 @@ export const getHeatmapData = async (req: AuthRequest, res: Response) => {
       }
     });
 
-    return res.status(200).json({
+    const responsePayload = {
       keyUsage,
       keyMistakes,
       weakKeys,
@@ -199,7 +206,10 @@ export const getHeatmapData = async (req: AuthRequest, res: Response) => {
       handReport,
       commonMistakes,
       weakestFinger,
-    });
+    };
+
+    heatmapCache.set(cacheKey, responsePayload);
+    return res.status(200).json(responsePayload);
   } catch (error: unknown) {
     console.error('Heatmap analysis error:', error);
     return res.status(500).json({ error: 'An error occurred generating keyboard analytics.' });
@@ -211,6 +221,12 @@ export const getRecoveryReport = async (req: AuthRequest, res: Response) => {
     const userId = req.user?.id;
     if (!userId) {
       return res.status(400).json({ error: 'User ID missing in token.' });
+    }
+
+    const cacheKey = `recovery:${userId}`;
+    const cached = recoveryCache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json(cached);
     }
 
     const user = await prisma.user.findUnique({
@@ -297,7 +313,7 @@ export const getRecoveryReport = async (req: AuthRequest, res: Response) => {
       improvementRate = Math.round(latestScore - baselineScore);
     }
 
-    return res.status(200).json({
+    const recoveryPayload = {
       mostMistypedKey,
       confusionKey,
       accuracyLoss,
@@ -307,7 +323,10 @@ export const getRecoveryReport = async (req: AuthRequest, res: Response) => {
       weakKeyLastWeek,
       improvementRate,
       history,
-    });
+    };
+
+    recoveryCache.set(cacheKey, recoveryPayload);
+    return res.status(200).json(recoveryPayload);
   } catch (error: unknown) {
     console.error('Error fetching recovery report:', error);
     return res.status(500).json({ error: 'An error occurred generating weak-key recovery report.' });
@@ -343,6 +362,8 @@ export const saveRecoveryScore = async (req: AuthRequest, res: Response) => {
         recoveryScore: parseFloat(recoveryScore || 0),
       },
     });
+
+    recoveryCache.delete(`recovery:${userId}`);
 
     return res.status(201).json(entry);
   } catch (error: unknown) {

@@ -5,6 +5,7 @@ import { Challenge } from '@prisma/client';
 import { prisma } from '../app';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { getStreakOnLogin, resolveStreakTransition } from '../services/gamification.service';
+import { profileCache, invalidateUserCaches } from '../utils/cache';
 
 import { JWT_SECRET } from '../config/env';
 
@@ -221,6 +222,12 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'User ID missing in token.' });
     }
 
+    const cacheKey = `profile:${userId}`;
+    const cachedProfile = profileCache.get(cacheKey);
+    if (cachedProfile) {
+      return res.status(200).json(cachedProfile);
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -264,6 +271,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
     // Strip passwordHash before sending
     const { passwordHash, ...profileData } = user;
 
+    profileCache.set(cacheKey, profileData);
     return res.status(200).json(profileData);
   } catch (error: unknown) {
     console.error('Profile fetch error:', error);
@@ -457,6 +465,8 @@ export const updateLastActivity = async (req: AuthRequest, res: Response) => {
       }
     });
 
+    invalidateUserCaches(userId);
+
     return res.status(200).json({
       success: true,
       lastActivity: updatedUser.lastActivity
@@ -488,6 +498,8 @@ export const updateAcademyProgress = async (req: AuthRequest, res: Response) => 
         academyProgress: progressString
       }
     });
+
+    invalidateUserCaches(userId);
 
     return res.status(200).json({
       success: true,
@@ -528,6 +540,8 @@ export const spendXp = async (req: AuthRequest, res: Response) => {
         xp: currentXp - amount
       }
     });
+
+    invalidateUserCaches(userId);
 
     return res.status(200).json({
       success: true,

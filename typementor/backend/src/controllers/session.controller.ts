@@ -7,6 +7,7 @@ import {
   getLevelFromCumulativeXp,
   resolveStreakTransition,
 } from '../services/gamification.service';
+import { invalidateUserCaches } from '../utils/cache';
 
 // Local types matching Prisma select shapes
 type SessionWpmAccuracy = { wpm: number; accuracy: number };
@@ -487,6 +488,7 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
         };
 
         completedIdempotencyCache.set(cacheKey, result);
+        invalidateUserCaches(userId);
         return result;
       };
 
