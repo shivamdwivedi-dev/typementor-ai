@@ -35,6 +35,8 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
     .filter(Boolean);
 
   const DEFAULT_ALLOWED_ORIGINS = [
+    'https://typementor.in',
+    'https://www.typementor.in',
     'https://typementor-ai-frontend.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',
@@ -55,7 +57,13 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
     const isNgrok = hostname.endsWith('.ngrok-free.app') || hostname.endsWith('.ngrok.app');
     const isVercel = hostname.endsWith('.vercel.app');
 
-    return isLocalhost || isNgrok || isVercel;
+    const isCustomDomain =
+      hostname === 'typementor.in' ||
+      hostname.endsWith('.typementor.in') ||
+      hostname === 'typementor.ai' ||
+      hostname.endsWith('.typementor.ai');
+
+    return isLocalhost || isNgrok || isVercel || isCustomDomain;
   } catch {
     return false;
   }

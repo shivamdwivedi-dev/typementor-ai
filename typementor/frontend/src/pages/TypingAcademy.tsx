@@ -886,7 +886,7 @@ export default function TypingAcademy() {
       <SEOMeta
         title="Typing Academy — TypeMentor AI | Structured Typing Lessons"
         description="Learn to type faster with TypeMentor AI's Typing Academy. 50+ structured lessons covering home row basics, coding syntax, and advanced touch typing. Free for everyone."
-        canonical="https://typementor-ai-frontend.vercel.app/academy"
+        canonical="https://www.typementor.in/academy"
       />
       {/* CSS Confetti keyframes styling */}
       <style>{`

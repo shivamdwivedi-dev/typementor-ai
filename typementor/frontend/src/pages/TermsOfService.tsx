@@ -11,7 +11,7 @@ export default function TermsOfService({ onBack }: TermsOfServiceProps) {
       <SEOMeta
         title="Terms of Service — TypeMentor AI"
         description="TypeMentor AI terms of service. Beta software terms covering data storage, guest mode limitations, AI coaching guidelines, and service change policies."
-        canonical="https://typementor-ai-frontend.vercel.app/terms"
+        canonical="https://www.typementor.in/terms"
       />
       <button
         onClick={onBack}

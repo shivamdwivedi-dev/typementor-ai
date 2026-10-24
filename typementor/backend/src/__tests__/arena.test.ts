@@ -401,6 +401,8 @@ describe('Arena Feature Test Suite', () => {
       expect(isAllowedOrigin('http://localhost:5173')).toBe(true);
       expect(isAllowedOrigin('http://localhost:3000')).toBe(true);
       expect(isAllowedOrigin('https://typementor-ai-frontend.vercel.app')).toBe(true);
+      expect(isAllowedOrigin('https://typementor.in')).toBe(true);
+      expect(isAllowedOrigin('https://www.typementor.in')).toBe(true);
       expect(isAllowedOrigin('https://preview-deploy.vercel.app')).toBe(true);
 
       expect(isAllowedOrigin('https://untrusted-malicious-site.com')).toBe(false);

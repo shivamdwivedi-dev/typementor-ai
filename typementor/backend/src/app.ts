@@ -78,6 +78,8 @@ const isProduction = process.env.NODE_ENV === "production";
 const isTest = process.env.NODE_ENV === "test";
 
 const DEFAULT_ALLOWED_ORIGINS = [
+  "https://typementor.in",
+  "https://www.typementor.in",
   "https://typementor-ai-frontend.vercel.app",
   "https://typementor.ai",
   "https://www.typementor.ai",
@@ -115,6 +117,8 @@ const corsOptions: cors.CorsOptions = {
         hostname.endsWith(".vercel.app");
 
       const isCustomDomain =
+        hostname === "typementor.in" ||
+        hostname.endsWith(".typementor.in") ||
         hostname === "typementor.ai" ||
         hostname.endsWith(".typementor.ai");
 

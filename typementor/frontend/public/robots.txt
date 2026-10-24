@@ -1,5 +1,5 @@
 # robots.txt — TypeMentor AI
-# https://typementor-ai-frontend.vercel.app/
+# https://www.typementor.in/
 
 User-agent: *
 Allow: /
@@ -17,4 +17,4 @@ Disallow: /path
 Disallow: /interview
 
 # Sitemap location
-Sitemap: https://typementor-ai-frontend.vercel.app/sitemap.xml
+Sitemap: https://www.typementor.in/sitemap.xml

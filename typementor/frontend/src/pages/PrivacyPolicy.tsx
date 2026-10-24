@@ -11,7 +11,7 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
       <SEOMeta
         title="Privacy Policy — TypeMentor AI"
         description="TypeMentor AI privacy policy. Learn how we handle typing analytics, Google authentication, local browser storage, and beta feedback. Your data is never sold or shared."
-        canonical="https://typementor-ai-frontend.vercel.app/privacy"
+        canonical="https://www.typementor.in/privacy"
       />
       <button
         onClick={onBack}

@@ -6,69 +6,69 @@
 
   <!-- Homepage — highest priority public entry point -->
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/</loc>
-    <lastmod>2026-07-07</lastmod>
+    <loc>https://www.typementor.in/</loc>
+    <lastmod>2026-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
 
   <!-- Typing Academy — public, guest-accessible educational content -->
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/academy</loc>
-    <lastmod>2026-07-07</lastmod>
+    <loc>https://www.typementor.in/academy</loc>
+    <lastmod>2026-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <!-- About Us — publisher credibility & mission for Google AdSense compliance -->
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/about</loc>
-    <lastmod>2026-10-23</lastmod>
+    <loc>https://www.typementor.in/about</loc>
+    <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <!-- Contact Us — required communication channel for Google AdSense compliance -->
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/contact</loc>
-    <lastmod>2026-10-23</lastmod>
+    <loc>https://www.typementor.in/contact</loc>
+    <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <!-- Typing Guides Hub & Educational Research Modules (Google AdSense Content Core) -->
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/guides</loc>
+    <loc>https://www.typementor.in/guides</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/guides/touch-typing-foundations</loc>
+    <loc>https://www.typementor.in/guides/touch-typing-foundations</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/guides/developer-syntax-optimization</loc>
+    <loc>https://www.typementor.in/guides/developer-syntax-optimization</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/guides/ergonomics-rsi-prevention</loc>
+    <loc>https://www.typementor.in/guides/ergonomics-rsi-prevention</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/guides/keystroke-dynamics-neuroplasticity</loc>
+    <loc>https://www.typementor.in/guides/keystroke-dynamics-neuroplasticity</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/guides/speed-bursts-and-error-recovery</loc>
+    <loc>https://www.typementor.in/guides/speed-bursts-and-error-recovery</loc>
     <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -76,15 +76,15 @@
 
   <!-- Privacy Policy — required for trust signals and compliance -->
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/privacy</loc>
-    <lastmod>2026-07-07</lastmod>
+    <loc>https://www.typementor.in/privacy</loc>
+    <lastmod>2026-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
 
   <!-- Terms of Service — required for trust signals and compliance -->
   <url>
-    <loc>https://typementor-ai-frontend.vercel.app/terms</loc>
+    <loc>https://www.typementor.in/terms</loc>
     <lastmod>2026-07-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>

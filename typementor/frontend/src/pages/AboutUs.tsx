@@ -94,7 +94,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
       <SEOMeta
         title="About Us — TypeMentor AI"
         description="Learn about TypeMentor AI, our mission to help developers and writers master touch typing, avoid repetitive strain injury (RSI), and our privacy-first adaptive coaching technology."
-        canonical="https://typementor-ai-frontend.vercel.app/about"
+        canonical="https://www.typementor.in/about"
       />
 
       {/* Back button */}
