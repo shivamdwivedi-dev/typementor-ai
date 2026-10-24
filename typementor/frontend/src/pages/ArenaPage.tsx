@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../store/AuthStore';
 import { safeFetch } from '../utils/api';
 import { arenaSocket, SocketStatus } from '../utils/arenaSocket';
@@ -13,6 +15,7 @@ import { ArenaLiveMatch } from '../components/arena/ArenaLiveMatch';
 import { ArenaResults } from '../components/arena/ArenaResults';
 
 export const ArenaPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, token, isAuthenticated } = useAuthStore();
 
   const [activeMatch, setActiveMatch] = useState<PublicArenaMatch | null>(null);
@@ -249,17 +252,28 @@ export const ArenaPage: React.FC = () => {
 
       {/* 2. Main Dynamic Views */}
       {!activeMatch ? (
-        <ArenaLobby
-          userBalance={balance}
-          onOpenCreate={() => setIsCreateOpen(true)}
-          onOpenJoin={() => setIsJoinOpen(true)}
-          onJoinOpenMatch={handleJoinOpenMatch}
-          history={history}
-          openMatches={openMatches}
-          isLoadingHistory={isLoadingHistory}
-          isLoadingOpenMatches={isLoadingOpenMatches}
-          socketStatus={socketStatus}
-        />
+        <div className="max-w-4xl mx-auto w-full space-y-4">
+          <div>
+            <button
+              onClick={() => navigate('/arena')}
+              className="inline-flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-zinc-900/50 border border-zinc-800"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Arena Hub</span>
+            </button>
+          </div>
+          <ArenaLobby
+            userBalance={balance}
+            onOpenCreate={() => setIsCreateOpen(true)}
+            onOpenJoin={() => setIsJoinOpen(true)}
+            onJoinOpenMatch={handleJoinOpenMatch}
+            history={history}
+            openMatches={openMatches}
+            isLoadingHistory={isLoadingHistory}
+            isLoadingOpenMatches={isLoadingOpenMatches}
+            socketStatus={socketStatus}
+          />
+        </div>
       ) : activeMatch.status === 'FINISHED' ? (
         <ArenaResults
           match={activeMatch}

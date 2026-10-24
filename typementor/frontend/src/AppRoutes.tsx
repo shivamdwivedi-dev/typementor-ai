@@ -21,27 +21,31 @@ export const routeLoaders = {
   loadPrivacyPolicy: () => import('./pages/PrivacyPolicy'),
   loadTermsOfService: () => import('./pages/TermsOfService'),
   loadAdminDashboard: () => import('./pages/AdminDashboard'),
+  loadArenaHub: () => import('./pages/ArenaHub'),
   loadArenaPage: () => import('./pages/ArenaPage'),
+  loadConquestPreview: () => import('./pages/ConquestPreview'),
   loadGuidesHub: () => import('./pages/GuidesHub'),
 };
 
 // ── Lazy-loaded pages (code splitting by route) ────────────────────────────
-const LandingPage    = React.lazy(() => routeLoaders.loadLandingPage());
-const AuthPage       = React.lazy(() => routeLoaders.loadAuthPage());
-const PracticeBoard  = React.lazy(() => routeLoaders.loadPracticeBoard());
-const Dashboard      = React.lazy(() => routeLoaders.loadDashboard());
-const LearningPath   = React.lazy(() => routeLoaders.loadLearningPath());
-const Profile        = React.lazy(() => routeLoaders.loadProfile());
-const EnduranceArena = React.lazy(() => routeLoaders.loadEnduranceArena());
-const InterviewRoom  = React.lazy(() => routeLoaders.loadInterviewRoom());
-const TypingAcademy  = React.lazy(() => routeLoaders.loadTypingAcademy());
-const AboutUs        = React.lazy(() => routeLoaders.loadAboutUs());
-const ContactUs      = React.lazy(() => routeLoaders.loadContactUs());
-const PrivacyPolicy  = React.lazy(() => routeLoaders.loadPrivacyPolicy());
-const TermsOfService = React.lazy(() => routeLoaders.loadTermsOfService());
-const AdminDashboard = React.lazy(() => routeLoaders.loadAdminDashboard());
-const ArenaPage      = React.lazy(() => routeLoaders.loadArenaPage());
-const GuidesHub      = React.lazy(() => routeLoaders.loadGuidesHub());
+const LandingPage     = React.lazy(() => routeLoaders.loadLandingPage());
+const AuthPage        = React.lazy(() => routeLoaders.loadAuthPage());
+const PracticeBoard   = React.lazy(() => routeLoaders.loadPracticeBoard());
+const Dashboard       = React.lazy(() => routeLoaders.loadDashboard());
+const LearningPath    = React.lazy(() => routeLoaders.loadLearningPath());
+const Profile         = React.lazy(() => routeLoaders.loadProfile());
+const EnduranceArena  = React.lazy(() => routeLoaders.loadEnduranceArena());
+const InterviewRoom   = React.lazy(() => routeLoaders.loadInterviewRoom());
+const TypingAcademy   = React.lazy(() => routeLoaders.loadTypingAcademy());
+const AboutUs         = React.lazy(() => routeLoaders.loadAboutUs());
+const ContactUs       = React.lazy(() => routeLoaders.loadContactUs());
+const PrivacyPolicy   = React.lazy(() => routeLoaders.loadPrivacyPolicy());
+const TermsOfService  = React.lazy(() => routeLoaders.loadTermsOfService());
+const AdminDashboard  = React.lazy(() => routeLoaders.loadAdminDashboard());
+const ArenaHub        = React.lazy(() => routeLoaders.loadArenaHub());
+const ArenaPage       = React.lazy(() => routeLoaders.loadArenaPage());
+const ConquestPreview = React.lazy(() => routeLoaders.loadConquestPreview());
+const GuidesHub       = React.lazy(() => routeLoaders.loadGuidesHub());
 
 let hasPreloadedCoreRoutes = false;
 
@@ -248,7 +252,9 @@ export function AppRoutes() {
           <Route path="/path" element={<ProtectedRoute requireAuth><LearningPath currentLevel={user?.level ?? 1} onSelectNode={() => navigate('/practice')} /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute requireAuth><Profile /></ProtectedRoute>} />
           <Route path="/endurance" element={<ProtectedRoute requireAuth><EnduranceArena /></ProtectedRoute>} />
-          <Route path="/arena" element={<ProtectedRoute requireAuth><ArenaPage /></ProtectedRoute>} />
+          <Route path="/arena" element={<ProtectedRoute requireAuth><ArenaHub /></ProtectedRoute>} />
+          <Route path="/arena/duel" element={<ProtectedRoute requireAuth><ArenaPage /></ProtectedRoute>} />
+          <Route path="/arena/conquest" element={<ProtectedRoute requireAuth><ConquestPreview /></ProtectedRoute>} />
           <Route path="/interview" element={<ProtectedRoute requireAuth>
             <div className="max-w-4xl mx-auto space-y-6">
               <button onClick={() => navigate('/practice')} className="text-xs text-brand-primary font-bold hover:underline mb-2">

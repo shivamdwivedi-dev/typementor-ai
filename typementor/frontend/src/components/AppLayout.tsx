@@ -231,7 +231,7 @@ export default function AppLayout() {
 
             {isAuthenticated && (
               <>
-                <Link to="/arena" title="Typing Arena" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/arena' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
+                <Link to="/arena" title="Typing Arena" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname.startsWith('/arena') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
                   <Swords className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Arena</span>
                 </Link>
                 <Link to="/endurance" title="Endurance Arena" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/endurance' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
@@ -351,7 +351,7 @@ export default function AppLayout() {
 
                 {isAuthenticated && (
                   <>
-                    <Link onClick={() => setIsMobileMenuOpen(false)} to="/arena" className={`w-full px-4 py-3.5 rounded-xl font-medium text-sm flex items-center gap-3 transition-all duration-200 ${location.pathname === '/arena' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 border border-blue-400/40' : 'bg-zinc-900/40 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>
+                    <Link onClick={() => setIsMobileMenuOpen(false)} to="/arena" className={`w-full px-4 py-3.5 rounded-xl font-medium text-sm flex items-center gap-3 transition-all duration-200 ${location.pathname.startsWith('/arena') ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 border border-blue-400/40' : 'bg-zinc-900/40 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>
                       <Swords className="w-4 h-4" /> Typing Arena
                     </Link>
                     <Link onClick={() => setIsMobileMenuOpen(false)} to="/endurance" className={`w-full px-4 py-3.5 rounded-xl font-medium text-sm flex items-center gap-3 transition-all duration-200 ${location.pathname === '/endurance' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 border border-blue-400/40' : 'bg-zinc-900/40 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>
