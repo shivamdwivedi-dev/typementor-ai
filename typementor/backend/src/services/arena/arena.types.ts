@@ -44,6 +44,7 @@ export interface PublicParticipantInfo {
   charsTyped: number;
   wpm: number;
   accuracy: number;
+  completionTimeMs?: number | null;
   outcome?: string | null;
 }
 

@@ -264,6 +264,7 @@ export const ArenaPage: React.FC = () => {
         <ArenaResults
           match={activeMatch}
           currentUserId={currentUserId}
+          opponentProgress={opponentProgress}
           onRematch={() => setIsCreateOpen(true)}
           onReturnToLobby={handleReturnToLobby}
         />

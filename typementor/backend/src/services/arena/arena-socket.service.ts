@@ -61,12 +61,22 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   }
 }
 
+interface InFlightParticipantProgress {
+  userId: string;
+  progressPercent: number;
+  charsTyped: number;
+  wpm: number;
+  accuracy: number;
+  lastProgressAt: Date;
+}
+
 interface InFlightMatchState {
   matchId: string;
   status: string;
   passageText: string;
   startedAt: Date;
   maxDuration: number;
+  participants: Map<string, InFlightParticipantProgress>;
 }
 
 export class ArenaSocketService {
@@ -438,6 +448,7 @@ export class ArenaSocketService {
       passageText: match.passageText,
       startedAt,
       maxDuration: match.maxDuration,
+      participants: new Map(),
     });
 
     this.broadcastToRoom(matchId, 'MATCH_STARTED', {
@@ -486,6 +497,7 @@ export class ArenaSocketService {
         passageText: match.passageText,
         startedAt: match.startedAt,
         maxDuration: match.maxDuration,
+        participants: new Map(),
       };
       this.inFlightMatches.set(matchId, inFlight);
     }
@@ -501,6 +513,16 @@ export class ArenaSocketService {
     );
 
     if (!evalResult.isValid) return;
+
+    // Track latest authoritative progress in memory for accurate end-of-match stats
+    inFlight.participants.set(session.userId, {
+      userId: session.userId,
+      progressPercent: evalResult.progressPercent,
+      charsTyped: evalResult.correctChars,
+      wpm: evalResult.wpm,
+      accuracy: evalResult.accuracy,
+      lastProgressAt: new Date(now),
+    });
 
     // Broadcast snapshot to opponent instantly (0 DB queries in the hot path!)
     this.broadcastToRoom(
@@ -534,7 +556,13 @@ export class ArenaSocketService {
       include: { participants: true },
     });
 
-    if (!match || match.status !== 'ACTIVE' || !match.startedAt) {
+    if (!match || !match.startedAt) {
+      this.send(ws, 'ERROR', { message: 'Match not found', resId: reqId });
+      return;
+    }
+
+    const isRecentlyFinished = match.status === 'FINISHED' && match.winnerId && match.winnerId !== session.userId;
+    if (match.status !== 'ACTIVE' && !isRecentlyFinished) {
       this.send(ws, 'ERROR', { message: 'Match is not actively running', resId: reqId });
       return;
     }
@@ -547,7 +575,27 @@ export class ArenaSocketService {
       completedAt
     );
 
-    // Save participant final score
+    // If opponent already won, save current player as LOSS with their full final stats!
+    if (isRecentlyFinished || match.winnerId) {
+      await this.prisma.arenaParticipant.updateMany({
+        where: { matchId, userId: session.userId },
+        data: {
+          charsTyped: match.passageText.length,
+          progressPercent: 100,
+          wpm: finalScore.wpm,
+          accuracy: finalScore.accuracy,
+          completedAt,
+          completionTimeMs: finalScore.completionTimeMs,
+          outcome: 'LOSS',
+        },
+      });
+
+      const updatedMatch = await this.matchService.getMatchDetails(matchId, session.userId);
+      this.broadcastToRoom(matchId, 'MATCH_FINISHED', updatedMatch);
+      return;
+    }
+
+    // Current player is the first to finish! Declare winner
     await this.prisma.arenaParticipant.updateMany({
       where: { matchId, userId: session.userId },
       data: {
@@ -561,24 +609,21 @@ export class ArenaSocketService {
       },
     });
 
-    // Check if match is already settled by opponent
-    if (match.winnerId) {
-      // Opponent already won; mark current player as LOSS
-      await this.prisma.arenaParticipant.updateMany({
-        where: { matchId, userId: session.userId },
-        data: { outcome: 'LOSS' },
-      });
-      return;
-    }
-
-    // Current player is the first to finish! Declare winner
     const winnerId = session.userId;
     const opponent = match.participants.find((p) => p.userId !== winnerId);
 
     if (opponent) {
+      const inFlight = this.inFlightMatches.get(matchId);
+      const oppProg = inFlight?.participants.get(opponent.userId);
       await this.prisma.arenaParticipant.updateMany({
         where: { matchId, userId: opponent.userId },
-        data: { outcome: 'LOSS' },
+        data: {
+          outcome: 'LOSS',
+          charsTyped: oppProg?.charsTyped ?? 0,
+          progressPercent: oppProg?.progressPercent ?? 0,
+          wpm: oppProg?.wpm ?? 0,
+          accuracy: oppProg?.accuracy ?? 0,
+        },
       });
     }
 
@@ -615,6 +660,29 @@ export class ArenaSocketService {
 
     this.clearMatchTimers(matchId);
 
+    // Save in-flight progress for all participants to the database
+    const inFlight = this.inFlightMatches.get(matchId);
+    if (inFlight) {
+      for (const p of match.participants) {
+        const prog = inFlight.participants.get(p.userId);
+        if (prog) {
+          await this.prisma.arenaParticipant.updateMany({
+            where: { matchId, userId: p.userId },
+            data: {
+              charsTyped: prog.charsTyped,
+              progressPercent: prog.progressPercent,
+              wpm: prog.wpm,
+              accuracy: prog.accuracy,
+            },
+          });
+          p.charsTyped = prog.charsTyped;
+          p.progressPercent = prog.progressPercent;
+          p.wpm = prog.wpm;
+          p.accuracy = prog.accuracy;
+        }
+      }
+    }
+
     const [p1, p2] = match.participants;
     let winnerId: string | null = null;
     let isTie = false;
@@ -636,6 +704,26 @@ export class ArenaSocketService {
       }
     } else if (p1) {
       winnerId = p1.userId;
+    }
+
+    // Set participant outcomes
+    if (!isTie && winnerId) {
+      await this.prisma.arenaParticipant.updateMany({
+        where: { matchId, userId: winnerId },
+        data: { outcome: 'WIN' },
+      });
+      const loser = match.participants.find((p) => p.userId !== winnerId);
+      if (loser) {
+        await this.prisma.arenaParticipant.updateMany({
+          where: { matchId, userId: loser.userId },
+          data: { outcome: 'LOSS' },
+        });
+      }
+    } else if (isTie) {
+      await this.prisma.arenaParticipant.updateMany({
+        where: { matchId },
+        data: { outcome: 'TIE' },
+      });
     }
 
     await this.prisma.arenaMatch.update({

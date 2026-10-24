@@ -574,6 +574,7 @@ export class ArenaMatchService {
         charsTyped: p.charsTyped,
         wpm: p.wpm,
         accuracy: p.accuracy,
+        completionTimeMs: p.completionTimeMs ?? null,
         outcome: p.outcome,
       })),
     };

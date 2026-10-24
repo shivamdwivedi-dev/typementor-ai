@@ -5,6 +5,13 @@ import { PublicArenaMatch } from '../../types/arena';
 interface ArenaResultsProps {
   match: PublicArenaMatch;
   currentUserId: string;
+  opponentProgress?: {
+    userId: string;
+    progressPercent: number;
+    wpm: number;
+    accuracy: number;
+    charsTyped: number;
+  } | null;
   onRematch: () => void;
   onReturnToLobby: () => void;
 }
@@ -12,6 +19,7 @@ interface ArenaResultsProps {
 export const ArenaResults: React.FC<ArenaResultsProps> = ({
   match,
   currentUserId,
+  opponentProgress,
   onRematch,
   onReturnToLobby,
 }) => {
@@ -21,6 +29,32 @@ export const ArenaResults: React.FC<ArenaResultsProps> = ({
 
   const myParticipant = match.participants.find((p) => p.userId === currentUserId);
   const opponent = match.participants.find((p) => p.userId !== currentUserId);
+
+  const myWpm = myParticipant?.wpm ?? 0;
+  const oppWpm = (opponent?.wpm && opponent.wpm > 0)
+    ? opponent.wpm
+    : (opponentProgress?.wpm ?? 0);
+
+  const myAccuracy = myParticipant?.accuracy ?? 0;
+  const oppAccuracy = (opponent?.accuracy && opponent.accuracy > 0)
+    ? opponent.accuracy
+    : (opponentProgress?.accuracy ?? 0);
+
+  const myTimeDisplay = myParticipant?.completionTimeMs
+    ? `${(myParticipant.completionTimeMs / 1000).toFixed(1)}s`
+    : myParticipant?.progressPercent === 100
+    ? 'Finished'
+    : myParticipant?.progressPercent && myParticipant.progressPercent > 0
+    ? `${myParticipant.progressPercent}% Typed`
+    : 'Timed Out';
+
+  const oppTimeDisplay = opponent?.completionTimeMs
+    ? `${(opponent.completionTimeMs / 1000).toFixed(1)}s`
+    : (opponent?.progressPercent === 100 || opponentProgress?.progressPercent === 100)
+    ? 'Finished'
+    : (opponent?.progressPercent || opponentProgress?.progressPercent)
+    ? `${opponent?.progressPercent || opponentProgress?.progressPercent}% Typed`
+    : 'Timed Out';
 
   const pointsDelta = isWinner
     ? match.stakeAmount
@@ -99,24 +133,24 @@ export const ArenaResults: React.FC<ArenaResultsProps> = ({
 
         <div className="space-y-3 font-mono text-sm">
           <div className="grid grid-cols-3 gap-2 py-1.5 text-center items-center">
-            <span className="text-left font-bold text-white text-base">{myParticipant?.wpm ?? 0}</span>
+            <span className="text-left font-bold text-white text-base">{myWpm}</span>
             <span className="text-xs text-zinc-400 font-sans font-semibold">Speed (WPM)</span>
-            <span className="text-right font-bold text-white text-base">{opponent?.wpm ?? 0}</span>
+            <span className="text-right font-bold text-white text-base">{oppWpm}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 py-1.5 text-center items-center">
-            <span className="text-left font-bold text-emerald-400">{myParticipant?.accuracy ?? 0}%</span>
+            <span className="text-left font-bold text-emerald-400">{myAccuracy}%</span>
             <span className="text-xs text-zinc-400 font-sans font-semibold">Accuracy</span>
-            <span className="text-right font-bold text-emerald-400">{opponent?.accuracy ?? 0}%</span>
+            <span className="text-right font-bold text-emerald-400">{oppAccuracy}%</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 py-1.5 text-center items-center">
             <span className="text-left text-zinc-300">
-              {myParticipant?.completionTimeMs ? `${(myParticipant.completionTimeMs / 1000).toFixed(1)}s` : 'Timed Out'}
+              {myTimeDisplay}
             </span>
             <span className="text-xs text-zinc-400 font-sans font-semibold">Time</span>
             <span className="text-right text-zinc-300">
-              {opponent?.completionTimeMs ? `${(opponent.completionTimeMs / 1000).toFixed(1)}s` : 'Timed Out'}
+              {oppTimeDisplay}
             </span>
           </div>
         </div>
