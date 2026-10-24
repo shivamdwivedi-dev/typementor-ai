@@ -395,10 +395,12 @@ export default function AppLayout() {
         <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_BOTTOM_SLOT} className="mx-auto w-full max-w-5xl px-4" />
 
         <footer className="py-6 border-t border-zinc-800/80 text-center text-xs text-zinc-400 space-y-2 relative z-10 bg-zinc-950/40 backdrop-blur-md">
-          <div className="flex justify-center gap-4 text-[11px]">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 text-[11px]">
             <Link to="/about" className="hover:text-white hover:underline transition-colors">About Us</Link>
             <span>•</span>
             <Link to="/contact" className="hover:text-white hover:underline transition-colors">Contact Us</Link>
+            <span>•</span>
+            <Link to="/guides" className="hover:text-white hover:underline transition-colors">Typing Guides</Link>
             <span>•</span>
             <Link to="/privacy" className="hover:text-white hover:underline transition-colors">Privacy Policy</Link>
             <span>•</span>

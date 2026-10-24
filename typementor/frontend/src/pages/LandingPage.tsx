@@ -7,7 +7,7 @@ import GlassCard from '../components/ui/glass-card';
 interface LandingPageProps {
   onGetStarted: () => void;
   onTryAcademy: () => void;
-  onNavigateToPage?: (page: 'privacy' | 'terms' | 'about' | 'contact') => void;
+  onNavigateToPage?: (page: 'privacy' | 'terms' | 'about' | 'contact' | 'guides') => void;
 }
 
 const LANDING_JSON_LD = {
@@ -558,6 +558,14 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
               className="hover:text-white hover:underline transition-colors"
             >
               Contact Us
+            </a>
+            <span className="text-brand-border">•</span>
+            <a
+              href="/guides"
+              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('guides'); }}
+              className="hover:text-white hover:underline transition-colors"
+            >
+              Typing Guides
             </a>
             <span className="text-brand-border">•</span>
             <a

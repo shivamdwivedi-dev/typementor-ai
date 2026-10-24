@@ -22,6 +22,7 @@ export const routeLoaders = {
   loadTermsOfService: () => import('./pages/TermsOfService'),
   loadAdminDashboard: () => import('./pages/AdminDashboard'),
   loadArenaPage: () => import('./pages/ArenaPage'),
+  loadGuidesHub: () => import('./pages/GuidesHub'),
 };
 
 // ── Lazy-loaded pages (code splitting by route) ────────────────────────────
@@ -40,6 +41,7 @@ const PrivacyPolicy  = React.lazy(() => routeLoaders.loadPrivacyPolicy());
 const TermsOfService = React.lazy(() => routeLoaders.loadTermsOfService());
 const AdminDashboard = React.lazy(() => routeLoaders.loadAdminDashboard());
 const ArenaPage      = React.lazy(() => routeLoaders.loadArenaPage());
+const GuidesHub      = React.lazy(() => routeLoaders.loadGuidesHub());
 
 let hasPreloadedCoreRoutes = false;
 
@@ -214,6 +216,8 @@ export function AppRoutes() {
           <Route path="/academy" element={<ProtectedRoute><TypingAcademy /></ProtectedRoute>} />
           <Route path="/about" element={<AboutUs onBack={() => navigate(-1)} />} />
           <Route path="/contact" element={<ContactUs onBack={() => navigate(-1)} />} />
+          <Route path="/guides" element={<GuidesHub />} />
+          <Route path="/guides/:slug" element={<GuidesHub />} />
           <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
           <Route path="/terms" element={<TermsOfService onBack={() => navigate(-1)} />} />
 
