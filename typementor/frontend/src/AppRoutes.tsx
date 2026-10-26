@@ -24,6 +24,7 @@ export const routeLoaders = {
   loadArenaHub: () => import('./pages/ArenaHub'),
   loadArenaPage: () => import('./pages/ArenaPage'),
   loadConquestPreview: () => import('./pages/ConquestPreview'),
+  loadConquestPage: () => import('./pages/ConquestPage'),
   loadGuidesHub: () => import('./pages/GuidesHub'),
 };
 
@@ -45,6 +46,7 @@ const AdminDashboard  = React.lazy(() => routeLoaders.loadAdminDashboard());
 const ArenaHub        = React.lazy(() => routeLoaders.loadArenaHub());
 const ArenaPage       = React.lazy(() => routeLoaders.loadArenaPage());
 const ConquestPreview = React.lazy(() => routeLoaders.loadConquestPreview());
+const ConquestPage    = React.lazy(() => routeLoaders.loadConquestPage());
 const GuidesHub       = React.lazy(() => routeLoaders.loadGuidesHub());
 
 let hasPreloadedCoreRoutes = false;
@@ -255,6 +257,7 @@ export function AppRoutes() {
           <Route path="/arena" element={<ProtectedRoute requireAuth><ArenaHub /></ProtectedRoute>} />
           <Route path="/arena/duel" element={<ProtectedRoute requireAuth><ArenaPage /></ProtectedRoute>} />
           <Route path="/arena/conquest" element={<ProtectedRoute requireAuth><ConquestPreview /></ProtectedRoute>} />
+          <Route path="/arena/conquest/play" element={<ProtectedRoute requireAuth><ConquestPage /></ProtectedRoute>} />
           <Route path="/interview" element={<ProtectedRoute requireAuth>
             <div className="max-w-4xl mx-auto space-y-6">
               <button onClick={() => navigate('/practice')} className="text-xs text-brand-primary font-bold hover:underline mb-2">

@@ -70,9 +70,18 @@ class ArenaSocketClient {
       }
 
       const httpUrl = getApiUrl('/arena-ws');
+      let wsBaseUrl = httpUrl;
+      if (httpUrl.startsWith('/')) {
+        const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = typeof window !== 'undefined' ? window.location.host : 'localhost:5000';
+        wsBaseUrl = `${protocol}//${host}${httpUrl}`;
+      } else {
+        wsBaseUrl = httpUrl.replace(/^http/, 'ws');
+      }
+
       const wsUrl = ticket
-        ? httpUrl.replace(/^http/, 'ws') + `?ticket=${encodeURIComponent(ticket)}`
-        : httpUrl.replace(/^http/, 'ws') + `?token=${encodeURIComponent(token)}`;
+        ? `${wsBaseUrl}?ticket=${encodeURIComponent(ticket)}`
+        : `${wsBaseUrl}?token=${encodeURIComponent(token)}`;
 
       this.ws = new WebSocket(wsUrl);
 

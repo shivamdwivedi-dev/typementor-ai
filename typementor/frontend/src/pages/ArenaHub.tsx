@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Swords, Crown, Coins, ArrowRight, ShieldAlert, Sparkles, Zap } from 'lucide-react';
+import { Swords, Crown, Coins, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../store/AuthStore';
 import { safeFetch } from '../utils/api';
 
@@ -10,6 +10,8 @@ export const ArenaHub: React.FC = () => {
   const [balance, setBalance] = useState<number>(0);
   const [hasActiveMatch, setHasActiveMatch] = useState<boolean>(false);
   const [activeMatchCode, setActiveMatchCode] = useState<string | null>(null);
+  const [hasActiveConquest, setHasActiveConquest] = useState<boolean>(false);
+  const [activeConquestCode, setActiveConquestCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -26,7 +28,7 @@ export const ArenaHub: React.FC = () => {
       })
       .catch((err) => console.warn('[ArenaHub] Balance check error:', err));
 
-    // Check if user is in an active or waiting match
+    // Check if user is in an active or waiting Arena Duel match
     safeFetch('/api/arena/active', {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -37,12 +39,25 @@ export const ArenaHub: React.FC = () => {
           setActiveMatchCode(data.match.matchCode || null);
         }
       })
-      .catch((err) => console.warn('[ArenaHub] Active match check error:', err));
+      .catch((err) => console.warn('[ArenaHub] Active duel check error:', err));
+
+    // Check if user is in an active or waiting Word Conquest match
+    safeFetch('/api/conquest/active', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.match && data.match.status !== 'FINISHED' && data.match.status !== 'CANCELLED') {
+          setHasActiveConquest(true);
+          setActiveConquestCode(data.match.matchCode || null);
+        }
+      })
+      .catch((err) => console.warn('[ArenaHub] Active conquest check error:', err));
   }, [token]);
 
   return (
     <div className="max-w-5xl mx-auto w-full py-8 px-4 sm:px-6 space-y-8 animate-in fade-in duration-300">
-      {/* Active Match Banner (if user has an in-flight battle) */}
+      {/* Active Arena Duel Banner */}
       {hasActiveMatch && (
         <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-amber-500/5">
           <div className="flex items-center gap-3">
@@ -51,7 +66,7 @@ export const ArenaHub: React.FC = () => {
             </div>
             <div>
               <p className="text-sm font-bold text-amber-200">
-                You have an active battle in progress! {activeMatchCode ? `(${activeMatchCode})` : ''}
+                You have an active duel in progress! {activeMatchCode ? `(${activeMatchCode})` : ''}
               </p>
               <p className="text-xs text-amber-400/80">
                 Your opponent or waiting room is waiting for you.
@@ -62,7 +77,33 @@ export const ArenaHub: React.FC = () => {
             onClick={() => navigate('/arena/duel')}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2"
           >
-            <span>Resume Battle</span>
+            <span>Resume Duel</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Active Word Conquest Banner */}
+      {hasActiveConquest && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg shadow-purple-500/5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400">
+              <Crown className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-purple-200">
+                You have an active Word Conquest battle! {activeConquestCode ? `(${activeConquestCode})` : ''}
+              </p>
+              <p className="text-xs text-purple-400/80">
+                The 6×6 realm awaits your command.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/arena/conquest/play')}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-purple-600/20 flex items-center justify-center gap-2"
+          >
+            <span>Resume Conquest</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -173,8 +214,8 @@ export const ArenaHub: React.FC = () => {
                 <Crown className="w-7 h-7" />
               </div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                <Zap className="w-3 h-3 text-purple-400" />
-                Coming Soon
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                Live Playable
               </span>
             </div>
 
@@ -204,13 +245,20 @@ export const ArenaHub: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-6 relative z-10">
+          <div className="pt-6 relative z-10 flex flex-col sm:flex-row gap-2.5">
+            <button
+              onClick={() => navigate('/arena/conquest/play')}
+              className="flex-1 py-3.5 px-6 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm transition-all shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 group-hover:translate-x-0.5"
+            >
+              <span>Play Word Conquest</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
             <button
               onClick={() => navigate('/arena/conquest')}
-              className="w-full py-3.5 px-6 rounded-2xl bg-zinc-800/80 hover:bg-purple-900/40 text-purple-200 border border-purple-500/40 font-bold text-sm transition-all flex items-center justify-center gap-2"
+              className="py-3.5 px-4 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 text-purple-300 border border-purple-500/30 font-semibold text-xs transition-all flex items-center justify-center gap-1.5"
+              title="View Rules & Blueprint"
             >
-              <span>View Rules & Preview</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <span>Rules</span>
             </button>
           </div>
         </div>

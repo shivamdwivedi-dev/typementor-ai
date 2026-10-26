@@ -40,6 +40,8 @@ model User {
   arenaMatchesCreated ArenaMatch[]    @relation("MatchCreator")
   arenaParticipations ArenaParticipant[]
   arenaLedgerEntries  ArenaPointLedger[]
+  conquestMatchesCreated ConquestMatch[]       @relation("ConquestCreator")
+  conquestParticipations ConquestParticipant[] @relation("ConquestUser")
 
   @@index([lastActiveAt])        // Index: optimizes DAU (daily active users) count queries
 }
@@ -250,4 +252,46 @@ model ArenaPointLedger {
   @@index([matchId])
   @@index([createdAt])
 }
+
+model ConquestMatch {
+  id                 String                @id @default(uuid())
+  matchCode          String                @unique
+  creatorId          String
+  creator            User                  @relation("ConquestCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  status             String                @default("WAITING") // WAITING | READY | ACTIVE | FINISHED | CANCELLED
+  mapSeed            String
+  gridState          String?               @db.Text
+  currentTurn        Int                   @default(1)
+  winnerId           String?
+  finishedAt         DateTime?
+  startedAt          DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  participants       ConquestParticipant[]
+
+  @@index([status])
+  @@index([creatorId])
+  @@index([matchCode])
+  @@index([createdAt])
+}
+
+model ConquestParticipant {
+  id               String        @id @default(uuid())
+  matchId          String
+  match            ConquestMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User          @relation("ConquestUser", fields: [userId], references: [id], onDelete: Cascade)
+  seat             Int           // 1 = Blue (0,0), 2 = Red (5,5)
+  isReady          Boolean       @default(false)
+  isConnected      Boolean       @default(true)
+  outcome          String?       // WIN | LOSS | TIE | ABANDONED
+  territoriesCount Int           @default(1)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([matchId, userId])
+  @@unique([matchId, seat])
+  @@index([userId])
+}
+
 

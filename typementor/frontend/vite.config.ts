@@ -45,6 +45,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/conquest-ws': {
+        target: 'ws://localhost:5000',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 });

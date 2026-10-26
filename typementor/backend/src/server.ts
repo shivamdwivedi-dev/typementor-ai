@@ -2,6 +2,8 @@ import app, { prisma } from './app';
 import { ArenaPointsService } from './services/arena/arena-points.service';
 import { ArenaMatchService } from './services/arena/arena-match.service';
 import { ArenaSocketService } from './services/arena/arena-socket.service';
+import { ConquestMatchService } from './services/conquest/conquest-match.service';
+import { ConquestSocketService } from './services/conquest/conquest-socket.service';
 
 const PORT = process.env.PORT || 5000;
 
@@ -26,6 +28,11 @@ const arenaMatchService = new ArenaMatchService(prisma, arenaPointsService);
 export const arenaSocketService = new ArenaSocketService(prisma, arenaPointsService, arenaMatchService);
 arenaSocketService.init(server);
 
+// Initialize Real-time Word Conquest WebSocket service
+const conquestMatchService = new ConquestMatchService(prisma);
+export const conquestSocketService = new ConquestSocketService(prisma, conquestMatchService);
+conquestSocketService.init(server);
+
 // Graceful shutdown handling with 10s hard timeout
 let isShuttingDown = false;
 
@@ -47,6 +54,12 @@ const shutdown = async (signal: string) => {
     arenaSocketService.shutdown();
   } catch (err) {
     console.warn('Error during Arena WebSocket shutdown:', err);
+  }
+
+  try {
+    conquestSocketService.shutdown();
+  } catch (err) {
+    console.warn('Error during Conquest WebSocket shutdown:', err);
   }
 
   server.close(async () => {

@@ -42,7 +42,7 @@ export const ConquestPreview: React.FC = () => {
             A real-time multiplayer territory strategy game where speed and precision build empires. Claim neutral regions, breach enemy defensive fortresses, and storm the opponent's capital through typing challenges.
           </p>
 
-          <div className="pt-2 flex flex-wrap gap-3">
+          <div className="pt-2 flex flex-wrap gap-3 items-center">
             <span className="px-3 py-1 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-semibold">
               6×6 Tactical Grid
             </span>
@@ -52,6 +52,14 @@ export const ConquestPreview: React.FC = () => {
             <span className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
               Server-Validated Combats
             </span>
+
+            <button
+              onClick={() => navigate('/arena/conquest/play')}
+              className="ml-auto px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-purple-600/30 flex items-center gap-1.5"
+            >
+              <Swords className="w-3.5 h-3.5" />
+              <span>Launch Live Battle</span>
+            </button>
           </div>
         </div>
       </div>
@@ -162,16 +170,25 @@ export const ConquestPreview: React.FC = () => {
         <div>
           <h3 className="text-lg font-bold text-white">Ready to test your typing skills right now?</h3>
           <p className="text-xs text-zinc-400 mt-1">
-            Arena Duel is fully live! Play a real-time head-to-head match against other typists.
+            Play Word Conquest to conquer the tactical 6×6 realm, or jump into a live head-to-head Arena Duel.
           </p>
         </div>
-        <button
-          onClick={() => navigate('/arena/duel')}
-          className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2"
-        >
-          <Swords className="w-4 h-4" />
-          <span>Play Arena Duel</span>
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => navigate('/arena/conquest/play')}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2"
+          >
+            <Crown className="w-4 h-4" />
+            <span>Play Word Conquest</span>
+          </button>
+          <button
+            onClick={() => navigate('/arena/duel')}
+            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-blue-300 border border-blue-500/30 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+          >
+            <Swords className="w-4 h-4" />
+            <span>Play Arena Duel</span>
+          </button>
+        </div>
       </div>
     </div>
   );

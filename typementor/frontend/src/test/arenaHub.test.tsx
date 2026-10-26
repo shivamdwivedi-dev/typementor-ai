@@ -45,8 +45,8 @@ describe('Multiplayer Arena Game Hub UX', () => {
 
       // Verify Card 2: Word Conquest
       expect(screen.getByText('Word Conquest')).toBeInTheDocument();
-      expect(screen.getByText(/Coming Soon/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /View Rules & Preview/i })).toBeInTheDocument();
+      expect(screen.getByText(/Live Playable/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Play Word Conquest/i })).toBeInTheDocument();
     });
 
     it('navigates to /arena/duel when clicking Play Arena Duel', () => {
@@ -62,14 +62,27 @@ describe('Multiplayer Arena Game Hub UX', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/arena/duel');
     });
 
-    it('navigates to /arena/conquest when clicking View Rules & Preview', () => {
+    it('navigates to /arena/conquest/play when clicking Play Word Conquest', () => {
       render(
         <MemoryRouter>
           <ArenaHub />
         </MemoryRouter>
       );
 
-      const conquestBtn = screen.getByRole('button', { name: /View Rules & Preview/i });
+      const conquestPlayBtn = screen.getByRole('button', { name: /Play Word Conquest/i });
+      fireEvent.click(conquestPlayBtn);
+
+      expect(mockNavigate).toHaveBeenCalledWith('/arena/conquest/play');
+    });
+
+    it('navigates to /arena/conquest when clicking Rules', () => {
+      render(
+        <MemoryRouter>
+          <ArenaHub />
+        </MemoryRouter>
+      );
+
+      const conquestBtn = screen.getByRole('button', { name: /Rules/i });
       fireEvent.click(conquestBtn);
 
       expect(mockNavigate).toHaveBeenCalledWith('/arena/conquest');

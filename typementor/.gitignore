@@ -11,6 +11,12 @@ out/
 .nuxt/
 .cache/
 
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Environment files
 .env
 .env.local
@@ -22,6 +28,10 @@ out/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Documentation build artifacts
+TYPEMENTOR_PRD.html
+TYPEMENTOR_PRD.pdf
 
 # IDEs
 .idea/
