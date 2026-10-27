@@ -24,7 +24,7 @@ const AIGuide = lazy(() => import('./AIGuide'));
 // Icons
 import {
   Brain, Activity, User as UserIcon, Code, Award,
-  LogOut, Menu, X, BookOpen, WifiOff, RefreshCw, Swords
+  LogOut, Menu, X, BookOpen, WifiOff, RefreshCw, Swords, FileText
 } from 'lucide-react';
 
 export default function AppLayout() {
@@ -228,6 +228,9 @@ export default function AppLayout() {
             <Link to="/practice" title="Practice" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/practice' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
               <Code className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Practice</span>
             </Link>
+            <Link to="/guides" title="Typing Guides & Blog" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname.startsWith('/guides') || location.pathname.startsWith('/blog') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
+              <FileText className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Guides</span>
+            </Link>
 
             {isAuthenticated && (
               <>
@@ -348,6 +351,9 @@ export default function AppLayout() {
                 <Link onClick={() => setIsMobileMenuOpen(false)} to="/practice" className={`w-full px-4 py-3.5 rounded-xl font-medium text-sm flex items-center gap-3 transition-all duration-200 ${location.pathname === '/practice' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 border border-blue-400/40' : 'bg-zinc-900/40 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>
                   <Code className="w-4 h-4" /> Practice
                 </Link>
+                <Link onClick={() => setIsMobileMenuOpen(false)} to="/guides" className={`w-full px-4 py-3.5 rounded-xl font-medium text-sm flex items-center gap-3 transition-all duration-200 ${location.pathname.startsWith('/guides') || location.pathname.startsWith('/blog') ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25 border border-blue-400/40' : 'bg-zinc-900/40 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'}`}>
+                  <FileText className="w-4 h-4" /> Guides & Blog
+                </Link>
 
                 {isAuthenticated && (
                   <>
@@ -401,6 +407,8 @@ export default function AppLayout() {
             <Link to="/contact" className="hover:text-white hover:underline transition-colors">Contact Us</Link>
             <span>•</span>
             <Link to="/guides" className="hover:text-white hover:underline transition-colors">Typing Guides</Link>
+            <span>•</span>
+            <Link to="/blog" className="hover:text-white hover:underline transition-colors">Blog</Link>
             <span>•</span>
             <Link to="/privacy" className="hover:text-white hover:underline transition-colors">Privacy Policy</Link>
             <span>•</span>

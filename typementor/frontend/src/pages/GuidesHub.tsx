@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   BookOpen, 
   Clock, 
@@ -16,7 +16,8 @@ import {
   Bookmark, 
   ChevronRight, 
   Lightbulb, 
-  ChevronLeft 
+  ChevronLeft,
+  AlertCircle
 } from 'lucide-react';
 import SEOMeta from '../components/SEOMeta';
 import TubesBackground from '../components/ui/neon-flow';
@@ -78,6 +79,10 @@ function NeonCard({
 export default function GuidesHub() {
   const { slug } = useParams<{ slug?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isBlogRoute = location.pathname.startsWith('/blog');
+  const basePath = isBlogRoute ? '/blog' : '/guides';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All Articles');
@@ -121,20 +126,110 @@ export default function GuidesHub() {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'Touch Typing Mastery':
+      case 'Typing Fundamentals':
         return <Zap className="w-4 h-4 text-amber-400" />;
+      case 'Speed & Accuracy':
+        return <Sparkles className="w-4 h-4 text-blue-400" />;
+      case 'Practice & Routines':
+        return <Clock className="w-4 h-4 text-purple-400" />;
       case 'Developer Syntax & Coding':
-        return <Code2 className="w-4 h-4 text-blue-400" />;
+      case 'Students & Careers':
+        return <Code2 className="w-4 h-4 text-indigo-400" />;
       case 'Ergonomics & Health':
+      case 'Hardware & Ergonomics':
         return <HeartPulse className="w-4 h-4 text-emerald-400" />;
       case 'Keystroke Biometrics & AI':
-        return <Cpu className="w-4 h-4 text-purple-400" />;
+        return <Cpu className="w-4 h-4 text-cyan-400" />;
       default:
         return <BookOpen className="w-4 h-4 text-indigo-400" />;
     }
   };
 
+  // Structured Schema for Single Article
+  const articleJsonLd = useMemo(() => {
+    if (!activeArticle) return null;
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      'mainEntityOfPage': {
+        '@type': 'WebPage',
+        '@id': `https://www.typementor.in/guides/${activeArticle.slug}`,
+      },
+      'headline': activeArticle.title,
+      'description': activeArticle.summary,
+      'image': 'https://www.typementor.in/og-image.png',
+      'author': {
+        '@type': /team|board|group|lab|analytics/i.test(activeArticle.author) ? 'Organization' : 'Person',
+        'name': activeArticle.author,
+        ...(activeArticle.authorRole ? { 'jobTitle': activeArticle.authorRole } : {}),
+      },
+      'publisher': {
+        '@type': 'Organization',
+        'name': 'TypeMentor AI',
+        'url': 'https://www.typementor.in',
+        'logo': {
+          '@type': 'ImageObject',
+          'url': 'https://www.typementor.in/apple-touch-icon.png',
+        },
+      },
+      'datePublished': '2026-10-27',
+      'dateModified': '2026-10-27',
+      'articleSection': activeArticle.category,
+      'keywords': activeArticle.keyTakeaways.join(', '),
+    };
+  }, [activeArticle]);
+
+  // Structured Schema for Hub Index
+  const hubJsonLd = useMemo(() => {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      'name': 'TypeMentor AI Typing Guides & Knowledge Hub',
+      'description': 'Comprehensive educational guides and research on touch typing, keyboard ergonomics, typing tests, programmer syntax, and speed training.',
+      'url': 'https://www.typementor.in/guides',
+      'publisher': {
+        '@type': 'Organization',
+        'name': 'TypeMentor AI',
+        'url': 'https://www.typementor.in',
+        'logo': {
+          '@type': 'ImageObject',
+          'url': 'https://www.typementor.in/apple-touch-icon.png',
+        },
+      },
+    };
+  }, []);
+
   // ─────────────────────────────────────────────────────────────────────────────
-  // VIEW 1: DEEP ARTICLE VIEW (/guides/:slug)
+  // SLUG PROVIDED BUT NOT FOUND (404 Not Found fallback)
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (slug && !activeArticle) {
+    return (
+      <div className="relative min-h-[60vh] flex flex-col items-center justify-center text-center px-4 py-16">
+        <SEOMeta
+          title="Guide Not Found — TypeMentor AI"
+          description="The requested typing guide could not be located in our educational knowledge library."
+          canonical="/guides"
+          noIndex={true}
+        />
+        <div className="p-4 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-4">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">Guide Not Found</h1>
+        <p className="text-sm text-zinc-400 max-w-md mb-6">
+          We could not find an article with the slug <code className="text-amber-300 bg-zinc-900 px-2 py-0.5 rounded">"{slug}"</code>. It may have been renamed or moved.
+        </p>
+        <button
+          onClick={() => navigate(basePath)}
+          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-lg flex items-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" /> Return to All Guides
+        </button>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // VIEW 1: DEEP ARTICLE VIEW (/guides/:slug or /blog/:slug)
   // ─────────────────────────────────────────────────────────────────────────────
   if (activeArticle) {
     const relatedArticles = GUIDES_ARTICLES.filter((a) =>
@@ -147,6 +242,8 @@ export default function GuidesHub() {
           title={`${activeArticle.title} — TypeMentor AI Guides`}
           description={activeArticle.summary}
           canonical={`/guides/${activeArticle.slug}`}
+          ogType="article"
+          jsonLd={articleJsonLd}
         />
 
         {/* Top Breadcrumb & Back Bar */}
@@ -156,8 +253,8 @@ export default function GuidesHub() {
               App
             </Link>
             <ChevronRight className="w-3 h-3" />
-            <Link to="/guides" className="hover:text-white transition-colors">
-              Knowledge Hub
+            <Link to={basePath} className="hover:text-white transition-colors">
+              {isBlogRoute ? 'Blog' : 'Knowledge Hub'}
             </Link>
             <ChevronRight className="w-3 h-3" />
             <span className="text-brand-primary font-medium truncate max-w-xs sm:max-w-md">
@@ -175,10 +272,10 @@ export default function GuidesHub() {
               <span>{copiedLink ? 'Copied!' : 'Share'}</span>
             </button>
             <button
-              onClick={() => navigate('/guides')}
+              onClick={() => navigate(basePath)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-card hover:bg-brand-border/40 border border-brand-border text-xs font-bold text-white transition-all shadow-sm"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> All Guides
+              <ArrowLeft className="w-3.5 h-3.5" /> {isBlogRoute ? 'All Posts' : 'All Guides'}
             </button>
           </div>
         </div>
@@ -314,10 +411,10 @@ export default function GuidesHub() {
               <Zap className="w-8 h-8 animate-pulse" />
             </div>
             <h3 className="text-2xl font-black text-white">
-              Ready to Put These Biomechanics Into Muscle Memory?
+              Ready to Put These Principles Into Muscle Memory?
             </h3>
             <p className="text-sm text-zinc-300 max-w-xl mx-auto leading-relaxed">
-              TypeMentor AI features real-time flight-time tracking, deliberate bigram targeting, and live error recovery engines designed specifically around these principles.
+              TypeMentor AI features real-time flight-time tracking, deliberate bigram targeting, and live error recovery engines designed specifically around these techniques.
             </p>
             <div className="pt-2 flex flex-wrap justify-center gap-3">
               <button
@@ -335,16 +432,16 @@ export default function GuidesHub() {
             </div>
           </div>
 
-          {/* Related Guides Section ("More Deep") */}
+          {/* Related Guides Section */}
           {relatedArticles.length > 0 && (
             <div className="pt-8 border-t border-brand-border/30 text-left space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-bold text-white">Continue the Deep Dive</h3>
-                  <p className="text-xs text-brand-muted">Recommended research modules following this guide</p>
+                  <p className="text-xs text-brand-muted">Recommended educational guides following this article</p>
                 </div>
                 <button
-                  onClick={() => navigate('/guides')}
+                  onClick={() => navigate(basePath)}
                   className="text-xs text-brand-primary font-bold hover:underline flex items-center gap-1"
                 >
                   View All Guides <ChevronRight className="w-3.5 h-3.5" />
@@ -355,7 +452,7 @@ export default function GuidesHub() {
                 {relatedArticles.map((rel) => (
                   <div
                     key={rel.slug}
-                    onClick={() => navigate(`/guides/${rel.slug}`)}
+                    onClick={() => navigate(`${basePath}/${rel.slug}`)}
                     className="p-5 rounded-2xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-brand-primary/50 cursor-pointer transition-all space-y-3 group"
                   >
                     <div className="flex items-center justify-between text-xs text-brand-muted">
@@ -384,16 +481,17 @@ export default function GuidesHub() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // VIEW 2: STARTING INDEX / HUB OVERVIEW (/guides)
+  // VIEW 2: STARTING INDEX / HUB OVERVIEW (/guides or /blog)
   // ─────────────────────────────────────────────────────────────────────────────
   const featuredArticle = GUIDES_ARTICLES[0];
 
   return (
     <div className="relative min-h-screen text-slate-100 pb-20">
       <SEOMeta
-        title="Typing Guides & Biomechanics Hub — TypeMentor AI"
-        description="Comprehensive guides to 100+ WPM touch typing, programmer syntax optimization, ergonomics, RSI prevention, and keystroke dynamics AI biometrics."
+        title={isBlogRoute ? "TypeMentor AI Blog — Typing Insights & Research" : "Typing Guides & Biomechanics Hub — TypeMentor AI"}
+        description="Comprehensive guides to touch typing mastery, 100+ WPM speed strategies, typing test preparation, programmer syntax, ergonomics, and AI diagnostics."
         canonical="/guides"
+        jsonLd={hubJsonLd}
       />
 
       {/* Floating Animated Background Tubes */}
@@ -411,7 +509,7 @@ export default function GuidesHub() {
             <ChevronLeft className="w-4 h-4" /> Back to Practice Board
           </button>
           <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
-            Educational Research Repository
+            Educational Knowledge Repository
           </span>
         </div>
 
@@ -419,7 +517,7 @@ export default function GuidesHub() {
         <header className="text-center space-y-5 max-w-3xl mx-auto pt-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold shadow-lg shadow-blue-500/10">
             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-            <span>TypeMentor AI Biomechanics & Knowledge Hub</span>
+            <span>TypeMentor AI Educational Content & Research Hub</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight">
@@ -427,16 +525,16 @@ export default function GuidesHub() {
           </h1>
 
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
-            Research-backed frameworks, ergonomic protocols, and developer syntax optimizations designed for engineers, competitive typists, and everyday knowledge workers.
+            Practical step-by-step guides, ergonomic protocols, 7-day and 30-day training routines, and developer syntax optimizations designed for learners, students, coders, and job seekers.
           </p>
 
           {/* Key Repository Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-left">
             {[
-              { label: 'Deep Guides', val: `${GUIDES_ARTICLES.length} Articles` },
-              { label: 'Scientific Content', val: '8,500+ Words' },
+              { label: 'Resource Library', val: '25 Typing Guides' },
+              { label: 'Original Content', val: '16,000+ Words' },
               { label: 'WPM Velocity', val: '100+ Mastery' },
-              { label: 'Peer Guidelines', val: 'Ergonomic RSI' },
+              { label: 'Ergonomic Health', val: 'RSI Prevention' },
             ].map((stat, i) => (
               <div key={i} className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
                 <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">{stat.label}</p>
@@ -449,12 +547,12 @@ export default function GuidesHub() {
         {/* Top AdSense Slot */}
         <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_TOP_SLOT} className="w-full my-4" />
 
-        {/* Featured Deep Dive (Level 1 → Level 2 Entry Point) */}
+        {/* Featured Deep Dive */}
         {featuredArticle && (
           <div className="space-y-3 text-left">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Featured Deep Dive
+                <Sparkles className="w-3.5 h-3.5" /> Featured Master Guide
               </span>
               <span className="text-xs text-brand-muted font-medium">{featuredArticle.readTime}</span>
             </div>
@@ -472,7 +570,7 @@ export default function GuidesHub() {
                 </div>
 
                 <h2 className="text-2xl sm:text-3xl font-black text-white hover:text-amber-300 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/guides/${featuredArticle.slug}`)}>
+                    onClick={() => navigate(`${basePath}/${featuredArticle.slug}`)}>
                   {featuredArticle.title}
                 </h2>
 
@@ -494,7 +592,7 @@ export default function GuidesHub() {
                 </div>
 
                 <button
-                  onClick={() => navigate(`/guides/${featuredArticle.slug}`)}
+                  onClick={() => navigate(`${basePath}/${featuredArticle.slug}`)}
                   className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-amber-500/25 flex items-center gap-2 active:scale-95"
                 >
                   Read Full Master Guide <ArrowRight className="w-4 h-4" />
@@ -511,7 +609,7 @@ export default function GuidesHub() {
               <Search className="w-4 h-4 text-brand-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search guides (e.g. Ergonomics, 100 WPM, Syntax)..."
+                placeholder="Search guides (e.g. Ergonomics, 100 WPM, Routine, Coding)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-brand-primary transition-all"
@@ -519,7 +617,7 @@ export default function GuidesHub() {
             </div>
 
             <p className="text-xs text-brand-muted font-medium self-end sm:self-center">
-              Showing <span className="text-white font-bold">{filteredArticles.length}</span> research guides
+              Showing <span className="text-white font-bold">{filteredArticles.length}</span> educational guides
             </p>
           </div>
 
@@ -541,12 +639,12 @@ export default function GuidesHub() {
           </div>
         </div>
 
-        {/* Articles Grid (Deep Knowledge Units) */}
+        {/* Articles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
           {filteredArticles.map((article) => (
             <div
               key={article.slug}
-              onClick={() => navigate(`/guides/${article.slug}`)}
+              onClick={() => navigate(`${basePath}/${article.slug}`)}
               className="group p-6 rounded-[28px] border border-white/10 bg-gradient-to-br from-slate-900/90 via-brand-bg to-slate-950 hover:border-brand-primary/60 cursor-pointer transition-all duration-300 shadow-xl hover:shadow-brand-primary/10 flex flex-col justify-between space-y-4"
             >
               <div className="space-y-3">

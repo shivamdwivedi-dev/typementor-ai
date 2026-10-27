@@ -141,7 +141,7 @@ export function AppRoutes() {
     navigate('/academy');
   };
   const handleLandingNavigateToPage = (page: string) => {
-    if (page !== 'privacy' && page !== 'terms' && page !== 'about' && page !== 'contact' && page !== 'auth') {
+    if (page !== 'privacy' && page !== 'terms' && page !== 'about' && page !== 'contact' && page !== 'auth' && page !== 'guides' && page !== 'blog') {
       localStorage.setItem('typementor_is_guest', 'true');
       preloadCoreAppRoutes();
     }
@@ -224,6 +224,8 @@ export function AppRoutes() {
           <Route path="/contact" element={<ContactUs onBack={() => navigate(-1)} />} />
           <Route path="/guides" element={<GuidesHub />} />
           <Route path="/guides/:slug" element={<GuidesHub />} />
+          <Route path="/blog" element={<GuidesHub />} />
+          <Route path="/blog/:slug" element={<GuidesHub />} />
           <Route path="/privacy" element={<PrivacyPolicy onBack={() => navigate(-1)} />} />
           <Route path="/terms" element={<TermsOfService onBack={() => navigate(-1)} />} />
 

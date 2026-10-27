@@ -7,7 +7,7 @@ import GlassCard from '../components/ui/glass-card';
 interface LandingPageProps {
   onGetStarted: () => void;
   onTryAcademy: () => void;
-  onNavigateToPage?: (page: 'privacy' | 'terms' | 'about' | 'contact' | 'guides') => void;
+  onNavigateToPage?: (page: 'privacy' | 'terms' | 'about' | 'contact' | 'guides' | 'blog') => void;
 }
 
 const LANDING_JSON_LD = {
@@ -16,7 +16,7 @@ const LANDING_JSON_LD = {
     {
       '@type': 'EducationalApplication',
       'name': 'TypeMentor AI',
-      'url': 'https://typementor-ai-frontend.vercel.app/',
+      'url': 'https://www.typementor.in/',
       'description': 'AI-powered adaptive typing coach. Identify weak keys, practice coding syntax, and improve your WPM with personalized structured lessons.',
       'applicationCategory': 'EducationalApplication',
       'isAccessibleForFree': true,
@@ -33,29 +33,29 @@ const LANDING_JSON_LD = {
     },
     {
       '@type': 'Organization',
-      '@id': 'https://typementor-ai-frontend.vercel.app/#organization',
+      '@id': 'https://www.typementor.in/#organization',
       'name': 'TypeMentor AI',
-      'url': 'https://typementor-ai-frontend.vercel.app/',
-      'logo': 'https://typementor-ai-frontend.vercel.app/apple-touch-icon.png',
+      'url': 'https://www.typementor.in/',
+      'logo': 'https://www.typementor.in/apple-touch-icon.png',
       'sameAs': [
         'https://github.com/shivamdwivedi-dev/typementor-ai'
       ]
     },
     {
       '@type': 'BreadcrumbList',
-      '@id': 'https://typementor-ai-frontend.vercel.app/#breadcrumb',
+      '@id': 'https://www.typementor.in/#breadcrumb',
       'itemListElement': [
         {
           '@type': 'ListItem',
           'position': 1,
           'name': 'Home',
-          'item': 'https://typementor-ai-frontend.vercel.app/'
+          'item': 'https://www.typementor.in/'
         },
         {
           '@type': 'ListItem',
           'position': 2,
           'name': 'Academy',
-          'item': 'https://typementor-ai-frontend.vercel.app/academy'
+          'item': 'https://www.typementor.in/academy'
         }
       ]
     },
@@ -93,7 +93,7 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
       <SEOMeta
         title="TypeMentor AI — Free AI Typing Coach for Developers & Students"
         description="TypeMentor AI is a free AI-powered typing coach. Identify weak keys, practice coding syntax, improve your WPM & accuracy with structured lessons and live keystroke diagnostics."
-        canonical="https://typementor-ai-frontend.vercel.app/"
+        canonical="/"
         jsonLd={LANDING_JSON_LD}
       />
       
@@ -566,6 +566,14 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
               className="hover:text-white hover:underline transition-colors"
             >
               Typing Guides
+            </a>
+            <span className="text-brand-border">•</span>
+            <a
+              href="/blog"
+              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('blog'); }}
+              className="hover:text-white hover:underline transition-colors"
+            >
+              Blog
             </a>
             <span className="text-brand-border">•</span>
             <a

@@ -122,7 +122,7 @@ export default function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
               <li><strong className="text-white">Right of Access & Portability:</strong> You can view and export your typing history and profile at any time.</li>
               <li><strong className="text-white">Right to Erasure (Deletion):</strong> You may request the complete deletion of your account and associated typing records.</li>
               <li><strong className="text-white">Right to Opt Out of Sale/Sharing:</strong> TypeMentor AI does not sell or share personal information for monetary compensation.</li>
-              <li><strong className="text-white">Cookie Control:</strong> You can manage or withdraw consent for non-essential cookies at any time via your browser settings or our on-site cookie choices.</li>
+              <li><strong className="text-white">Cookie Control:</strong> You can manage or withdraw consent for cookies at any time via your browser settings. TypeMentor AI does not set non-essential advertising or marketing cookies until third-party monetization is enabled.</li>
             </ul>
           </div>
         </section>

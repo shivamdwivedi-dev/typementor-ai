@@ -4,6 +4,10 @@
 User-agent: *
 Allow: /
 Allow: /academy
+Allow: /guides
+Allow: /blog
+Allow: /about
+Allow: /contact
 Allow: /privacy
 Allow: /terms
 Allow: /ads.txt
@@ -15,6 +19,7 @@ Disallow: /endurance
 Disallow: /arena
 Disallow: /path
 Disallow: /interview
+Disallow: /admin
 
 # Sitemap location
 Sitemap: https://www.typementor.in/sitemap.xml

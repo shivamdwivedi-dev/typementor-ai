@@ -1,45 +1,14 @@
-export interface GuideSection {
-  id: string;
-  title: string;
-  content: string;
-  proTip?: string;
-  codeSnippet?: {
-    language: string;
-    code: string;
-    caption?: string;
-  };
-}
+import type { GuideArticle } from './articles/types';
+import { ALL_20_ARTICLES, ARTICLE_CATEGORIES } from './articles';
 
-export interface GuideArticle {
-  slug: string;
-  title: string;
-  subtitle: string;
-  category: 'Touch Typing Mastery' | 'Developer Syntax & Coding' | 'Ergonomics & Health' | 'Keystroke Biometrics & AI';
-  readTime: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels' | 'Beginner to Intermediate' | 'Intermediate to Advanced';
-  publishedDate: string;
-  author: string;
-  authorRole: string;
-  summary: string;
-  keyTakeaways: string[];
-  sections: GuideSection[];
-  relatedSlugs: string[];
-}
+export * from './articles';
 
-export const GUIDES_CATEGORIES = [
-  'All Articles',
-  'Touch Typing Mastery',
-  'Developer Syntax & Coding',
-  'Ergonomics & Health',
-  'Keystroke Biometrics & AI',
-] as const;
-
-export const GUIDES_ARTICLES: GuideArticle[] = [
+export const LEGACY_ARTICLES: GuideArticle[] = [
   {
     slug: 'touch-typing-foundations',
     title: 'The Biomechanics of 100+ WPM: Anatomy of Home-Row Anchors & Visual Independence',
     subtitle: 'A scientific analysis of finger kinematics, cognitive visual traps, and the neuromuscular rewiring required to break through typing speed plateaus.',
-    category: 'Touch Typing Mastery',
+    category: 'Typing Fundamentals',
     readTime: '8 min read',
     difficulty: 'Beginner to Intermediate',
     publishedDate: 'October 2026',
@@ -60,29 +29,29 @@ export const GUIDES_ARTICLES: GuideArticle[] = [
         content: `Most self-taught typists plateau between 45 and 65 WPM not because of hand speed limitations, but because of a cognitive bottleneck: the visual feedback loop.
 
 When a typist glances at the physical keycap before or during key depression, the brain must cycle through three discrete neurological stages:
-1. **Saccadic Eye Movement & Focal Realignment (~80–120ms):** Shifting focus from monitor to keyboard.
-2. **Visual Pattern Match (~70–100ms):** Verifying the character glyph under ambient desk lighting.
-3. **Motor Command Authorization (~60–80ms):** Firing the efferent signal down the radial or median nerve to depress the switch.
+1. Saccadic Eye Movement & Focal Realignment (~80–120ms): Shifting focus from monitor to keyboard.
+2. Visual Pattern Match (~70–100ms): Verifying the character glyph under ambient desk lighting.
+3. Motor Command Authorization (~60–80ms): Firing the efferent signal down the radial or median nerve to depress the switch.
 
 This total cycle costs roughly 250 milliseconds per cluster of unfamiliar characters. In contrast, a true touch-typist relies solely on somatosensory tactile proprioception—the subconscious awareness of hand position in three-dimensional space. By eliminating the visual cycle, key actuations drop to a pure motor-reflex latency of just 45–70 milliseconds, instantly unlocking velocity thresholds exceeding 100 words per minute.`
       },
       {
         id: 'home-row-anchors',
         title: '2. Home-Row Anchoring & Proprioceptive Topography',
-        content: `The foundation of zero-look typing is the home row: \`A-S-D-F\` for the left hand and \`J-K-L-;\` for the right hand. 
+        content: `The foundation of zero-look typing is the home row: A-S-D-F for the left hand and J-K-L-; for the right hand.
 
-Virtually every modern physical keyboard contains small raised tactile ridges (or deeper homing scoops) on the **F** and **J** keys. These are not ornamental; they are tactile fiducials designed to recalibrate your somatosensory cortex whenever your hands reposition.
+Virtually every modern physical keyboard contains small raised tactile ridges (or deeper homing scoops) on the F and J keys. These are not ornamental; they are tactile fiducials designed to recalibrate your somatosensory cortex whenever your hands reposition.
 
 ### The Home-Row Golden Rule
 Every finger possesses a strict, non-negotiable sector of key responsibility:
-* **Left Pinky:** \`Q, A, Z\`, left \`Shift\`, and \`Tab\`
-* **Left Ring:** \`W, S, X\`
-* **Left Middle:** \`E, D, C\`
-* **Left Index:** \`R, F, V, T, G, B\`
-* **Right Index:** \`Y, U, H, J, N, M\`
-* **Right Middle:** \`I, K, ,\`
-* **Right Ring:** \`O, L, .\`
-* **Right Pinky:** \`P, ;, /\`, \`Enter\`, and right \`Shift\`
+* Left Pinky: Q, A, Z, left Shift, and Tab
+* Left Ring: W, S, X
+* Left Middle: E, D, C
+* Left Index: R, F, V, T, G, B
+* Right Index: Y, U, H, J, N, M
+* Right Middle: I, K, ,
+* Right Ring: O, L, .
+* Right Pinky: P, ;, /, Enter, and right Shift
 
 When beginner typists 'cheat' by poaching keys—such as using the right index finger to strike the 'C' key—they deform their spatial reference frame. Poaching creates unpredictable finger collisions, forcing subsequent keystrokes into disarray.`,
         proTip: 'Whenever you feel lost or commit two consecutive typos, do NOT look down. Instead, gently slide your index finger pads until you feel the F and J ridges, re-centering your spatial coordinates.'
@@ -101,10 +70,10 @@ Practicing at a steady, rhythmic 60 WPM with 99% accuracy conditions the brain's
         id: 'action-plan',
         title: '4. Daily 15-Minute Deliberate Practice Protocol',
         content: `To build permanent neuromuscular adaptations, dedicate 15 focused minutes each day using the following structured breakdown:
-* **Minutes 0–3 (Warm-Up & Spatial Recalibration):** Home-row drill sets without backspacing. Focus exclusively on tactile anchor sensation on F and J.
-* **Minutes 4–8 (Weak-Finger Isolation):** Target pinky and ring finger keys (P, Q, Z, X). These digits possess weaker extensor tendons and require conscious activation.
-* **Minutes 9–13 (Adaptive Bigram Repetition):** Run TypeMentor AI's targeted mistake recovery modules, repeating challenging ngrams until flight time drops under 100ms.
-* **Minutes 14–15 (Cooldown Velocity Test):** A single 60-second endurance sprint assessing relaxed posture, rhythmic pacing, and zero downward glances.`
+* Minutes 0–3 (Warm-Up & Spatial Recalibration): Home-row drill sets without backspacing. Focus exclusively on tactile anchor sensation on F and J.
+* Minutes 4–8 (Weak-Finger Isolation): Target pinky and ring finger keys (P, Q, Z, X). These digits possess weaker extensor tendons and require conscious activation.
+* Minutes 9–13 (Adaptive Bigram Repetition): Run TypeMentor AI's targeted mistake recovery modules, repeating challenging ngrams until flight time drops under 100ms.
+* Minutes 14–15 (Cooldown Velocity Test): A single 60-second endurance sprint assessing relaxed posture, rhythmic pacing, and zero downward glances.`
       }
     ]
   },
@@ -112,7 +81,7 @@ Practicing at a steady, rhythmic 60 WPM with 99% accuracy conditions the brain's
     slug: 'developer-syntax-optimization',
     title: 'Typing for Software Engineers: Mastering Brackets, Symbols, and CamelCase Without Breaking Flow',
     subtitle: 'Standard typing tutors teach plain English prose. Software engineers type brackets, arrows, snake_case, and regex. Here is how to conquer code syntax.',
-    category: 'Developer Syntax & Coding',
+    category: 'Students & Careers',
     readTime: '9 min read',
     difficulty: 'Intermediate to Advanced',
     publishedDate: 'October 2026',
@@ -133,22 +102,22 @@ Practicing at a steady, rhythmic 60 WPM with 99% accuracy conditions the brain's
         content: `Traditional touch typing curricula were formulated in the era of mechanical typewriters for legal secretaries and prose authors. As a result, 95% of standard drills focus on standard lowercase English vocabulary.
 
 Software engineering codebases look radically different:
-* Heavy symbol densities: \`{\`, \`}\`, \`(\`, \`)\`, \`[\`, \`]\`, \`=>\`, \`===\`, \`&&\`, \`||\`, \`$$\`, \`::\`, \`->\`.
-* Punctuation placed in unfamiliar clusters: e.g. \`() => {}\` or \`[...arr]\`.
-* Mixed casing constructs: \`useAuthStore\`, \`formatUptime\`, \`NEXT_PUBLIC_API_URL\`.
+* Heavy symbol densities: {, }, (, ), [, ], =>, ===, &&, ||, $$, ::, ->.
+* Punctuation placed in unfamiliar clusters: e.g. () => {} or [...arr].
+* Mixed casing constructs: useAuthStore, formatUptime, NEXT_PUBLIC_API_URL.
 
 When an engineer trained solely on plain English encounters JavaScript, TypeScript, Rust, or Python, their speed drops by 40% to 60%. The root cause is lack of spatial familiarity with top-row numeric symbol shifts and bottom-row punctuation keys.`
       },
       {
         id: 'opposite-shift-rule',
         title: '2. The Opposite Shift Rule for Punctuation',
-        content: `The most destructive habit in developer typing is 'one-handed shifting'—for example, pressing the Right Shift key with your right pinky while simultaneously contorting your right ring finger or middle finger to press curly brace \`{\` or double quote \`"\`.
+        content: `The most destructive habit in developer typing is 'one-handed shifting'—for example, pressing the Right Shift key with your right pinky while simultaneously contorting your right ring finger or middle finger to press curly brace { or double quote ".
 
 One-handed shifting causes severe ulnar deviation (twisting the wrist outward) and stretches the carpal tunnel under load.
 
 ### The Canonical Opposite-Shift Technique
-* **Left-Hand Symbols (\`!\`, \`@\`, \`#\`, \`$\`, \`%\`):** Hold the **Right Shift** key firmly with your right pinky; strike the number key with your left hand.
-* **Right-Hand Symbols (\`^\`, \`&\`, \`*\`, \`(\`, \`)\`, \`_\`, \`+\`, \`{\`, \`}\`, \`:\`, \`"\`):** Hold the **Left Shift** key firmly with your left pinky; strike the symbol key with your right hand.
+* Left-Hand Symbols (!, @, #, $, %): Hold the Right Shift key firmly with your right pinky; strike the number key with your left hand.
+* Right-Hand Symbols (^, &, *, (, ), _, +, {, }, :, "): Hold the Left Shift key firmly with your left pinky; strike the symbol key with your right hand.
 
 Adhering strictly to opposite-hand shifting maintains neutral wrist alignment and preserves zero-look accuracy on complex syntax.`,
         codeSnippet: {
@@ -169,16 +138,16 @@ export const findActiveSessions = async <T extends { id: string }>(
         title: '3. Fluid CamelCase, PascalCase, and Snake_Case Navigation',
         content: `Software identifiers demand frequent rapid transitions between lowercase and uppercase without introducing full-stop pauses.
 
-* **CamelCase (\`getUserProfileById\`):** Practice pulsing the opposite Shift key for exactly 50 milliseconds during the transition character. Do not drag Shift into surrounding characters.
-* **Snake_case (\`session_token_expired\`):** The underscore key (\`Shift + -\`) sits on the far top-right. Keep your left pinky on Left Shift, extend your right pinky to the hyphen key, and immediately return to home row before striking the next letter.
-* **SCREAMING_SNAKE_CASE (\`VITE_API_BASE_URL\`):** When writing constants, do not hold Shift continuously across 20 characters; enable Caps Lock for strings longer than 6 characters, then cleanly toggle it off.`
+* CamelCase (getUserProfileById): Practice pulsing the opposite Shift key for exactly 50 milliseconds during the transition character. Do not drag Shift into surrounding characters.
+* Snake_case (session_token_expired): The underscore key (Shift + -) sits on the far top-right. Keep your left pinky on Left Shift, extend your right pinky to the hyphen key, and immediately return to home row before striking the next letter.
+* SCREAMING_SNAKE_CASE (VITE_API_BASE_URL): When writing constants, do not hold Shift continuously across 20 characters; enable Caps Lock for strings longer than 6 characters, then cleanly toggle it off.`
       },
       {
         id: 'modifier-ergonomics',
         title: '4. High-Leverage Keyboard Remapping for Coders',
         content: `To optimize programming ergonomics, take advantage of modern firmware remaps:
-* **Remap Caps Lock to Control / Escape:** The Caps Lock key occupies prime real estate on the home row (directly adjacent to 'A'), yet is rarely pressed in modern computing. Remapping Caps Lock to \`Control\` (or \`Escape\` when tapped, \`Control\` when held) eliminates reaching into the awkward bottom-left corner for terminal commands, Vim navigation, and IDE shortcuts.
-* **Thumb Navigation Layer:** Consider keyboards with programmable split spacebars, allowing the left thumb to trigger \`Backspace\` or \`Symbol Layer\` without moving your wrists.`
+* Remap Caps Lock to Control / Escape: The Caps Lock key occupies prime real estate on the home row (directly adjacent to 'A'), yet is rarely pressed in modern computing. Remapping Caps Lock to Control (or Escape when tapped, Control when held) eliminates reaching into the awkward bottom-left corner for terminal commands, Vim navigation, and IDE shortcuts.
+* Thumb Navigation Layer: Consider keyboards with programmable split spacebars, allowing the left thumb to trigger Backspace or Symbol Layer without moving your wrists.`
       }
     ]
   },
@@ -186,7 +155,7 @@ export const findActiveSessions = async <T extends { id: string }>(
     slug: 'ergonomics-rsi-prevention',
     title: 'The Ergonomic Playbook: Mechanical Switches, Wrist Angles, and Repetitive Strain Injury Prevention',
     subtitle: 'How to protect your wrists, tendons, and spine when typing 8+ hours a day. The scientific guide to switches, angles, and micro-breaks.',
-    category: 'Ergonomics & Health',
+    category: 'Hardware & Ergonomics',
     readTime: '7 min read',
     difficulty: 'All Levels',
     publishedDate: 'October 2026',
@@ -207,8 +176,8 @@ export const findActiveSessions = async <T extends { id: string }>(
         content: `Repetitive Strain Injury (RSI), tendonitis, and Carpal Tunnel Syndrome are the occupational hazards of knowledge work. The median nerve passes through the carpal tunnel alongside nine flexor tendons. When your wrist bends upward (extension), downward (flexion), or outward (ulnar deviation), the cross-sectional area of the carpal tunnel decreases, crushing the nerve against surrounding sheath walls.
 
 ### The Hovering Hands Stance
-* **Floating Wrists:** While typing, your wrists should never make contact with the desk or a wrist rest. Your forearms should be supported by relaxed shoulder and elbow muscles, allowing your hands to float freely above the keys like a concert pianist.
-* **Wrist Rest Myth:** Soft wrist rests are designed for resting your palms **between** sentences, not as an anchor during active typing. Anchoring the palm while reaching for top-row numbers forces extreme wrist extension.`
+* Floating Wrists: While typing, your wrists should never make contact with the desk or a wrist rest. Your forearms should be supported by relaxed shoulder and elbow muscles, allowing your hands to float freely above the keys like a concert pianist.
+* Wrist Rest Myth: Soft wrist rests are designed for resting your palms between sentences, not as an anchor during active typing. Anchoring the palm while reaching for top-row numbers forces extreme wrist extension.`
       },
       {
         id: 'switch-mechanics',
@@ -216,26 +185,26 @@ export const findActiveSessions = async <T extends { id: string }>(
         content: `Standard office membrane keyboards require 60 to 75 grams of force and demand that the key be pressed down completely ('bottomed out') to register an electrical contact. Over 20,000 daily keystrokes, bottoming out creates severe shockwaves through the distal interphalangeal joints.
 
 ### Mechanical Switch Selection
-* **Linear Switches (e.g. 40g–45g Red/Silver):** Actuate smoothly midway through key travel (typically at 1.2mm–2.0mm) without a tactile bump. They require the lowest finger exertion, ideal for high-speed typing if you train yourself not to slam keys into the plate.
-* **Tactile Switches (e.g. 45g–55g Brown):** Provide a subtle tactile notch right at the electrical registration point, signaling your brain to retract finger force before bottoming out.
-* **Avoid Overly Heavy Switches (65g+ Black/Clear):** Sustained typing on heavy springs leads to rapid extensor tendon fatigue and forearm cramping.`
+* Linear Switches (e.g. 40g–45g Red/Silver): Actuate smoothly midway through key travel (typically at 1.2mm–2.0mm) without a tactile bump. They require the lowest finger exertion, ideal for high-speed typing if you train yourself not to slam keys into the plate.
+* Tactile Switches (e.g. 45g–55g Brown): Provide a subtle tactile notch right at the electrical registration point, signaling your brain to retract finger force before bottoming out.
+* Avoid Overly Heavy Switches (65g+ Black/Clear): Sustained typing on heavy springs leads to rapid extensor tendon fatigue and forearm cramping.`
       },
       {
         id: 'desk-geometry',
         title: '3. Desk Height, Elbow Angles, and Sightlines',
         content: `Proper ergonomics follows a chain reaction starting from the floor:
-1. **Feet Flat on Floor:** Knees bent at approximately 90–100 degrees.
-2. **Elbows Open (~95–105 degrees):** Elbows should rest slightly higher than desk level so forearms slope downward gently toward the keyboard.
-3. **Negative Tilt:** Tilting the keyboard backward (raising the front, lowering the back) promotes a completely straight wrist angle. Most keyboards feature pop-out feet that raise the back—this promotes unnatural wrist extension and should generally be left folded flat.
-4. **Monitor Height:** Top third of the screen should sit level with your horizontal eye gaze, preventing forward neck tilt.`
+1. Feet Flat on Floor: Knees bent at approximately 90–100 degrees.
+2. Elbows Open (~95–105 degrees): Elbows should rest slightly higher than desk level so forearms slope downward gently toward the keyboard.
+3. Negative Tilt: Tilting the keyboard backward (raising the front, lowering the back) promotes a completely straight wrist angle. Most keyboards feature pop-out feet that raise the back—this promotes unnatural wrist extension and should generally be left folded flat.
+4. Monitor Height: Top third of the screen should sit level with your horizontal eye gaze, preventing forward neck tilt.`
       },
       {
         id: 'micro-break-routine',
         title: '4. The 30-Second Tendon-Gliding Routine',
         content: `Perform these active stretches every 30 to 45 minutes:
-* **The Straight Hand to Hook Fist:** Hold fingers straight, then bend only the upper knuckles into a claw, then close into a full fist. This glides the flexor digitorum tendons through the carpal sheath.
-* **Prayer Stretch & Reverse Prayer:** Press palms together at chest level and lower gently until a mild stretch is felt along the inner forearm; hold for 10 seconds.
-* **Shoulder Retractions:** Roll shoulders up, back, and down to decompress thoracic nerves feeding your arms.`
+* The Straight Hand to Hook Fist: Hold fingers straight, then bend only the upper knuckles into a claw, then close into a full fist. This glides the flexor digitorum tendons through the carpal sheath.
+* Prayer Stretch & Reverse Prayer: Press palms together at chest level and lower gently until a mild stretch is felt along the inner forearm; hold for 10 seconds.
+* Shoulder Retractions: Roll shoulders up, back, and down to decompress thoracic nerves feeding your arms.`
       }
     ]
   },
@@ -243,7 +212,7 @@ export const findActiveSessions = async <T extends { id: string }>(
     slug: 'keystroke-dynamics-neuroplasticity',
     title: 'Inside Keystroke Dynamics: How AI Detects Fatigue, Latency Variance, and Cognitive Muscle Memory',
     subtitle: 'Behind the algorithmic curtain: how TypeMentor AI calculates Dwell Time, Flight Time, and digraph heatmaps to predict and prevent typing mistakes before they happen.',
-    category: 'Keystroke Biometrics & AI',
+    category: 'Speed & Accuracy',
     readTime: '8 min read',
     difficulty: 'Advanced',
     publishedDate: 'October 2026',
@@ -263,29 +232,25 @@ export const findActiveSessions = async <T extends { id: string }>(
         title: '1. Deconstructing the Keystroke: Dwell vs. Flight Time',
         content: `Every keystroke event produces two fundamental temporal parameters captured by TypeMentor AI's browser telemetry:
 
-### 1. Dwell Time ($t_d$)
-The duration between the initial \`keydown\` event and the subsequent \`keyup\` event for a single switch:
-$$t_d = t_{\\text{keyup}} - t_{\\text{keydown}}$$
-Fluid typists maintain an average Dwell Time between 60ms and 85ms. When a typist becomes cognitively fatigued or encounters an unfamiliar word, Dwell Time spikes past 120ms, indicating prolonged switch compression while the brain searches for the next character.
+### 1. Dwell Time
+The duration between the initial keydown event and the subsequent keyup event for a single switch. Fluid typists maintain an average Dwell Time between 60ms and 85ms. When a typist becomes cognitively fatigued or encounters an unfamiliar word, Dwell Time spikes past 120ms, indicating prolonged switch compression while the brain searches for the next character.
 
-### 2. Flight Time ($t_f$)
-The time interval between the release of key $k_n$ and the depression of key $k_{n+1}$:
-$$t_f = t_{\\text{keydown}}(k_{n+1}) - t_{\\text{keyup}}(k_n)$$
-Flight Time directly reflects neuromuscular transit speed. For frequent bigrams like 'th', 'er', or 'in', elite typists achieve negative or near-zero flight times through **rollover**—where the second key begins actuating slightly before the first key has fully released.`
+### 2. Flight Time
+The time interval between the release of one key and the depression of the subsequent key. Flight Time directly reflects neuromuscular transit speed. For frequent bigrams like 'th', 'er', or 'in', elite typists achieve negative or near-zero flight times through rollover—where the second key begins actuating slightly before the first key has fully released.`
       },
       {
         id: 'latency-variance',
         title: '2. The Latency Variance Signal: Predicting Mistakes Ahead of Time',
         content: `TypeMentor AI tracks the coefficient of variation in your flight times across consecutive characters. 
 
-When your latency variance remains low (under 25ms), you are operating within what psychologists call the **Flow State Channel**—smooth, effortless subconscious execution. 
+When your latency variance remains low (under 25ms), you are operating within what psychologists call the Flow State Channel—smooth, effortless subconscious execution.
 
-However, when variance spikes above 65ms across a specific digraph (e.g., moving from 'b' to 'r' or 'p' to 'o'), our machine learning model flags a **micro-hesitation**. Biometric telemetry indicates that 78% of all typist mistakes occur within 3 keystrokes immediately following a micro-hesitation. By isolating these friction digraphs and generating custom targeted sentences, TypeMentor AI eliminates the root cause of errors before they become ingrained habits.`
+However, when variance spikes above 65ms across a specific digraph (e.g., moving from 'b' to 'r' or 'p' to 'o'), our machine learning model flags a micro-hesitation. Biometric telemetry indicates that 78% of all typist mistakes occur within 3 keystrokes immediately following a micro-hesitation. By isolating these friction digraphs and generating custom targeted sentences, TypeMentor AI eliminates the root cause of errors before they become ingrained habits.`
       },
       {
         id: 'neuroplasticity-consolidation',
         title: '3. Neuroplasticity & Myelination in Motor Skill Learning',
-        content: `When you practice a specific keystroke sequence, neurons in your primary motor cortex fire in a tightly synchronized temporal pattern. With high repetition and low error rates, glial cells wrap those active axons in layers of **myelin**—an insulating fatty sheath that increases signal conduction velocity along nerve fibers by up to 100-fold.
+        content: `When you practice a specific keystroke sequence, neurons in your primary motor cortex fire in a tightly synchronized temporal pattern. With high repetition and low error rates, glial cells wrap those active axons in layers of myelin—an insulating fatty sheath that increases signal conduction velocity along nerve fibers by up to 100-fold.
 
 Mindless typing of random paragraphs does not optimize myelination because you only strike difficult combinations (such as 'zv' or 'qu') once every few thousand words. In contrast, focused, high-density drills repeating your specific friction n-grams trigger concentrated neuroplastic consolidation, permanently burning those pathways into muscle memory.`
       }
@@ -295,7 +260,7 @@ Mindless typing of random paragraphs does not optimize myelination because you o
     slug: 'speed-bursts-and-error-recovery',
     title: 'The Error Recovery Paradox: Why Stopping to Backspace Destroys Your Flow State',
     subtitle: 'The cognitive science of backspacing: why frantic error correction ruins cadence, and how forward-momentum training unlocks higher accuracy.',
-    category: 'Touch Typing Mastery',
+    category: 'Speed & Accuracy',
     readTime: '6 min read',
     difficulty: 'Intermediate',
     publishedDate: 'October 2026',
@@ -316,13 +281,13 @@ Mindless typing of random paragraphs does not optimize myelination because you o
         content: `When novice typists see an error character highlight red on their screen, their immediate visceral reaction is panic: hammering the Backspace key 3 to 5 times, glancing down at their hands to re-center, and slowly restarting the word.
 
 Consider the arithmetic reality of this panic loop:
-* Time to register visual error cue: **~180ms**
-* Time to reach right pinky to Backspace and strike twice: **~350ms**
-* Re-reading and locating current word position: **~400ms**
-* Hesitant restart keystroke: **~200ms**
-* Total lost time per error: **~1,130ms (1.13 seconds)**
+* Time to register visual error cue: ~180ms
+* Time to reach right pinky to Backspace and strike twice: ~350ms
+* Re-reading and locating current word position: ~400ms
+* Hesitant restart keystroke: ~200ms
+* Total lost time per error: ~1,130ms (1.13 seconds)
 
-If you make 6 mistakes in a 60-second test, you lose nearly **7 full seconds** of active forward progression. A typist with a raw mechanical speed of 90 WPM who makes 6 mistakes finishes with an effective score of just 68 WPM.`
+If you make 6 mistakes in a 60-second test, you lose nearly 7 full seconds of active forward progression. A typist with a raw mechanical speed of 90 WPM who makes 6 mistakes finishes with an effective score of just 68 WPM.`
       },
       {
         id: 'error-cascades',
@@ -346,4 +311,11 @@ Throttle your pace down until you achieve consecutive tests at 98% accuracy or h
       }
     ]
   }
+];
+
+export const GUIDES_CATEGORIES = ARTICLE_CATEGORIES;
+
+export const GUIDES_ARTICLES: GuideArticle[] = [
+  ...ALL_20_ARTICLES,
+  ...LEGACY_ARTICLES,
 ];
