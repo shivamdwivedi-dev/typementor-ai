@@ -1,4 +1,4 @@
-import { ACADEMY_LESSONS } from './academyLessons';
+import { ACADEMY_LESSONS, ACADEMY_MILESTONES } from './academyLessons';
 import { getApiUrl } from './api';
 
 export interface LastActivity {
@@ -91,10 +91,10 @@ export function getSmartResumeTarget(
     };
   }
 
-  // 3 & 4. Continue Course Progressions:
+  // 3, 4 & 5. Continue Course Progressions:
   // Look for the next uncompleted lesson in Academy sequence.
-  // First, check beginner lessons (1 to 30).
-  const nextBeginner = ACADEMY_LESSONS.find(l => l.id <= 30 && !completedSet.has(l.id));
+  // First, check beginner lessons (1 to 50).
+  const nextBeginner = ACADEMY_LESSONS.find(l => l.id <= ACADEMY_MILESTONES.beginner && !completedSet.has(l.id));
   if (nextBeginner) {
     return {
       type: 'academy',
@@ -104,14 +104,25 @@ export function getSmartResumeTarget(
     };
   }
 
-  // Second, check intermediate lessons (31 to 50).
-  const nextIntermediate = ACADEMY_LESSONS.find(l => l.id > 30 && l.id <= 50 && !completedSet.has(l.id));
+  // Second, check intermediate lessons (51 to 90).
+  const nextIntermediate = ACADEMY_LESSONS.find(l => l.id > ACADEMY_MILESTONES.beginner && l.id <= ACADEMY_MILESTONES.intermediate && !completedSet.has(l.id));
   if (nextIntermediate) {
     return {
       type: 'academy',
       lessonId: String(nextIntermediate.id),
-      title: `Intermediate Lesson ${nextIntermediate.id - 30}: ${nextIntermediate.title}`,
-      buttonLabel: `Continue Intermediate Lesson ${nextIntermediate.id - 30}`,
+      title: `Intermediate Lesson ${nextIntermediate.id - ACADEMY_MILESTONES.beginner}: ${nextIntermediate.title}`,
+      buttonLabel: `Continue Intermediate Lesson ${nextIntermediate.id - ACADEMY_MILESTONES.beginner}`,
+    };
+  }
+
+  // Third, check advanced lessons (91 to 125).
+  const nextAdvanced = ACADEMY_LESSONS.find(l => l.id > ACADEMY_MILESTONES.intermediate && l.id <= ACADEMY_MILESTONES.advanced && !completedSet.has(l.id));
+  if (nextAdvanced) {
+    return {
+      type: 'academy',
+      lessonId: String(nextAdvanced.id),
+      title: `Advanced Lesson ${nextAdvanced.id - ACADEMY_MILESTONES.intermediate}: ${nextAdvanced.title}`,
+      buttonLabel: `Continue Advanced Lesson ${nextAdvanced.id - ACADEMY_MILESTONES.intermediate}`,
     };
   }
 

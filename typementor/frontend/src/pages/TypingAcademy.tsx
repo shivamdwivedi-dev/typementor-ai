@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import SEOMeta from '../components/SEOMeta';
-import { ACADEMY_LESSONS, AcademyLesson } from '../utils/academyLessons';
+import { ACADEMY_LESSONS, AcademyLesson, ACADEMY_MILESTONES } from '../utils/academyLessons';
 import { showPrToast } from '../utils/toastHelper';
 import { soundEngine } from '../utils/soundEngine';
 import { useAuthStore } from '../store/AuthStore';
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function TypingAcademy() {
-  const [activeTab, setActiveTab] = useState<'beginner' | 'intermediate' | 'test'>('beginner');
+  const [activeTab, setActiveTab] = useState<'beginner' | 'intermediate' | 'advanced' | 'test'>('beginner');
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
   const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
 
@@ -50,7 +50,7 @@ export default function TypingAcademy() {
 
   // Celebration Modal States
   const [showCelebration, setShowCelebration] = useState<boolean>(false);
-  const [celebrationCourse, setCelebrationCourse] = useState<'beginner' | 'intermediate' | null>(null);
+  const [celebrationCourse, setCelebrationCourse] = useState<'beginner' | 'intermediate' | 'advanced' | null>(null);
   const [celebrationStats, setCelebrationStats] = useState<{ avgWpm: number; avgAccuracy: number; lessonsCompleted: number; certId: string } | null>(null);
 
   // Inactivity / Pause states
@@ -208,11 +208,12 @@ export default function TypingAcademy() {
     };
   }, []);
 
-  // Completion criteria evaluation
-  const isBeginnerCompleted = completedLessons.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every(id => completedLessons.includes(id));
-  const isIntermediateUnlocked = isBeginnerCompleted || completedLessons.some(id => id >= 31) || localStorage.getItem(getStorageKey('academy_intermediate_unlocked', user?.id)) === 'true';
-  const isIntermediateCompleted = completedLessons.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every(id => completedLessons.includes(id));
-  const isTestUnlocked = isIntermediateCompleted || completedLessons.some(id => id >= 51) || localStorage.getItem(getStorageKey('academy_test_unlocked', user?.id)) === 'true';
+  // Completion criteria evaluation across 3 tiers (1-50, 51-90, 91-125)
+  const isBeginnerCompleted = completedLessons.includes(ACADEMY_MILESTONES.beginner) || Array.from({ length: ACADEMY_MILESTONES.beginner }, (_, i) => i + 1).every(id => completedLessons.includes(id));
+  const isIntermediateUnlocked = isBeginnerCompleted || completedLessons.some(id => id > ACADEMY_MILESTONES.beginner) || localStorage.getItem(getStorageKey('academy_intermediate_unlocked', user?.id)) === 'true';
+  const isIntermediateCompleted = completedLessons.includes(ACADEMY_MILESTONES.intermediate) || Array.from({ length: ACADEMY_MILESTONES.intermediate - ACADEMY_MILESTONES.beginner }, (_, i) => i + ACADEMY_MILESTONES.beginner + 1).every(id => completedLessons.includes(id));
+  const isAdvancedUnlocked = isIntermediateCompleted || completedLessons.some(id => id > ACADEMY_MILESTONES.intermediate) || localStorage.getItem(getStorageKey('academy_advanced_unlocked', user?.id)) === 'true';
+  const isAdvancedCompleted = completedLessons.includes(ACADEMY_MILESTONES.advanced) || Array.from({ length: ACADEMY_MILESTONES.advanced - ACADEMY_MILESTONES.intermediate }, (_, i) => i + ACADEMY_MILESTONES.intermediate + 1).every(id => completedLessons.includes(id));
 
   // Make sure Intermediate unlock rule persists
   useEffect(() => {
@@ -221,10 +222,10 @@ export default function TypingAcademy() {
     }
   }, [isBeginnerCompleted, user?.id]);
 
-  // Make sure Test unlock rule persists
+  // Make sure Advanced unlock rule persists
   useEffect(() => {
     if (isIntermediateCompleted) {
-      localStorage.setItem(getStorageKey('academy_test_unlocked', user?.id), 'true');
+      localStorage.setItem(getStorageKey('academy_advanced_unlocked', user?.id), 'true');
     }
   }, [isIntermediateCompleted, user?.id]);
 
@@ -435,41 +436,55 @@ export default function TypingAcademy() {
     }
 
     // Calculate completions on the updated set to unlock next levels immediately
-    const nextIsBeginnerCompleted = id === 30 || Array.from({ length: 30 }, (_, i) => i + 1).every(item => updated.includes(item));
+    const nextIsBeginnerCompleted = id === ACADEMY_MILESTONES.beginner || Array.from({ length: ACADEMY_MILESTONES.beginner }, (_, i) => i + 1).every(item => updated.includes(item));
     if (nextIsBeginnerCompleted) {
       localStorage.setItem(getStorageKey('academy_intermediate_unlocked', user?.id), 'true');
     }
 
-    const nextIsIntermediateCompleted = id === 50 || Array.from({ length: 20 }, (_, i) => i + 31).every(item => updated.includes(item));
+    const nextIsIntermediateCompleted = id === ACADEMY_MILESTONES.intermediate || Array.from({ length: ACADEMY_MILESTONES.intermediate - ACADEMY_MILESTONES.beginner }, (_, i) => i + ACADEMY_MILESTONES.beginner + 1).every(item => updated.includes(item));
     if (nextIsIntermediateCompleted) {
-      localStorage.setItem(getStorageKey('academy_test_unlocked', user?.id), 'true');
+      localStorage.setItem(getStorageKey('academy_advanced_unlocked', user?.id), 'true');
     }
+
+    const nextIsAdvancedCompleted = id === ACADEMY_MILESTONES.advanced || Array.from({ length: ACADEMY_MILESTONES.advanced - ACADEMY_MILESTONES.intermediate }, (_, i) => i + ACADEMY_MILESTONES.intermediate + 1).every(item => updated.includes(item));
 
     showPrToast(`🎉 Lesson ${id} Completed!`);
 
-    // Trigger celebration only for milestones
-    if (id === 30 && nextIsBeginnerCompleted) {
+    // Trigger celebration for milestones
+    if (id === ACADEMY_MILESTONES.beginner && nextIsBeginnerCompleted) {
       triggerMilestoneCelebration('beginner', wpm, accuracy);
-    } else if (id === 50 && nextIsIntermediateCompleted) {
+    } else if (id === ACADEMY_MILESTONES.intermediate && nextIsIntermediateCompleted) {
       triggerMilestoneCelebration('intermediate', wpm, accuracy);
+    } else if (id === ACADEMY_MILESTONES.advanced && nextIsAdvancedCompleted) {
+      triggerMilestoneCelebration('advanced', wpm, accuracy);
     }
   };
 
-  const triggerMilestoneCelebration = (course: 'beginner' | 'intermediate', finalWpm: number, finalAcc: number) => {
+  const triggerMilestoneCelebration = (course: 'beginner' | 'intermediate' | 'advanced', finalWpm: number, finalAcc: number) => {
     const stats = getCourseStats(course, finalWpm, finalAcc);
-    const certId = `TM-${course === 'beginner' ? 'BEG' : 'INT'}-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const prefix = course === 'beginner' ? 'BEG' : course === 'intermediate' ? 'INT' : 'ADV';
+    const certId = `TM-${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
     setCelebrationCourse(course);
     setCelebrationStats({ ...stats, certId });
     setShowCelebration(true);
   };
 
-  const getCourseStats = (type: 'beginner' | 'intermediate', fallbackWpm: number, fallbackAcc: number) => {
+  const getCourseStats = (type: 'beginner' | 'intermediate' | 'advanced', fallbackWpm: number, fallbackAcc: number) => {
     const savedResultsStr = localStorage.getItem(getStorageKey('academy_lesson_results', user?.id));
     const savedResults = savedResultsStr ? JSON.parse(savedResultsStr) : {};
     
-    const ids = type === 'beginner' 
-      ? Array.from({ length: 30 }, (_, i) => i + 1)
-      : Array.from({ length: 20 }, (_, i) => i + 31);
+    let ids: number[] = [];
+    let lessonCount = 50;
+    if (type === 'beginner') {
+      ids = Array.from({ length: ACADEMY_MILESTONES.beginner }, (_, i) => i + 1);
+      lessonCount = ACADEMY_MILESTONES.beginner;
+    } else if (type === 'intermediate') {
+      ids = Array.from({ length: ACADEMY_MILESTONES.intermediate - ACADEMY_MILESTONES.beginner }, (_, i) => i + ACADEMY_MILESTONES.beginner + 1);
+      lessonCount = ACADEMY_MILESTONES.intermediate - ACADEMY_MILESTONES.beginner;
+    } else {
+      ids = Array.from({ length: ACADEMY_MILESTONES.advanced - ACADEMY_MILESTONES.intermediate }, (_, i) => i + ACADEMY_MILESTONES.intermediate + 1);
+      lessonCount = ACADEMY_MILESTONES.advanced - ACADEMY_MILESTONES.intermediate;
+    }
       
     let totalWpm = 0;
     let totalAcc = 0;
@@ -493,7 +508,7 @@ export default function TypingAcademy() {
       return {
         avgWpm: fallbackWpm,
         avgAccuracy: fallbackAcc,
-        lessonsCompleted: type === 'beginner' ? 30 : 20
+        lessonsCompleted: lessonCount
       };
     }
   };
@@ -564,9 +579,18 @@ export default function TypingAcademy() {
     doc.setTextColor(148, 163, 184);
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(11);
-    const courseName = type === 'beginner' ? 'Beginner Touch Typing Course' : 'Intermediate Touch Typing Course';
-    doc.text(`For successfully mastering the ${courseName}, demonstrating proper key positioning,`, width / 2, 103, { align: 'center' });
-    doc.text('finger coordination, and touch typing muscle memory.', width / 2, 109, { align: 'center' });
+    const courseName = type === 'beginner'
+      ? 'Beginner Touch Typing Course'
+      : type === 'intermediate'
+      ? 'Intermediate Touch Typing Course'
+      : 'Advanced Professional Typing Course';
+    const courseDesc = type === 'beginner'
+      ? 'demonstrating proper key positioning, finger coordination, and touch typing muscle memory.'
+      : type === 'intermediate'
+      ? 'demonstrating bottom-row mastery, shift capitalization speed, and fluent paragraph cadence.'
+      : 'demonstrating complete keyboard mastery across letters, numbers, programming syntax, and high-velocity sprints.';
+    doc.text(`For successfully mastering the ${courseName},`, width / 2, 103, { align: 'center' });
+    doc.text(courseDesc, width / 2, 109, { align: 'center' });
 
     // Statistics Panels
     doc.setFillColor(30, 41, 59);
@@ -619,10 +643,12 @@ export default function TypingAcademy() {
 
   // ── Typing Mechanics ──────────────────────────────────────────────────────
   const startLesson = (lesson: AcademyLesson) => {
-    if (lesson.id <= 30) {
+    if (lesson.id <= ACADEMY_MILESTONES.beginner) {
       setActiveTab('beginner');
-    } else if (lesson.id <= 50) {
+    } else if (lesson.id <= ACADEMY_MILESTONES.intermediate) {
       setActiveTab('intermediate');
+    } else if (lesson.id <= ACADEMY_MILESTONES.advanced) {
+      setActiveTab('advanced');
     } else {
       setActiveTab('test');
     }
@@ -630,7 +656,11 @@ export default function TypingAcademy() {
     saveLastActivity({
       type: 'academy',
       lessonId: String(lesson.id),
-      title: lesson.id > 30 ? `Intermediate Lesson ${lesson.id - 30}` : `Beginner Lesson ${lesson.id}`
+      title: lesson.id > ACADEMY_MILESTONES.intermediate
+        ? `Advanced Lesson ${lesson.id - ACADEMY_MILESTONES.intermediate}`
+        : lesson.id > ACADEMY_MILESTONES.beginner
+        ? `Intermediate Lesson ${lesson.id - ACADEMY_MILESTONES.beginner}`
+        : `Beginner Lesson ${lesson.id}`
     });
     setTypedText('');
     setIsStarted(false);
@@ -886,24 +916,35 @@ export default function TypingAcademy() {
       // Recommendation logic
       if (wpm >= 55 && acc >= 93) {
         setRecommendedLevel('Advanced Course');
+        localStorage.setItem(getStorageKey('academy_intermediate_unlocked', user?.id), 'true');
+        localStorage.setItem(getStorageKey('academy_advanced_unlocked', user?.id), 'true');
       } else if (wpm >= 30 && acc >= 90) {
         setRecommendedLevel('Intermediate Course');
+        localStorage.setItem(getStorageKey('academy_intermediate_unlocked', user?.id), 'true');
       } else {
         setRecommendedLevel('Beginner Course (Recommended)');
       }
     }
   };
 
-  const handleOpenCertificate = (course: 'beginner' | 'intermediate') => {
+  const handleOpenCertificate = (course: 'beginner' | 'intermediate' | 'advanced') => {
     const savedResultsStr = localStorage.getItem(getStorageKey('academy_lesson_results', user?.id));
     const savedResults = savedResultsStr ? JSON.parse(savedResultsStr) : {};
-    const finalLessonId = course === 'beginner' ? 30 : 50;
-    const finalLessonStats = savedResults[finalLessonId] || { wpm: course === 'beginner' ? 35 : 50, accuracy: 95 };
+    const finalLessonId = course === 'beginner'
+      ? ACADEMY_MILESTONES.beginner
+      : course === 'intermediate'
+      ? ACADEMY_MILESTONES.intermediate
+      : ACADEMY_MILESTONES.advanced;
+    const finalLessonStats = savedResults[finalLessonId] || {
+      wpm: course === 'beginner' ? 30 : course === 'intermediate' ? 45 : 60,
+      accuracy: 95
+    };
     triggerMilestoneCelebration(course, finalLessonStats.wpm, finalLessonStats.accuracy);
   };
 
-  const nextRecommendedBeginner = ACADEMY_LESSONS.filter(l => l.id <= 30).find(l => !completedLessons.includes(l.id));
-  const nextRecommendedIntermediate = ACADEMY_LESSONS.filter(l => l.id > 30 && l.id <= 50).find(l => !completedLessons.includes(l.id));
+  const nextRecommendedBeginner = ACADEMY_LESSONS.filter(l => l.id <= ACADEMY_MILESTONES.beginner).find(l => !completedLessons.includes(l.id));
+  const nextRecommendedIntermediate = ACADEMY_LESSONS.filter(l => l.id > ACADEMY_MILESTONES.beginner && l.id <= ACADEMY_MILESTONES.intermediate).find(l => !completedLessons.includes(l.id));
+  const nextRecommendedAdvanced = ACADEMY_LESSONS.filter(l => l.id > ACADEMY_MILESTONES.intermediate && l.id <= ACADEMY_MILESTONES.advanced).find(l => !completedLessons.includes(l.id));
 
   const progressPercent = Math.round((completedLessons.length / ACADEMY_LESSONS.length) * 100);
 
@@ -938,7 +979,7 @@ export default function TypingAcademy() {
     <div className="space-y-8 pb-12 text-left max-w-7xl mx-auto font-sans relative">
       <SEOMeta
         title="Typing Academy — TypeMentor AI | Structured Typing Lessons"
-        description="Learn to type faster with TypeMentor AI's Typing Academy. 50+ structured lessons covering home row basics, coding syntax, and advanced touch typing. Free for everyone."
+        description="Learn to type faster with TypeMentor AI's Typing Academy. 125 structured lessons with 5-step habit formation covering home row, bottom row, coding syntax, and high-velocity sprints. Free for everyone."
         canonical="https://www.typementor.in/academy"
       />
       {/* CSS Confetti keyframes styling */}
@@ -1174,22 +1215,26 @@ export default function TypingAcademy() {
       </div>
 
       {/* Tabs Row */}
-      <div className="flex bg-brand-card/30 p-1 rounded-xl border border-brand-border/40 max-w-md w-full">
-        {(['beginner', 'intermediate', 'test'] as const).map(tab => {
+      <div className="flex bg-brand-card/30 p-1 rounded-xl border border-brand-border/40 max-w-2xl w-full">
+        {(['beginner', 'intermediate', 'advanced', 'test'] as const).map(tab => {
           let label = '';
           let isLocked = false;
           let isCompleted = false;
 
           if (tab === 'beginner') {
-            label = 'Beginner';
+            label = 'Beginner (1-50)';
             isCompleted = isBeginnerCompleted;
           } else if (tab === 'intermediate') {
-            label = 'Intermediate';
+            label = 'Intermediate (51-90)';
             isLocked = !isIntermediateUnlocked;
             isCompleted = isIntermediateCompleted;
+          } else if (tab === 'advanced') {
+            label = 'Advanced & Pro (91-125)';
+            isLocked = !isAdvancedUnlocked;
+            isCompleted = isAdvancedCompleted;
           } else {
             label = 'Assessment Test';
-            isLocked = !isTestUnlocked;
+            isLocked = false;
           }
 
           return (
@@ -1202,7 +1247,7 @@ export default function TypingAcademy() {
                 }
                 setActiveTab(tab);
               }}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-2 rounded-lg text-xs font-bold capitalize transition-all flex items-center justify-center gap-1.5 ${
                 isLocked ? 'opacity-40 cursor-not-allowed' : ''
               } ${
                 activeTab === tab
@@ -1223,8 +1268,8 @@ export default function TypingAcademy() {
         <div className="space-y-6">
           <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="space-y-1.5 text-center sm:text-left">
-              <h3 className="text-xl font-extrabold text-white">Beginner Typing Syllabus</h3>
-              <p className="text-xs text-brand-muted">30 Progressive touch typing lessons starting from zero. Complete lessons to unlock the next levels.</p>
+              <h3 className="text-xl font-extrabold text-white">Beginner Typing Syllabus (50 Lessons)</h3>
+              <p className="text-xs text-brand-muted">5-Step habit system per key pair across Home Row and Top Row. Master 95% precision before moving up.</p>
             </div>
             <div className="flex flex-wrap gap-3 justify-center sm:justify-end">
               {isBeginnerCompleted && (
@@ -1250,7 +1295,7 @@ export default function TypingAcademy() {
 
           {/* Lessons Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ACADEMY_LESSONS.filter(l => l.id <= 30).map((lesson) => {
+            {ACADEMY_LESSONS.filter(l => l.id <= ACADEMY_MILESTONES.beginner).map((lesson) => {
               const isCompleted = completedLessons.includes(lesson.id);
               const isUnlocked = lesson.id === 1 || completedLessons.includes(lesson.id - 1);
 
@@ -1297,8 +1342,8 @@ export default function TypingAcademy() {
         <div className="space-y-6">
           <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="space-y-1.5 text-center sm:text-left">
-              <h3 className="text-xl font-extrabold text-white">Intermediate Typing Syllabus</h3>
-              <p className="text-xs text-brand-muted">20 Intermediate lessons focusing on longer words, punctuation, capital letters, and numbers.</p>
+              <h3 className="text-xl font-extrabold text-white">Intermediate Typing Syllabus (40 Lessons)</h3>
+              <p className="text-xs text-brand-muted">Bottom Row reaches, spacebar cadence, Shift capitalization, and fluid paragraph flow.</p>
             </div>
             <div className="flex flex-wrap gap-3 justify-center sm:justify-end">
               {isIntermediateCompleted && (
@@ -1324,9 +1369,83 @@ export default function TypingAcademy() {
 
           {/* Lessons Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ACADEMY_LESSONS.filter(l => l.id > 30 && l.id <= 50).map((lesson) => {
+            {ACADEMY_LESSONS.filter(l => l.id > ACADEMY_MILESTONES.beginner && l.id <= ACADEMY_MILESTONES.intermediate).map((lesson) => {
               const isCompleted = completedLessons.includes(lesson.id);
-              const isUnlocked = lesson.id === 31 || completedLessons.includes(lesson.id - 1);
+              const isUnlocked = lesson.id === ACADEMY_MILESTONES.beginner + 1 || completedLessons.includes(lesson.id - 1);
+
+              return (
+                <div
+                  key={lesson.id}
+                  onClick={() => isUnlocked && startLesson(lesson)}
+                  className={`p-5 rounded-2xl border transition-all ${
+                    isUnlocked
+                      ? 'bg-brand-card/45 border-brand-border/60 hover:border-brand-primary/60 cursor-pointer'
+                      : 'bg-brand-bg/25 border-brand-border/20 opacity-50 select-none cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-mono text-brand-muted">Lesson {lesson.id.toString().padStart(2, '0')}</span>
+                    {isCompleted ? (
+                      <CheckCircle2 className="w-5 h-5 text-brand-success" />
+                    ) : !isUnlocked ? (
+                      <Lock className="w-4 h-4 text-brand-muted" />
+                    ) : (
+                      <span className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-ping" />
+                    )}
+                  </div>
+
+                  <h4 className="font-extrabold text-sm text-white mt-2.5">{lesson.title}</h4>
+                  <p className="text-[11px] text-brand-muted mt-1 leading-relaxed">{lesson.goal}</p>
+
+                  <div className="mt-4 flex flex-wrap gap-1">
+                    {lesson.keys.map(k => (
+                      <span key={k} className="px-1.5 py-0.5 bg-slate-950 rounded text-[9px] font-mono text-brand-primary uppercase">
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 3: Advanced & Pro Developer Syllabus */}
+      {activeTab === 'advanced' && !selectedLesson && (
+        <div className="space-y-6">
+          <div className="glass-panel p-6 rounded-2xl border border-brand-border/40 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="space-y-1.5 text-center sm:text-left">
+              <h3 className="text-xl font-extrabold text-white">Advanced & Pro Developer Syllabus (35 Lessons)</h3>
+              <p className="text-xs text-brand-muted">Numbers row, code delimiters, programming syntax, and high-velocity 65+ WPM sprints.</p>
+            </div>
+            <div className="flex flex-wrap gap-3 justify-center sm:justify-end">
+              {isAdvancedCompleted && (
+                <button
+                  onClick={() => handleOpenCertificate('advanced')}
+                  className="px-5 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 shadow-lg shadow-amber-550/20"
+                >
+                  <Award className="w-4 h-4" />
+                  View Certificate
+                </button>
+              )}
+              {nextRecommendedAdvanced && (
+                <button
+                  onClick={() => startLesson(nextRecommendedAdvanced)}
+                  className="px-5 py-3 bg-brand-success text-slate-950 font-extrabold text-xs rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5"
+                >
+                  Continue Course
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Lessons Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ACADEMY_LESSONS.filter(l => l.id > ACADEMY_MILESTONES.intermediate && l.id <= ACADEMY_MILESTONES.advanced).map((lesson) => {
+              const isCompleted = completedLessons.includes(lesson.id);
+              const isUnlocked = lesson.id === ACADEMY_MILESTONES.intermediate + 1 || completedLessons.includes(lesson.id - 1);
 
               return (
                 <div
@@ -2057,7 +2176,7 @@ export default function TypingAcademy() {
                 Course Completed!
               </h2>
               <p className="text-xs text-brand-muted max-w-md mx-auto">
-                Incredible determination! You completed the {celebrationCourse === 'beginner' ? 'Beginner' : 'Intermediate'} course track. Here is your official TypeMentor AI certificate.
+                Incredible determination! You completed the {celebrationCourse === 'beginner' ? 'Beginner' : celebrationCourse === 'intermediate' ? 'Intermediate' : 'Advanced & Pro'} course track. Here is your official TypeMentor AI certificate.
               </p>
             </div>
 
@@ -2097,7 +2216,7 @@ export default function TypingAcademy() {
                 </div>
 
                 <p className="text-[10px] text-brand-muted leading-relaxed text-center">
-                  Successfully completed the <span className="text-white font-bold">{celebrationCourse === 'beginner' ? 'Beginner Touch Typing Course' : 'Intermediate Touch Typing Course'}</span>, mastering key positions, muscle coordination, and pacing speeds.
+                  Successfully completed the <span className="text-white font-bold">{celebrationCourse === 'beginner' ? 'Beginner Touch Typing Course' : celebrationCourse === 'intermediate' ? 'Intermediate Touch Typing Course' : 'Advanced Professional Typing Course'}</span>, mastering key positions, muscle coordination, and pacing speeds.
                 </p>
 
                 <div className="flex justify-between items-end pt-3 text-[9px] text-brand-muted font-mono">
