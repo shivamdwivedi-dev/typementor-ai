@@ -232,7 +232,7 @@ export const ConquestCombatPanel: React.FC<ConquestCombatPanelProps> = ({
       {/* Passage Display Area with Active Typing Focus Indicator */}
       <div
         data-testid="combat-passage"
-        className={`relative p-5 rounded-2xl bg-zinc-900/80 border transition-all font-mono text-sm sm:text-base leading-relaxed tracking-wide select-none min-h-[140px] max-h-[220px] overflow-y-auto cursor-text ${
+        className={`relative p-6 rounded-2xl bg-zinc-900/80 border transition-all font-mono text-xl sm:text-2xl leading-[1.85] sm:leading-[1.95] tracking-wide select-none min-h-[160px] max-h-[260px] overflow-y-auto cursor-text break-normal whitespace-pre-wrap ${
           isFocused
             ? 'border-purple-500/60 ring-2 ring-purple-500/20 shadow-inner'
             : 'border-amber-500/50 ring-1 ring-amber-500/20'
@@ -241,21 +241,27 @@ export const ConquestCombatPanel: React.FC<ConquestCombatPanelProps> = ({
         {expectedText.split('').map((char, idx) => {
           let charClass = 'text-zinc-500';
           const isCurrent = idx === typedText.length;
+          const isTyped = idx < typedText.length;
+          const isMistake = isTyped && typedText[idx] !== char;
 
-          if (idx < typedText.length) {
-            if (typedText[idx] === char) {
-              charClass = 'text-emerald-400 font-bold';
+          if (isTyped) {
+            if (!isMistake) {
+              charClass = 'text-slate-100 font-medium';
             } else {
-              charClass = 'text-rose-400 bg-rose-500/25 underline rounded-xs';
+              charClass = 'text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold';
             }
+          } else if (isCurrent) {
+            charClass = 'text-cyan-300 font-bold';
           }
 
+          const displayChar = char === ' ' ? (isMistake ? '␣' : '\u00A0') : char;
+
           return (
-            <span key={idx} className="relative">
+            <span key={idx} className={`relative inline-block transition-colors duration-75 ${charClass}`}>
               {isCurrent && (
-                <span className="absolute -top-0.5 -bottom-0.5 left-0 w-0.5 bg-purple-400 animate-pulse" />
+                <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
               )}
-              <span className={charClass}>{char}</span>
+              {displayChar}
             </span>
           );
         })}

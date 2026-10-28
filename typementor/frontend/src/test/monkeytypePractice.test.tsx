@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getPromptForWordCount } from '../utils/lessonEngine';
+import { generateEndurancePassage } from '../utils/endurancePassages';
 
 describe('Monkeytype Practice Engine', () => {
   it('generates exact word count prompts for 15, 25, 50, and 100 words', () => {
@@ -20,5 +21,12 @@ describe('Monkeytype Practice Engine', () => {
     const prompt = getPromptForWordCount(25, 1);
     expect(prompt.text).not.toContain('␣');
     expect(prompt.text.length).toBeGreaterThan(50);
+  });
+
+  it('generates endurance passages with clean characters and no glyph corruption', () => {
+    const endurance = generateEndurancePassage('Technology', 200, []);
+    expect(endurance.text).not.toContain('␣');
+    expect(endurance.text.length).toBeGreaterThan(500);
+    expect(endurance.idsUsed.length).toBeGreaterThan(0);
   });
 });

@@ -109,7 +109,7 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
   const oppWpm = opponentProgress?.wpm ?? opponentParticipant?.wpm ?? 0;
   const oppAccuracy = opponentProgress?.accuracy ?? opponentParticipant?.accuracy ?? 100;
 
-  // High-performance passage rendering: groups correct text and collapses untyped remainder into 1 span (60-120 FPS)
+  // High-performance passage rendering: groups correct text and collapses untyped remainder into 1 span with Monkeytype aesthetics
   const renderedPassage = React.useMemo(() => {
     if (!passage) return null;
     const typedLen = typedText.length;
@@ -120,19 +120,19 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
       const char = passage[i] || '';
       const typed = typedText[i];
       if (typed === char) {
-        currentCorrectRun += char;
+        currentCorrectRun += char === ' ' ? '\u00A0' : char;
       } else {
         if (currentCorrectRun) {
           elements.push(
-            <span key={`c-${i - currentCorrectRun.length}`} className="text-emerald-400 font-medium">
+            <span key={`c-${i - currentCorrectRun.length}`} className="text-slate-100 font-medium">
               {currentCorrectRun}
             </span>
           );
           currentCorrectRun = '';
         }
         elements.push(
-          <span key={`e-${i}`} className="text-red-400 font-bold bg-red-500/20 rounded">
-            {char}
+          <span key={`e-${i}`} className="text-rose-400 font-bold bg-rose-500/25 rounded px-0.5">
+            {char === ' ' ? '␣' : char}
           </span>
         );
       }
@@ -140,27 +140,30 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
 
     if (currentCorrectRun) {
       elements.push(
-        <span key="c-end" className="text-emerald-400 font-medium">
+        <span key="c-end" className="text-slate-100 font-medium">
           {currentCorrectRun}
         </span>
       );
     }
 
     if (typedLen < passage.length) {
+      const cursorChar = passage[typedLen];
       elements.push(
         <span
           key="cursor"
-          className="text-white font-bold underline decoration-blue-500 decoration-2 underline-offset-4 bg-blue-500/20 rounded"
+          className="relative inline-block text-cyan-300 font-bold"
         >
-          {passage[typedLen]}
+          <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
+          {cursorChar === ' ' ? '\u00A0' : cursorChar}
         </span>
       );
     }
 
     if (typedLen + 1 < passage.length) {
+      const remainder = passage.slice(typedLen + 1).replace(/ /g, '\u00A0');
       elements.push(
-        <span key="remainder" className="text-zinc-600">
-          {passage.slice(typedLen + 1)}
+        <span key="remainder" className="text-slate-500">
+          {remainder}
         </span>
       );
     }
@@ -252,11 +255,17 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
       {/* Target Passage Interactive Reader Box */}
       <div
         onClick={() => inputRef.current?.focus()}
-        className="p-6 sm:p-8 rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl relative cursor-text select-none min-h-[160px]"
+        className="p-6 sm:p-8 rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl relative cursor-text select-none min-h-[160px] focus-within:border-cyan-500/50 transition-colors"
       >
-        <p className="font-mono text-lg sm:text-xl leading-relaxed tracking-wide">
+        <p className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide break-normal whitespace-pre-wrap">
           {renderedPassage}
         </p>
+
+        {typedText.length === 0 && (
+          <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-zinc-800/80 text-xs font-mono text-cyan-400/80 animate-pulse">
+            <span>Type to race • maintain steady rhythm for maximum WPM</span>
+          </div>
+        )}
 
         {/* Hidden active typing input */}
         <input

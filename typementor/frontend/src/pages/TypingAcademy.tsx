@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import SEOMeta from '../components/SEOMeta';
 import { ACADEMY_LESSONS, AcademyLesson } from '../utils/academyLessons';
 import { showPrToast } from '../utils/toastHelper';
@@ -10,7 +11,8 @@ import { getStorageKey, getApiUrl } from '../utils/api';
 import TypingFingerGuide from '../components/TypingFingerGuide';
 import {
   CheckCircle2, Lock,
-  ChevronRight, RefreshCw, Star, Award, Download, X, Sparkles, Timer, Zap, AlertTriangle
+  ChevronRight, RefreshCw, Star, Award, Download, X, Sparkles, Timer, Zap, AlertTriangle,
+  Maximize2, Minimize2, Eye, EyeOff
 } from 'lucide-react';
 
 export default function TypingAcademy() {
@@ -25,6 +27,13 @@ export default function TypingAcademy() {
   const [endTime, setEndTime] = useState<number | null>(null);
   const [errors, setErrors] = useState<number>(0);
   const [finalResult, setFinalResult] = useState<{ wpm: number; accuracy: number; errors: number } | null>(null);
+
+  // Zen & Customization States
+  const [isZenMode, setIsZenMode] = useState<boolean>(false);
+  const [showHandsGuide, setShowHandsGuide] = useState<boolean>(() => {
+    return localStorage.getItem('typementor_academy_hands') !== 'false';
+  });
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Live telemetry logs for AI Coach Pulse and Backspace Awareness
   const [typedCharsLog, setTypedCharsLog] = useState<Array<{ expected: string; actual: string; isMistake: boolean; timestamp: number }>>([]);
@@ -78,6 +87,42 @@ export default function TypingAcademy() {
       setCompletedLessons([]);
     }
   }, [user?.id]);
+
+  // Fullscreen tracking
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  // Lock body scroll while Zen Mode is active
+  useEffect(() => {
+    if (isZenMode) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isZenMode]);
+
+  const handleToggleHands = () => {
+    setShowHandsGuide(prev => {
+      const next = !prev;
+      localStorage.setItem('typementor_academy_hands', String(next));
+      return next;
+    });
+  };
 
   // Inactivity auto-pause loop for Academy
   useEffect(() => {
@@ -186,6 +231,14 @@ export default function TypingAcademy() {
   // Listen for global keydown events to support pressing Enter to advance/retry lessons
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isZenMode && !isStarted && !endTime) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsZenMode(false);
+          return;
+        }
+      }
+
       if (showCelebration) {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -1348,6 +1401,12 @@ export default function TypingAcademy() {
                 ref={testInputRef}
                 value={testTyped}
                 onChange={handleTestChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' || e.key === 'Escape') {
+                    e.preventDefault();
+                    startAssessment();
+                  }
+                }}
                 className="absolute opacity-0 pointer-events-none"
                 autoComplete="off"
                 autoCapitalize="off"
@@ -1359,20 +1418,47 @@ export default function TypingAcademy() {
               <div className="relative">
                 <div
                   onClick={() => !isPaused && testInputRef.current?.focus()}
-                  className="p-5 bg-brand-bg/50 border border-brand-border/30 rounded-xl cursor-text font-mono text-base leading-relaxed text-slate-400 select-none text-left"
+                  className="p-6 sm:p-8 bg-slate-950/60 border border-slate-800/80 rounded-2xl cursor-text font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] text-slate-400 select-none text-left focus-within:border-cyan-500/40 shadow-xl"
                 >
                   {testText.split('').map((char, index) => {
-                    let colorClass = 'text-slate-500';
-                    let cursor = '';
+                    let colorClass = 'text-slate-500 font-normal';
+                    let isCurrent = index === testTyped.length;
 
                     if (index < testTyped.length) {
-                      colorClass = testTyped[index] === char ? 'text-white' : 'text-brand-danger bg-brand-danger/10 border-b border-brand-danger';
-                    } else if (index === testTyped.length) {
-                      colorClass = 'text-brand-primary';
-                      cursor = 'border-l-2 border-brand-primary animate-pulse';
+                      colorClass = testTyped[index] === char
+                        ? 'text-slate-100 font-medium'
+                        : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
+                    } else if (isCurrent) {
+                      colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
                     }
 
-                    return <span key={index} className={`${colorClass} ${cursor}`}>{char}</span>;
+                    const isSpace = char === ' ';
+                    const isMistake = colorClass.includes('text-rose-400');
+
+                    return (
+                      <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
+                        {char === '\n' ? (
+                          <>
+                            <span className="text-slate-600/70 text-xs select-none">↵</span>
+                            <br />
+                          </>
+                        ) : isSpace ? (
+                          isMistake ? (
+                            <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
+                          ) : (
+                            '\u00A0'
+                          )
+                        ) : (
+                          char
+                        )}
+                        {isCurrent && (
+                          <span
+                            className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none"
+                            style={{ willChange: 'opacity' }}
+                          />
+                        )}
+                      </span>
+                    );
                   })}
                 </div>
 
@@ -1430,18 +1516,41 @@ export default function TypingAcademy() {
 
       {/* ACTIVE LESSON TYPING WORKSPACE */}
       {selectedLesson && (
-        <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-brand-border/40 space-y-6">
-          <div className="flex justify-between items-center border-b border-brand-border/20 pb-4">
+        <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-brand-border/40 space-y-6">
+          <div className="flex flex-wrap justify-between items-center border-b border-brand-border/20 pb-4 gap-3">
             <div>
-              <span className="text-[10px] text-brand-muted font-bold font-mono">Lesson {selectedLesson.id}</span>
-              <h3 className="font-extrabold text-white text-base mt-0.5">{selectedLesson.title}</h3>
+              <span className="text-[10px] text-cyan-400 font-extrabold font-mono uppercase tracking-wider">Lesson {selectedLesson.id}</span>
+              <h3 className="font-extrabold text-white text-lg mt-0.5">{selectedLesson.title}</h3>
             </div>
-            <button
-              onClick={() => setSelectedLesson(null)}
-              className="text-xs text-brand-muted hover:text-white"
-            >
-              Exit Lesson
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsZenMode(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                title="Enter Distraction-Free Zen Focus Mode"
+              >
+                <Zap className="w-3.5 h-3.5 fill-cyan-400" />
+                <span className="hidden sm:inline">Zen Focus</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleHands}
+                className={`p-2 rounded-xl border text-xs font-semibold transition-all ${
+                  showHandsGuide
+                    ? 'border-slate-700 bg-slate-800/80 text-white'
+                    : 'border-slate-800/60 bg-slate-950/40 text-slate-500 hover:text-slate-300'
+                }`}
+                title={showHandsGuide ? 'Hide 3D Finger Guide' : 'Show 3D Finger Guide'}
+              >
+                {showHandsGuide ? <Eye className="w-3.5 h-3.5 text-cyan-400" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={() => setSelectedLesson(null)}
+                className="px-3 py-1.5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-xs text-brand-muted hover:text-white transition-all"
+              >
+                Exit Lesson
+              </button>
+            </div>
           </div>
 
           <p className="text-xs text-brand-muted leading-relaxed max-w-2xl bg-brand-bg/50 p-4 rounded-xl border border-brand-border/20">
@@ -1449,10 +1558,66 @@ export default function TypingAcademy() {
             {selectedLesson.placement}
           </p>
 
+          {/* ── Live HUD Header ── */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80 backdrop-blur-md">
+            <div className="flex items-center gap-2.5">
+              <span className="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-extrabold text-[11px] tracking-wider uppercase">
+                Lesson {selectedLesson.id}
+              </span>
+              <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+                Target: {activePowerUp ? activePowerUp.reducedMinWpm : selectedLesson.minWpm} WPM / {selectedLesson.minAccuracy}%
+              </span>
+            </div>
+
+            <div className="flex items-center gap-6 sm:gap-10 font-mono">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono tracking-tight">
+                  {endTime && finalResult ? finalResult.wpm : (startTime ? Math.round(typedText.split(' ').length / Math.max(0.01, (Date.now() - startTime) / 60000)) : 0)}
+                </span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">wpm</span>
+              </div>
+
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-tight">
+                  {endTime && finalResult ? finalResult.accuracy : (typedText.length > 0 ? Math.round(((typedText.length - errors) / typedText.length) * 100) : 100)}%
+                </span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">acc</span>
+              </div>
+
+              <div className="flex items-baseline gap-1.5 hidden xs:flex">
+                <span className="text-2xl sm:text-3xl font-black text-rose-400 font-mono tracking-tight">
+                  {errors}
+                </span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">miss</span>
+              </div>
+
+              <div className="hidden md:flex items-baseline gap-1.5 text-slate-400">
+                <span className="text-sm font-semibold">{typedText.length}/{selectedLesson.text.length}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-500">chars</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => startLesson(selectedLesson)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-all text-xs font-semibold"
+              title="Restart Lesson (Tab or Esc)"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-[10px] text-slate-400 font-mono">Tab</span>
+            </button>
+          </div>
+
           <textarea
             ref={inputRef}
             value={typedText}
             onChange={handleInputChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Tab' || e.key === 'Escape') {
+                e.preventDefault();
+                startLesson(selectedLesson);
+              }
+            }}
             className="absolute opacity-0 pointer-events-none"
             autoComplete="off"
             autoCapitalize="off"
@@ -1460,30 +1625,69 @@ export default function TypingAcademy() {
             spellCheck={false}
           />
 
-          {/* Practice Text Display Deck */}
+          {/* ── Practice Text Display Deck (Spacious Monkeytype Layout) ── */}
           <div className="relative">
             <div
               onClick={() => !isPaused && focusTypingInput()}
-              className="p-6 bg-brand-bg/50 border border-brand-border/30 rounded-xl font-mono text-lg leading-relaxed text-slate-400 select-none text-left cursor-text"
+              className="p-6 sm:p-8 md:p-12 rounded-3xl bg-slate-950/60 border border-slate-800/80 shadow-2xl backdrop-blur-xl flex items-center cursor-text transition-all duration-300 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)] min-h-[220px]"
             >
-              {selectedLesson.text.split('').map((char, index) => {
-                let colorClass = 'text-slate-500';
-                let cursor = '';
+              <div className="w-full text-left font-mono tracking-wide select-none break-normal whitespace-pre-wrap [overflow-wrap:normal] text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]">
+                {selectedLesson.text.split('').map((char, index) => {
+                  let colorClass = 'text-slate-500 font-normal';
+                  let isCurrent = index === typedText.length;
 
-                if (index < typedText.length) {
-                  colorClass = typedText[index] === char ? 'text-white' : 'text-brand-danger bg-brand-danger/10 border-b border-brand-danger';
-                } else if (index === typedText.length) {
-                  colorClass = 'text-brand-primary';
-                  cursor = 'border-l-2 border-brand-primary animate-pulse';
-                }
+                  if (index < typedText.length) {
+                    colorClass = typedText[index] === char
+                      ? 'text-slate-100 font-medium'
+                      : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
+                  } else if (isCurrent) {
+                    colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
+                  }
 
-                return <span key={index} className={`${colorClass} ${cursor}`}>{char}</span>;
-              })}
+                  const isSpace = char === ' ';
+                  const isMistake = colorClass.includes('text-rose-400');
+
+                  return (
+                    <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
+                      {char === '\n' ? (
+                        <>
+                          <span className="text-slate-600/70 text-xs select-none">↵</span>
+                          <br />
+                        </>
+                      ) : isSpace ? (
+                        isMistake ? (
+                          <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
+                        ) : (
+                          '\u00A0'
+                        )
+                      ) : (
+                        char
+                      )}
+                      {isCurrent && (
+                        <span
+                          className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none"
+                          style={{ willChange: 'opacity' }}
+                        />
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Non-intrusive Start Indicator */}
+            {!isStarted && !endTime && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none transition-all">
+                <div className="bg-slate-900/90 border border-cyan-500/30 px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-[11px] font-semibold text-cyan-300 backdrop-blur-md animate-pulse">
+                  <Zap className="w-3 h-3 text-cyan-400" />
+                  <span>Press any key to start lesson • [Tab] to restart</span>
+                </div>
+              </div>
+            )}
 
             {isPaused && selectedLesson && startTime && !endTime && (
               <div
-                className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-xl"
+                className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-3xl"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleResume();
@@ -1509,45 +1713,47 @@ export default function TypingAcademy() {
 
           {/* Results overlay when finished */}
           {endTime && finalResult && (
-            <div className="bg-brand-primary/10 border border-brand-primary/20 p-5 rounded-2xl flex flex-col gap-4 font-mono w-full">
-              <div className="flex flex-wrap gap-6 text-xs text-left">
+            <div className="bg-slate-900/90 border border-cyan-500/30 p-6 rounded-3xl flex flex-col gap-4 font-mono w-full shadow-2xl animate-in fade-in duration-200">
+              <div className="flex flex-wrap gap-6 text-sm text-left">
                 <div>
-                  <span className="text-brand-muted block">Speed:</span>
-                  <span className="text-white font-bold">{finalResult.wpm} WPM</span>
+                  <span className="text-slate-400 block text-xs">Speed:</span>
+                  <span className="text-cyan-400 font-black text-xl">{finalResult.wpm} WPM</span>
                 </div>
                 <div>
-                  <span className="text-brand-muted block">Accuracy:</span>
-                  <span className="text-white font-bold">{finalResult.accuracy}%</span>
+                  <span className="text-slate-400 block text-xs">Accuracy:</span>
+                  <span className="text-emerald-400 font-black text-xl">{finalResult.accuracy}%</span>
                 </div>
                 <div>
-                  <span className="text-brand-muted block">Criteria:</span>
+                  <span className="text-slate-400 block text-xs">Criteria:</span>
                   <span className="text-white font-bold">{selectedLesson.minWpm} WPM / {selectedLesson.minAccuracy}%</span>
                 </div>
                 <div>
-                  <span className="text-brand-muted block">Backspaces:</span>
+                  <span className="text-slate-400 block text-xs">Backspaces:</span>
                   <span className="text-white font-bold">{backspacesLog.length}</span>
                 </div>
                 <div>
-                  <span className="text-brand-muted block">Habit Rating:</span>
+                  <span className="text-slate-400 block text-xs">Habit Rating:</span>
                   {(() => {
                     const ratio = selectedLesson.text.length > 0 ? backspacesLog.length / selectedLesson.text.length : 0;
                     let habitRating = 'Low';
-                    let habitColor = 'text-brand-success';
+                    let habitColor = 'text-emerald-400';
                     if (ratio > 0.12 || backspacesLog.length > 15) {
                       habitRating = 'High';
-                      habitColor = 'text-brand-danger';
+                      habitColor = 'text-rose-400';
                     } else if (ratio > 0.05 || backspacesLog.length > 5) {
                       habitRating = 'Moderate';
-                      habitColor = 'text-brand-warning';
+                      habitColor = 'text-amber-400';
                     }
                     return <span className={`font-bold ${habitColor}`}>{habitRating}</span>;
                   })()}
                 </div>
               </div>
               
-              <div className="flex flex-col sm:flex-row justify-between items-center border-t border-brand-border/20 pt-3 gap-3">
-                <span className="text-[10px] text-brand-muted">
-                  Backspace corrects mistakes, but keeping rhythm is key to long-term typing success.
+              <div className="flex flex-col sm:flex-row justify-between items-center border-t border-slate-800 pt-4 gap-3">
+                <span className="text-xs text-slate-400">
+                  {finalResult.wpm >= selectedLesson.minWpm && finalResult.accuracy >= selectedLesson.minAccuracy
+                    ? '🎯 Criteria achieved! Press Enter or Next Lesson to continue.'
+                    : '⚠️ Target criteria not met. Press Enter or Try Again to master this drill.'}
                 </span>
                 <button
                   onClick={() => {
@@ -1557,13 +1763,12 @@ export default function TypingAcademy() {
                     if (isSuccess && next) {
                       startLesson(next);
                     } else if (!isSuccess) {
-                      // Restart the current lesson (Try Again)
                       startLesson(selectedLesson);
                     } else {
                       setSelectedLesson(null);
                     }
                   }}
-                  className="px-4 py-2 bg-brand-success text-slate-950 font-bold text-xs rounded-xl self-end"
+                  className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all self-end"
                 >
                   {completedLessons.includes(selectedLesson.id) ? 'Next Lesson' : 'Try Again'}
                 </button>
@@ -1572,24 +1777,258 @@ export default function TypingAcademy() {
           )}
 
           {/* 3D INTERACTIVE FINGER & KEYBOARD GUIDANCE */}
-          <div className="pt-2">
-            <TypingFingerGuide
-              targetCharacter={
-                selectedLesson && typedText.length < selectedLesson.text.length && endTime === null
-                  ? selectedLesson.text[typedText.length]
-                  : null
-              }
-              typedCharacter={typedText.length > 0 ? typedText[typedText.length - 1] : null}
-              isCorrect={
-                typedText.length > 0 && selectedLesson
-                  ? typedText[typedText.length - 1] === selectedLesson.text[typedText.length - 1]
-                  : null
-              }
-              isActive={isStarted && endTime === null}
-            />
-          </div>
+          {showHandsGuide && (
+            <div className="pt-2 animate-in fade-in duration-300">
+              <TypingFingerGuide
+                targetCharacter={
+                  selectedLesson && typedText.length < selectedLesson.text.length && endTime === null
+                    ? selectedLesson.text[typedText.length]
+                    : null
+                }
+                typedCharacter={typedText.length > 0 ? typedText[typedText.length - 1] : null}
+                isCorrect={
+                  typedText.length > 0 && selectedLesson
+                    ? typedText[typedText.length - 1] === selectedLesson.text[typedText.length - 1]
+                    : null
+                }
+                isActive={isStarted && endTime === null}
+              />
+            </div>
+          )}
 
         </div>
+      )}
+
+      {/* ── Zen Focus Portal for Academy Lessons (Fullscreen Distraction-Free Canvas) ── */}
+      {isZenMode && selectedLesson && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-[#0b0f19] flex flex-col justify-between p-4 sm:p-8 md:p-12 overflow-y-auto select-none animate-in fade-in duration-200">
+          {/* Top Minimal Zen Navigation Bar — auto-dims during active typing */}
+          <div
+            className={`w-full max-w-5xl md:max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4 py-2 transition-opacity duration-300 ${
+              isStarted && !endTime && !isPaused ? 'opacity-0 hover:opacity-100 pointer-events-none hover:pointer-events-auto' : 'opacity-100'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-extrabold text-xs">
+                <Zap className="w-3.5 h-3.5 fill-cyan-400" />
+                <span>Academy Zen Focus</span>
+              </div>
+              <span className="text-sm font-bold text-white">
+                Lesson {selectedLesson.id}: {selectedLesson.title}
+              </span>
+              <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+                Target: {activePowerUp ? activePowerUp.reducedMinWpm : selectedLesson.minWpm} WPM / {selectedLesson.minAccuracy}%
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white transition-all text-xs"
+                title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              >
+                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsZenMode(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700 hover:bg-rose-500/10 hover:border-rose-500/30 text-slate-300 hover:text-rose-400 font-semibold text-xs transition-all"
+                title="Exit Zen Mode (Esc)"
+              >
+                <X className="w-4 h-4" />
+                <span>Exit Zen</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Center: The Lesson Deck */}
+          <div className="w-full max-w-5xl md:max-w-6xl mx-auto my-auto py-6 space-y-4">
+            {/* Live HUD Header */}
+            <div className={`flex items-center justify-between gap-4 p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80 backdrop-blur-md transition-opacity duration-300 ${
+              isStarted && !endTime && !isPaused ? 'opacity-25 hover:opacity-100' : 'opacity-100'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <span className="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-extrabold text-[11px] tracking-wider uppercase">
+                  Lesson {selectedLesson.id}
+                </span>
+                <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+                  Target: {activePowerUp ? activePowerUp.reducedMinWpm : selectedLesson.minWpm} WPM / {selectedLesson.minAccuracy}%
+                </span>
+              </div>
+
+              <div className="flex items-center gap-6 sm:gap-10 font-mono">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono tracking-tight">
+                    {endTime && finalResult ? finalResult.wpm : (startTime ? Math.round(typedText.split(' ').length / Math.max(0.01, (Date.now() - startTime) / 60000)) : 0)}
+                  </span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">wpm</span>
+                </div>
+
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-tight">
+                    {endTime && finalResult ? finalResult.accuracy : (typedText.length > 0 ? Math.round(((typedText.length - errors) / typedText.length) * 100) : 100)}%
+                  </span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">acc</span>
+                </div>
+
+                <div className="flex items-baseline gap-1.5 hidden xs:flex">
+                  <span className="text-2xl sm:text-3xl font-black text-rose-400 font-mono tracking-tight">
+                    {errors}
+                  </span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">miss</span>
+                </div>
+
+                <div className="hidden md:flex items-baseline gap-1.5 text-slate-400">
+                  <span className="text-sm font-semibold">{typedText.length}/{selectedLesson.text.length}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">chars</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => startLesson(selectedLesson)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-all text-xs font-semibold"
+                title="Restart Lesson (Tab or Esc)"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[10px] text-slate-400 font-mono">Tab</span>
+              </button>
+            </div>
+
+            {/* Practice Text Display Deck */}
+            <div className="relative">
+              <div
+                onClick={() => !isPaused && focusTypingInput()}
+                className="p-6 sm:p-8 md:p-12 rounded-3xl bg-slate-950/70 border border-slate-800/80 shadow-[0_16px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center cursor-text transition-all duration-300 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)] min-h-[240px]"
+              >
+                <div className="w-full text-left font-mono tracking-wide select-none break-normal whitespace-pre-wrap [overflow-wrap:normal] text-2xl sm:text-3xl md:text-[36px] leading-[1.8] sm:leading-[1.9] md:leading-[2.05]">
+                  {selectedLesson.text.split('').map((char, index) => {
+                    let colorClass = 'text-slate-500 font-normal';
+                    let isCurrent = index === typedText.length;
+
+                    if (index < typedText.length) {
+                      colorClass = typedText[index] === char
+                        ? 'text-slate-100 font-medium'
+                        : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
+                    } else if (isCurrent) {
+                      colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
+                    }
+
+                    const isSpace = char === ' ';
+                    const isMistake = colorClass.includes('text-rose-400');
+
+                    return (
+                      <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
+                        {char === '\n' ? (
+                          <>
+                            <span className="text-slate-600/70 text-xs select-none">↵</span>
+                            <br />
+                          </>
+                        ) : isSpace ? (
+                          isMistake ? (
+                            <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
+                          ) : (
+                            '\u00A0'
+                          )
+                        ) : (
+                          char
+                        )}
+                        {isCurrent && (
+                          <span
+                            className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none"
+                            style={{ willChange: 'opacity' }}
+                          />
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {!isStarted && !endTime && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none transition-all">
+                  <div className="bg-slate-900/90 border border-cyan-500/30 px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-[11px] font-semibold text-cyan-300 backdrop-blur-md animate-pulse">
+                    <Zap className="w-3 h-3 text-cyan-400" />
+                    <span>Press any key to start lesson • [Tab] to restart</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Results overlay when finished */}
+            {endTime && finalResult && (
+              <div className="bg-slate-900/90 border border-cyan-500/30 p-6 rounded-3xl flex flex-col gap-4 font-mono w-full shadow-2xl animate-in fade-in duration-200">
+                <div className="flex flex-wrap gap-6 text-sm text-left">
+                  <div>
+                    <span className="text-slate-400 block text-xs">Speed:</span>
+                    <span className="text-cyan-400 font-black text-xl">{finalResult.wpm} WPM</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-xs">Accuracy:</span>
+                    <span className="text-emerald-400 font-black text-xl">{finalResult.accuracy}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-xs">Criteria:</span>
+                    <span className="text-white font-bold">{selectedLesson.minWpm} WPM / {selectedLesson.minAccuracy}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-xs">Backspaces:</span>
+                    <span className="text-white font-bold">{backspacesLog.length}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-center border-t border-slate-800 pt-4 gap-3">
+                  <span className="text-xs text-slate-400">
+                    {finalResult.wpm >= selectedLesson.minWpm && finalResult.accuracy >= selectedLesson.minAccuracy
+                      ? '🎯 Criteria achieved! Press Enter or Next Lesson to continue.'
+                      : '⚠️ Target criteria not met. Press Enter or Try Again to master this drill.'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsZenMode(false)}
+                      className="px-4 py-2 border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl transition-all"
+                    >
+                      Exit Zen
+                    </button>
+                    <button
+                      onClick={() => {
+                        const nextId = selectedLesson.id + 1;
+                        const next = ACADEMY_LESSONS.find(l => l.id === nextId);
+                        const isSuccess = completedLessons.includes(selectedLesson.id);
+                        if (isSuccess && next) {
+                          startLesson(next);
+                        } else if (!isSuccess) {
+                          startLesson(selectedLesson);
+                        } else {
+                          setIsZenMode(false);
+                          setSelectedLesson(null);
+                        }
+                      }}
+                      className="px-5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all"
+                    >
+                      {completedLessons.includes(selectedLesson.id) ? 'Next Lesson' : 'Try Again'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Helper Bar */}
+          <div
+            className={`w-full max-w-5xl md:max-w-6xl mx-auto flex items-center justify-between text-xs text-slate-500 py-2 transition-opacity duration-300 ${
+              isStarted && !endTime && !isPaused ? 'opacity-0 hover:opacity-100 pointer-events-none hover:pointer-events-auto' : 'opacity-100'
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <span><kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">Tab</kbd> restart</span>
+              <span><kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[10px]">Esc</kbd> exit zen</span>
+            </div>
+            <span className="font-mono text-slate-600">Pure Finger Placement Mastery</span>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* PREMIUM CELEBRATION & CERTIFICATE PREVIEW MODAL */}

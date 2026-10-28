@@ -7,7 +7,7 @@ import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { saveLastActivity } from '../utils/ResumeTracker';
 import {
   Trophy, Award,
-  RefreshCw, ChevronRight, Activity, Clock, Timer
+  RefreshCw, RotateCcw, ChevronRight, Activity, Clock, Timer
 } from 'lucide-react';
 
 type Rating = 'Beginner' | 'Intermediate' | 'Advanced' | 'Elite';
@@ -498,13 +498,24 @@ export default function EnduranceArena() {
               </span>
             </div>
             
-            <button
-              onClick={() => setShowExitConfirm(true)}
-              className="text-xs text-brand-muted hover:text-brand-text flex items-center gap-1 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Exit Arena
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={startSession}
+                title="Restart Session (Tab or Esc)"
+                className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition-colors font-mono"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Restart</span>
+              </button>
+
+              <button
+                onClick={() => setShowExitConfirm(true)}
+                className="text-xs text-brand-muted hover:text-brand-text flex items-center gap-1 transition-colors px-2.5 py-1"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Exit Arena
+              </button>
+            </div>
           </div>
 
           {/* Hidden input to receive keyboard telemetry */}
@@ -512,6 +523,12 @@ export default function EnduranceArena() {
             ref={inputRef}
             value={typedText}
             onChange={handleInputChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Tab' || e.key === 'Escape') {
+                e.preventDefault();
+                startSession();
+              }
+            }}
             className="absolute opacity-0 pointer-events-none"
             autoComplete="off"
             autoCapitalize="off"
@@ -524,31 +541,47 @@ export default function EnduranceArena() {
             <div
               ref={textContainerRef}
               onClick={() => !isPaused && focusTypingInput()}
-              className="p-5 sm:p-6 bg-brand-bg/50 border border-brand-border/30 rounded-xl cursor-text select-none leading-relaxed text-base sm:text-lg tracking-wide font-mono text-slate-400 max-h-96 overflow-y-auto outline-none transition-all focus-within:border-brand-primary/60"
+              className="p-6 sm:p-8 bg-slate-950/40 border border-slate-800/80 rounded-2xl cursor-text select-none leading-[1.85] sm:leading-[1.95] text-xl sm:text-2xl md:text-[28px] tracking-wide font-mono text-slate-500 max-h-[420px] overflow-y-auto outline-none transition-all focus-within:border-cyan-500/50 break-normal whitespace-pre-wrap"
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
             {passage.length === 0 ? (
               <div className="text-center text-xs text-brand-muted py-6">No passage available.</div>
             ) : (
               passage.split('').map((char, index) => {
-                let colorClass = 'text-slate-500';
-                let cursorClass = '';
+                const isTyped = index < typedText.length;
+                const isCurrent = index === typedText.length;
+                let isMistake = false;
 
-                if (index < typedText.length) {
-                  colorClass = typedText[index] === char 
-                    ? 'text-white font-semibold' 
-                    : 'text-brand-danger bg-brand-danger/10 border-b border-brand-danger';
-                } else if (index === typedText.length) {
-                  colorClass = 'text-brand-primary font-bold';
-                  cursorClass = 'border-l-2 border-brand-primary animate-pulse';
+                let colorClass = 'text-slate-500';
+
+                if (isTyped) {
+                  isMistake = typedText[index] !== char;
+                  colorClass = isMistake
+                    ? 'text-rose-400 bg-rose-500/25 rounded font-bold'
+                    : 'text-slate-100 font-medium';
+                } else if (isCurrent) {
+                  colorClass = 'text-cyan-300 font-bold';
                 }
 
+                const displayChar = char === ' ' ? (isMistake ? '␣' : '\u00A0') : char;
+
                 return (
-                  <span key={index} className={`${colorClass} ${cursorClass}`}>
-                    {char}
+                  <span key={index} className={`relative inline-block transition-colors duration-75 ${colorClass}`}>
+                    {isCurrent && (
+                      <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
+                    )}
+                    {displayChar}
                   </span>
                 );
               })
+            )}
+
+            {!isStarted && passage.length > 0 && (
+              <div className="flex items-center justify-center gap-2 mt-6 pt-3 border-t border-slate-800 text-xs font-mono text-cyan-400/90 animate-pulse">
+                <span>Click or press any key to start typing</span>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-400">[Tab] or [Esc] to restart</span>
+              </div>
             )}
             </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTypingStore } from '../store/TypingStore';
-import { Timer, Skull, Award, AlertOctagon } from 'lucide-react';
+import { Timer, Skull, Award, AlertOctagon, RotateCcw } from 'lucide-react';
 import { soundEngine } from '../utils/soundEngine';
 
 // Mock candidates database for interview room
@@ -115,6 +115,12 @@ export default function InterviewRoom() {
   }, [isActive, isCompleted, failed, wpm, currentIndex, words]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab' || e.key === 'Escape') {
+      e.preventDefault();
+      handleReset();
+      return;
+    }
+
     if (isCompleted || failed || isPaused) return;
 
     if (!isActive) {
@@ -189,7 +195,7 @@ export default function InterviewRoom() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-brand-danger font-mono font-bold text-sm bg-brand-danger/10 px-3 py-1.5 rounded-xl border border-brand-danger/20">
             <Timer className="w-4 h-4" />
             <span>{timeLeft}s Left</span>
@@ -199,6 +205,15 @@ export default function InterviewRoom() {
             <AlertOctagon className="w-4 h-4" />
             <span>{errorCount}/3 Errors</span>
           </div>
+
+          <button
+            onClick={handleReset}
+            title="Restart Interview (Tab or Esc)"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 font-mono text-xs transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
         </div>
       </div>
 
@@ -273,7 +288,7 @@ export default function InterviewRoom() {
                 </button>
               </div>
             ) : (
-              <div className="w-full relative">
+              <div className="w-full relative flex flex-col justify-center">
                 <textarea
                   ref={inputRef}
                   value=""
@@ -282,37 +297,42 @@ export default function InterviewRoom() {
                   className="absolute inset-0 opacity-0 cursor-default"
                 />
 
-                <div className="text-lg leading-relaxed font-mono select-none break-words flex flex-wrap gap-y-1">
+                <div className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide select-none break-normal whitespace-pre-wrap min-h-[160px] p-2">
                   {words.split('').map((char, index) => {
-                    let charClass = 'text-brand-muted';
-                    let caret = false;
+                    const isTyped = index < currentIndex;
+                    const isCurrent = index === currentIndex;
+                    const keyLog = isTyped ? keystrokes[index] : null;
+                    const isMistake = keyLog?.isMistake;
 
-                    if (index < currentIndex) {
-                      const keyLog = keystrokes[index];
-                      charClass = keyLog && !keyLog.isMistake ? 'text-brand-success' : 'text-brand-danger bg-brand-danger/10';
-                    } else if (index === currentIndex) {
-                      charClass = 'text-white bg-brand-primary/20 font-bold';
-                      caret = true;
+                    let charClass = 'text-slate-500';
+                    if (isTyped) {
+                      charClass = isMistake
+                        ? 'text-rose-400 bg-rose-500/25 rounded font-bold'
+                        : 'text-slate-100 font-medium';
+                    } else if (isCurrent) {
+                      charClass = 'text-cyan-300 font-bold';
                     }
 
+                    const displayChar = char === ' ' ? (isMistake ? '␣' : '\u00A0') : char;
+
                     return (
-                      <span key={index} className={`relative rounded ${charClass}`}>
-                        {char === ' ' ? '␣' : char}
-                        {caret && (
-                          <span className="absolute left-0 bottom-0 top-0 w-[2px] bg-brand-primary animate-blink"></span>
+                      <span key={index} className={`relative inline-block transition-colors duration-75 ${charClass}`}>
+                        {isCurrent && (
+                          <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
                         )}
+                        {displayChar}
                       </span>
                     );
                   })}
                 </div>
-              </div>
-            )}
 
-            {!isActive && !isCompleted && !failed && (
-              <div className="absolute inset-0 bg-slate-950/70 flex items-center justify-center pointer-events-none">
-                <div className="bg-brand-card/95 border border-brand-border px-5 py-3 rounded-xl text-xs font-bold text-brand-danger uppercase animate-pulse">
-                  Click inside to enter interview mode
-                </div>
+                {!isActive && (
+                  <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-brand-border/20 text-xs font-mono text-cyan-400/90 animate-pulse">
+                    <span>Press any key or click to start interview</span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-slate-400">[Tab] or [Esc] to restart</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
