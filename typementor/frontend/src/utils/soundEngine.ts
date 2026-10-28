@@ -270,6 +270,98 @@ class SoundEngine {
     oscRing.start(now);
     oscRing.stop(now + ringDecay);
   }
+
+  // ── Rhythm Metronome Engine ───────────────────────────────────────────────
+  private metronomeTimer: any = null;
+  private metronomeWpm: number = 30;
+  private metronomeCadence: 'keystroke' | 'word' = 'keystroke';
+  private metronomeVolume: number = 0.4;
+  private metronomeBeatCount: number = 0;
+  private nextBeatTime: number = 0;
+  private isMetronomePlaying: boolean = false;
+
+  public startMetronome(wpm: number, cadence: 'keystroke' | 'word' = 'keystroke') {
+    this.metronomeWpm = Math.max(10, Math.min(200, wpm));
+    this.metronomeCadence = cadence;
+    this.stopMetronome();
+
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    this.isMetronomePlaying = true;
+    this.metronomeBeatCount = 0;
+    this.nextBeatTime = ctx.currentTime + 0.05;
+
+    // Web Audio lookahead scheduler running every 25ms
+    this.metronomeTimer = setInterval(() => {
+      if (!this.isMetronomePlaying || !this.ctx) return;
+
+      const scheduleAheadTime = 0.1; // 100ms lookahead window
+      while (this.nextBeatTime < this.ctx.currentTime + scheduleAheadTime) {
+        const isAccent = this.metronomeCadence === 'keystroke'
+          ? (this.metronomeBeatCount % 5 === 0)
+          : true;
+
+        this.scheduleMetronomeClick(this.ctx, this.nextBeatTime, isAccent);
+
+        // Advance beat time
+        const intervalSec = this.metronomeCadence === 'keystroke'
+          ? 60 / (this.metronomeWpm * 5)
+          : 60 / this.metronomeWpm;
+
+        this.nextBeatTime += intervalSec;
+        this.metronomeBeatCount++;
+      }
+    }, 25);
+  }
+
+  public stopMetronome() {
+    this.isMetronomePlaying = false;
+    if (this.metronomeTimer) {
+      clearInterval(this.metronomeTimer);
+      this.metronomeTimer = null;
+    }
+  }
+
+  public updateMetronomeSpeed(wpm: number, cadence?: 'keystroke' | 'word') {
+    this.metronomeWpm = Math.max(10, Math.min(200, wpm));
+    if (cadence) this.metronomeCadence = cadence;
+  }
+
+  public setMetronomeVolume(vol: number) {
+    this.metronomeVolume = Math.max(0, Math.min(1, vol));
+  }
+
+  public isMetronomeActive(): boolean {
+    return this.isMetronomePlaying;
+  }
+
+  private scheduleMetronomeClick(ctx: AudioContext, time: number, isAccent: boolean) {
+    if (!this.soundEnabled || this.soundPack === 'Silent') return;
+
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      const freq = isAccent ? 1400 : 920;
+      const vol = (isAccent ? 0.38 : 0.22) * this.metronomeVolume * this.volume;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, time);
+      osc.frequency.exponentialRampToValueAtTime(120, time + 0.02);
+
+      gain.gain.setValueAtTime(vol, time);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + (isAccent ? 0.032 : 0.022));
+
+      osc.start(time);
+      osc.stop(time + 0.035);
+    } catch {
+      // Audio playback safely ignored
+    }
+  }
 }
 
 export const soundEngine = new SoundEngine();

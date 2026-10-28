@@ -12,7 +12,7 @@ import TypingFingerGuide from '../components/TypingFingerGuide';
 import {
   CheckCircle2, Lock,
   ChevronRight, RefreshCw, Star, Award, Download, X, Sparkles, Timer, Zap, AlertTriangle,
-  Maximize2, Minimize2, Eye, EyeOff
+  Maximize2, Minimize2, Eye, EyeOff, Activity
 } from 'lucide-react';
 
 export default function TypingAcademy() {
@@ -34,6 +34,17 @@ export default function TypingAcademy() {
     return localStorage.getItem('typementor_academy_hands') !== 'false';
   });
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Ghost Pace-Car & Rhythm Metronome States
+  const [ghostEnabled, setGhostEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('typementor_academy_ghost') !== 'false';
+  });
+  const [ghostWpm, setGhostWpm] = useState<number>(30);
+  const [ghostIndex, setGhostIndex] = useState<number>(0);
+  const [metronomeEnabled, setMetronomeEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('typementor_academy_metronome') === 'true';
+  });
+  const [metronomeCadence, setMetronomeCadence] = useState<'keystroke' | 'word'>('keystroke');
 
   // Live telemetry logs for AI Coach Pulse and Backspace Awareness
   const [typedCharsLog, setTypedCharsLog] = useState<Array<{ expected: string; actual: string; isMistake: boolean; timestamp: number }>>([]);
@@ -123,6 +134,54 @@ export default function TypingAcademy() {
       return next;
     });
   };
+
+  const handleToggleGhost = () => {
+    setGhostEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('typementor_academy_ghost', String(next));
+      return next;
+    });
+  };
+
+  const handleToggleMetronome = () => {
+    setMetronomeEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('typementor_academy_metronome', String(next));
+      return next;
+    });
+  };
+
+  // Real-time Ghost Pace-Car position tick
+  useEffect(() => {
+    if (!isStarted || endTime !== null || isPaused || !selectedLesson || !ghostEnabled) {
+      if (!isStarted) setGhostIndex(0);
+      return;
+    }
+
+    if (!startTime) return;
+
+    const interval = setInterval(() => {
+      const elapsedSec = (Date.now() - startTime) / 1000;
+      const targetCps = (ghostWpm * 5) / 60;
+      const nextIndex = Math.min(selectedLesson.text.length, Math.floor(elapsedSec * targetCps));
+      setGhostIndex(nextIndex);
+    }, 40);
+
+    return () => clearInterval(interval);
+  }, [isStarted, endTime, isPaused, startTime, ghostWpm, ghostEnabled, selectedLesson]);
+
+  // Synchronize Metronome Audio with Typing State
+  useEffect(() => {
+    if (metronomeEnabled && isStarted && !isPaused && endTime === null && selectedLesson) {
+      soundEngine.startMetronome(ghostWpm, metronomeCadence);
+    } else {
+      soundEngine.stopMetronome();
+    }
+
+    return () => {
+      soundEngine.stopMetronome();
+    };
+  }, [metronomeEnabled, isStarted, isPaused, endTime, ghostWpm, metronomeCadence, selectedLesson]);
 
   // Inactivity auto-pause loop for Academy
   useEffect(() => {
@@ -670,6 +729,9 @@ export default function TypingAcademy() {
     setTypedCharsLog([]);
     setBackspacesLog([]);
     setFinalResult(null);
+    setGhostWpm(lesson.minWpm);
+    setGhostIndex(0);
+    soundEngine.stopMetronome();
     setIsPaused(false);
     setPauseTime(null);
     // Reset power-up offer state (don't reset activePowerUp or failCount here
@@ -736,6 +798,7 @@ export default function TypingAcademy() {
     if (value.length === selectedLesson.text.length) {
       const completionTime = Date.now();
       setEndTime(completionTime);
+      soundEngine.stopMetronome();
       const duration = (completionTime - (startTime || completionTime)) / 60000;
       const wpm = duration > 0 ? Math.round((selectedLesson.text.split(' ').length) / duration) : 0;
       const acc = Math.round(((selectedLesson.text.length - errors) / selectedLesson.text.length) * 100);
@@ -1641,7 +1704,67 @@ export default function TypingAcademy() {
               <span className="text-[10px] text-cyan-400 font-extrabold font-mono uppercase tracking-wider">Lesson {selectedLesson.id}</span>
               <h3 className="font-extrabold text-white text-lg mt-0.5">{selectedLesson.title}</h3>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Ghost Pace-Car Controller */}
+              <div className="flex items-center rounded-xl border border-purple-500/30 bg-purple-500/10 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={handleToggleGhost}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
+                    ghostEnabled ? 'bg-purple-600 text-white shadow-sm font-bold' : 'text-purple-400 hover:text-white'
+                  }`}
+                  title={ghostEnabled ? 'Ghost Pace-Car ON (Click to toggle)' : 'Ghost Pace-Car OFF (Click to toggle)'}
+                >
+                  <span>👻</span>
+                  <span>{ghostWpm} WPM</span>
+                </button>
+                {ghostEnabled && (
+                  <div className="flex items-center border-l border-purple-500/30 pl-1 pr-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setGhostWpm(w => Math.max(15, w - 5))}
+                      className="px-1.5 py-0.5 hover:text-white text-purple-300 font-mono text-[11px]"
+                      title="Decrease Ghost Target WPM (-5)"
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGhostWpm(w => Math.min(160, w + 5))}
+                      className="px-1.5 py-0.5 hover:text-white text-purple-300 font-mono text-[11px]"
+                      title="Increase Ghost Target WPM (+5)"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Rhythm Metronome Controller */}
+              <div className="flex items-center rounded-xl border border-amber-500/30 bg-amber-500/10 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={handleToggleMetronome}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
+                    metronomeEnabled ? 'bg-amber-500 text-slate-950 font-black shadow-sm' : 'text-amber-400 hover:text-white font-medium'
+                  }`}
+                  title={metronomeEnabled ? 'Rhythm Metronome ON (Click to mute)' : 'Rhythm Metronome OFF (Click to unmute)'}
+                >
+                  <Activity className={`w-3.5 h-3.5 ${metronomeEnabled && isStarted && !isPaused && !endTime ? 'animate-pulse text-slate-950' : ''}`} />
+                  <span className="hidden sm:inline">Metronome</span>
+                </button>
+                {metronomeEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => setMetronomeCadence(c => c === 'keystroke' ? 'word' : 'keystroke')}
+                    className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-amber-300 hover:text-white border-l border-amber-500/30"
+                    title="Switch Cadence: Key strokes vs Word boundary"
+                  >
+                    {metronomeCadence === 'keystroke' ? 'Keys' : 'Words'}
+                  </button>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={() => setIsZenMode(true)}
@@ -1679,13 +1802,50 @@ export default function TypingAcademy() {
 
           {/* ── Live HUD Header ── */}
           <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80 backdrop-blur-md">
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-extrabold text-[11px] tracking-wider uppercase">
                 Lesson {selectedLesson.id}
               </span>
               <span className="text-xs text-slate-400 font-mono hidden sm:inline">
                 Target: {activePowerUp ? activePowerUp.reducedMinWpm : selectedLesson.minWpm} WPM / {selectedLesson.minAccuracy}%
               </span>
+              {ghostEnabled && (
+                <div className="ml-1">
+                  {!isStarted ? (
+                    <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-[11px] font-semibold inline-flex items-center gap-1.5">
+                      <span>👻</span>
+                      <span>Pacer: {ghostWpm} WPM</span>
+                    </span>
+                  ) : (
+                    (() => {
+                      const charDelta = typedText.length - ghostIndex;
+                      const wordDelta = Math.round(charDelta / 5);
+                      if (charDelta > 0) {
+                        return (
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-black inline-flex items-center gap-1 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+                            <span>▲</span>
+                            <span>+{wordDelta > 0 ? `${wordDelta}w` : `${charDelta}c`} ahead</span>
+                          </span>
+                        );
+                      } else if (charDelta < 0) {
+                        return (
+                          <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 font-mono text-[11px] font-black inline-flex items-center gap-1">
+                            <span>▼</span>
+                            <span>{Math.abs(wordDelta) > 0 ? `${Math.abs(wordDelta)}w` : `${Math.abs(charDelta)}c`} behind</span>
+                          </span>
+                        );
+                      } else {
+                        return (
+                          <span className="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 font-mono text-[11px] font-black inline-flex items-center gap-1">
+                            <span>⚡</span>
+                            <span>Tied with Ghost</span>
+                          </span>
+                        );
+                      }
+                    })()
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-6 sm:gap-10 font-mono">
@@ -1753,7 +1913,9 @@ export default function TypingAcademy() {
               <div className="w-full text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]">
                 {selectedLesson.text.split('').map((char, index) => {
                   let colorClass = 'text-slate-500 font-normal';
-                  let isCurrent = index === typedText.length;
+                  const isCurrent = index === typedText.length;
+                  const isGhostCurrent = ghostEnabled && isStarted && !endTime && index === ghostIndex;
+                  const isBehindGhost = ghostEnabled && isStarted && !endTime && index < ghostIndex && index >= typedText.length;
 
                   if (index < typedText.length) {
                     colorClass = typedText[index] === char
@@ -1761,6 +1923,8 @@ export default function TypingAcademy() {
                       : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
                   } else if (isCurrent) {
                     colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
+                  } else if (isBehindGhost) {
+                    colorClass = 'text-purple-300/80 font-normal bg-purple-500/10 border-b border-purple-550/40 rounded';
                   }
 
                   const isSpace = char === ' ';
@@ -1784,9 +1948,23 @@ export default function TypingAcademy() {
                       )}
                       {isCurrent && (
                         <span
-                          className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none"
+                          className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none z-10"
                           style={{ willChange: 'opacity' }}
                         />
+                      )}
+                      {isGhostCurrent && (
+                        <span
+                          title={`Ghost Pace-Car (${ghostWpm} WPM)`}
+                          className={`absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] rounded-full pointer-events-none z-20 transition-all duration-75 ${
+                            isCurrent
+                              ? 'bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,1)]'
+                              : 'bg-purple-400 shadow-[0_0_14px_rgba(192,132,252,0.9)]'
+                          }`}
+                        >
+                          <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] select-none pointer-events-none drop-shadow">
+                            👻
+                          </span>
+                        </span>
                       )}
                     </span>
                   );
@@ -1866,6 +2044,26 @@ export default function TypingAcademy() {
                     return <span className={`font-bold ${habitColor}`}>{habitRating}</span>;
                   })()}
                 </div>
+                {ghostEnabled && (
+                  <div>
+                    <span className="text-slate-400 block text-xs">Pacer Verdict:</span>
+                    <span className={`font-black text-xs flex items-center gap-1 mt-0.5 ${
+                      finalResult.wpm >= ghostWpm ? 'text-purple-300' : 'text-amber-400'
+                    }`}>
+                      {finalResult.wpm >= ghostWpm ? (
+                        <>
+                          <span>🏆</span>
+                          <span>Beat Ghost (+{finalResult.wpm - ghostWpm} WPM)</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>👻</span>
+                          <span>Ghost Won (+{ghostWpm - finalResult.wpm} WPM)</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
               
               <div className="flex flex-col sm:flex-row justify-between items-center border-t border-slate-800 pt-4 gap-3">
@@ -1940,7 +2138,67 @@ export default function TypingAcademy() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Ghost Pace-Car Controller */}
+              <div className="flex items-center rounded-xl border border-purple-500/30 bg-purple-500/10 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={handleToggleGhost}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
+                    ghostEnabled ? 'bg-purple-600 text-white shadow-sm font-bold' : 'text-purple-400 hover:text-white'
+                  }`}
+                  title={ghostEnabled ? 'Ghost Pace-Car ON (Click to toggle)' : 'Ghost Pace-Car OFF (Click to toggle)'}
+                >
+                  <span>👻</span>
+                  <span>{ghostWpm} WPM</span>
+                </button>
+                {ghostEnabled && (
+                  <div className="flex items-center border-l border-purple-500/30 pl-1 pr-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setGhostWpm(w => Math.max(15, w - 5))}
+                      className="px-1.5 py-0.5 hover:text-white text-purple-300 font-mono text-[11px]"
+                      title="Decrease Ghost Target WPM (-5)"
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGhostWpm(w => Math.min(160, w + 5))}
+                      className="px-1.5 py-0.5 hover:text-white text-purple-300 font-mono text-[11px]"
+                      title="Increase Ghost Target WPM (+5)"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Rhythm Metronome Controller */}
+              <div className="flex items-center rounded-xl border border-amber-500/30 bg-amber-500/10 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={handleToggleMetronome}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
+                    metronomeEnabled ? 'bg-amber-500 text-slate-950 font-black shadow-sm' : 'text-amber-400 hover:text-white font-medium'
+                  }`}
+                  title={metronomeEnabled ? 'Rhythm Metronome ON (Click to mute)' : 'Rhythm Metronome OFF (Click to unmute)'}
+                >
+                  <Activity className={`w-3.5 h-3.5 ${metronomeEnabled && isStarted && !isPaused && !endTime ? 'animate-pulse text-slate-950' : ''}`} />
+                  <span className="hidden sm:inline">Metronome</span>
+                </button>
+                {metronomeEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => setMetronomeCadence(c => c === 'keystroke' ? 'word' : 'keystroke')}
+                    className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-amber-300 hover:text-white border-l border-amber-500/30"
+                    title="Switch Cadence: Key strokes vs Word boundary"
+                  >
+                    {metronomeCadence === 'keystroke' ? 'Keys' : 'Words'}
+                  </button>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={toggleFullscreen}
@@ -1967,13 +2225,50 @@ export default function TypingAcademy() {
             <div className={`flex items-center justify-between gap-4 p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80 backdrop-blur-md transition-opacity duration-300 ${
               isStarted && !endTime && !isPaused ? 'opacity-25 hover:opacity-100' : 'opacity-100'
             }`}>
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <span className="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-extrabold text-[11px] tracking-wider uppercase">
                   Lesson {selectedLesson.id}
                 </span>
                 <span className="text-xs text-slate-400 font-mono hidden sm:inline">
                   Target: {activePowerUp ? activePowerUp.reducedMinWpm : selectedLesson.minWpm} WPM / {selectedLesson.minAccuracy}%
                 </span>
+                {ghostEnabled && (
+                  <div className="ml-1">
+                    {!isStarted ? (
+                      <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-[11px] font-semibold inline-flex items-center gap-1.5">
+                        <span>👻</span>
+                        <span>Pacer: {ghostWpm} WPM</span>
+                      </span>
+                    ) : (
+                      (() => {
+                        const charDelta = typedText.length - ghostIndex;
+                        const wordDelta = Math.round(charDelta / 5);
+                        if (charDelta > 0) {
+                          return (
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-black inline-flex items-center gap-1 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+                              <span>▲</span>
+                              <span>+{wordDelta > 0 ? `${wordDelta}w` : `${charDelta}c`} ahead</span>
+                            </span>
+                          );
+                        } else if (charDelta < 0) {
+                          return (
+                            <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 font-mono text-[11px] font-black inline-flex items-center gap-1">
+                              <span>▼</span>
+                              <span>{Math.abs(wordDelta) > 0 ? `${Math.abs(wordDelta)}w` : `${Math.abs(charDelta)}c`} behind</span>
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 font-mono text-[11px] font-black inline-flex items-center gap-1">
+                              <span>⚡</span>
+                              <span>Tied with Ghost</span>
+                            </span>
+                          );
+                        }
+                      })()
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-6 sm:gap-10 font-mono">
@@ -2024,7 +2319,9 @@ export default function TypingAcademy() {
                 <div className="w-full text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-2xl sm:text-3xl md:text-[36px] leading-[1.8] sm:leading-[1.9] md:leading-[2.05]">
                   {selectedLesson.text.split('').map((char, index) => {
                     let colorClass = 'text-slate-500 font-normal';
-                    let isCurrent = index === typedText.length;
+                    const isCurrent = index === typedText.length;
+                    const isGhostCurrent = ghostEnabled && isStarted && !endTime && index === ghostIndex;
+                    const isBehindGhost = ghostEnabled && isStarted && !endTime && index < ghostIndex && index >= typedText.length;
 
                     if (index < typedText.length) {
                       colorClass = typedText[index] === char
@@ -2032,6 +2329,8 @@ export default function TypingAcademy() {
                         : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
                     } else if (isCurrent) {
                       colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
+                    } else if (isBehindGhost) {
+                      colorClass = 'text-purple-300/80 font-normal bg-purple-500/10 border-b border-purple-550/40 rounded';
                     }
 
                     const isSpace = char === ' ';
@@ -2055,9 +2354,23 @@ export default function TypingAcademy() {
                         )}
                         {isCurrent && (
                           <span
-                            className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none"
+                            className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none z-10"
                             style={{ willChange: 'opacity' }}
                           />
+                        )}
+                        {isGhostCurrent && (
+                          <span
+                            title={`Ghost Pace-Car (${ghostWpm} WPM)`}
+                            className={`absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] rounded-full pointer-events-none z-20 transition-all duration-75 ${
+                              isCurrent
+                                ? 'bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,1)]'
+                                : 'bg-purple-400 shadow-[0_0_14px_rgba(192,132,252,0.9)]'
+                            }`}
+                          >
+                            <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] select-none pointer-events-none drop-shadow">
+                              👻
+                            </span>
+                          </span>
                         )}
                       </span>
                     );
@@ -2095,6 +2408,26 @@ export default function TypingAcademy() {
                     <span className="text-slate-400 block text-xs">Backspaces:</span>
                     <span className="text-white font-bold">{backspacesLog.length}</span>
                   </div>
+                  {ghostEnabled && (
+                    <div>
+                      <span className="text-slate-400 block text-xs">Pacer Verdict:</span>
+                      <span className={`font-black text-xs flex items-center gap-1 mt-0.5 ${
+                        finalResult.wpm >= ghostWpm ? 'text-purple-300' : 'text-amber-400'
+                      }`}>
+                        {finalResult.wpm >= ghostWpm ? (
+                          <>
+                            <span>🏆</span>
+                            <span>Beat Ghost (+{finalResult.wpm - ghostWpm} WPM)</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>👻</span>
+                            <span>Ghost Won (+{ghostWpm - finalResult.wpm} WPM)</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-center border-t border-slate-800 pt-4 gap-3">
