@@ -48,7 +48,7 @@ const CharSpan = React.memo(({ char, charClass, showCaret }: CharSpanProps) => {
         isMistake ? (
           <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
         ) : (
-          '\u00A0'
+          ' '
         )
       ) : (
         char
@@ -74,19 +74,20 @@ interface TokenItemProps {
 }
 
 const TokenItem = React.memo(({ token, start, currentIndex, keystrokes }: TokenItemProps) => {
+  const isWhitespace = /^\s+$/.test(token);
+
   // Pending token: user hasn't reached it yet
   if (currentIndex < start) {
-    const isWhitespace = /^\s+$/.test(token);
     return (
-      <span className="inline-block whitespace-pre text-slate-500 font-normal select-none">
-        {isWhitespace ? token.replace(/ /g, '\u00A0') : token}
+      <span className={`${isWhitespace ? 'inline' : 'inline-block'} whitespace-pre-wrap text-slate-500 font-normal select-none`}>
+        {token}
       </span>
     );
   }
 
   // Active or Completed token: render character-by-character
   return (
-    <span className="inline-block whitespace-pre">
+    <span className={`${isWhitespace ? 'inline' : 'inline-block'} whitespace-pre-wrap`}>
       {token.split('').map((char, offset) => {
         const index = start + offset;
         let charClass = 'text-slate-500 font-normal';
@@ -148,7 +149,7 @@ const TextBoard = React.memo(({ words, currentIndex, keystrokes, isZenMode }: Te
 
   return (
     <div
-      className={`font-mono tracking-wide select-none break-normal whitespace-pre-wrap [overflow-wrap:normal] transition-all duration-200 ${
+      className={`font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] transition-all duration-200 ${
         isZenMode
           ? 'text-2xl sm:text-3xl md:text-[36px] leading-[1.8] sm:leading-[1.9] md:leading-[2.05]'
           : 'text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]'

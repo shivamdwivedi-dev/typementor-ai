@@ -1418,7 +1418,7 @@ export default function TypingAcademy() {
               <div className="relative">
                 <div
                   onClick={() => !isPaused && testInputRef.current?.focus()}
-                  className="p-6 sm:p-8 bg-slate-950/60 border border-slate-800/80 rounded-2xl cursor-text font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] text-slate-400 select-none text-left focus-within:border-cyan-500/40 shadow-xl"
+                  className="p-6 sm:p-8 bg-slate-950/60 border border-slate-800/80 rounded-2xl cursor-text font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] text-slate-400 select-none text-left focus-within:border-cyan-500/40 shadow-xl whitespace-pre-wrap break-words [word-break:normal] [overflow-wrap:break-word]"
                 >
                   {testText.split('').map((char, index) => {
                     let colorClass = 'text-slate-500 font-normal';
@@ -1446,7 +1446,7 @@ export default function TypingAcademy() {
                           isMistake ? (
                             <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
                           ) : (
-                            '\u00A0'
+                            ' '
                           )
                         ) : (
                           char
@@ -1631,7 +1631,7 @@ export default function TypingAcademy() {
               onClick={() => !isPaused && focusTypingInput()}
               className="p-6 sm:p-8 md:p-12 rounded-3xl bg-slate-950/60 border border-slate-800/80 shadow-2xl backdrop-blur-xl flex items-center cursor-text transition-all duration-300 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)] min-h-[220px]"
             >
-              <div className="w-full text-left font-mono tracking-wide select-none break-normal whitespace-pre-wrap [overflow-wrap:normal] text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]">
+              <div className="w-full text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]">
                 {selectedLesson.text.split('').map((char, index) => {
                   let colorClass = 'text-slate-500 font-normal';
                   let isCurrent = index === typedText.length;
@@ -1658,7 +1658,7 @@ export default function TypingAcademy() {
                         isMistake ? (
                           <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
                         ) : (
-                          '\u00A0'
+                          ' '
                         )
                       ) : (
                         char
@@ -1902,7 +1902,7 @@ export default function TypingAcademy() {
                 onClick={() => !isPaused && focusTypingInput()}
                 className="p-6 sm:p-8 md:p-12 rounded-3xl bg-slate-950/70 border border-slate-800/80 shadow-[0_16px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center cursor-text transition-all duration-300 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)] min-h-[240px]"
               >
-                <div className="w-full text-left font-mono tracking-wide select-none break-normal whitespace-pre-wrap [overflow-wrap:normal] text-2xl sm:text-3xl md:text-[36px] leading-[1.8] sm:leading-[1.9] md:leading-[2.05]">
+                <div className="w-full text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-2xl sm:text-3xl md:text-[36px] leading-[1.8] sm:leading-[1.9] md:leading-[2.05]">
                   {selectedLesson.text.split('').map((char, index) => {
                     let colorClass = 'text-slate-500 font-normal';
                     let isCurrent = index === typedText.length;
@@ -1929,7 +1929,7 @@ export default function TypingAcademy() {
                           isMistake ? (
                             <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
                           ) : (
-                            '\u00A0'
+                            ' '
                           )
                         ) : (
                           char

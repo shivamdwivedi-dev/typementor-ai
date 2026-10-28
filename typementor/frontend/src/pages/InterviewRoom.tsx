@@ -297,7 +297,7 @@ export default function InterviewRoom() {
                   className="absolute inset-0 opacity-0 cursor-default"
                 />
 
-                <div className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide select-none break-normal whitespace-pre-wrap min-h-[160px] p-2">
+                <div className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] min-h-[160px] p-2">
                   {words.split('').map((char, index) => {
                     const isTyped = index < currentIndex;
                     const isCurrent = index === currentIndex;
@@ -313,10 +313,10 @@ export default function InterviewRoom() {
                       charClass = 'text-cyan-300 font-bold';
                     }
 
-                    const displayChar = char === ' ' ? (isMistake ? '␣' : '\u00A0') : char;
+                    const displayChar = char === ' ' ? (isMistake ? '␣' : ' ') : char;
 
                     return (
-                      <span key={index} className={`relative inline-block transition-colors duration-75 ${charClass}`}>
+                      <span key={index} className={`relative inline transition-colors duration-75 ${charClass}`}>
                         {isCurrent && (
                           <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
                         )}

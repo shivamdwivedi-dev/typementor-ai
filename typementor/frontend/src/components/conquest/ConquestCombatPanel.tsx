@@ -232,7 +232,7 @@ export const ConquestCombatPanel: React.FC<ConquestCombatPanelProps> = ({
       {/* Passage Display Area with Active Typing Focus Indicator */}
       <div
         data-testid="combat-passage"
-        className={`relative p-6 rounded-2xl bg-zinc-900/80 border transition-all font-mono text-xl sm:text-2xl leading-[1.85] sm:leading-[1.95] tracking-wide select-none min-h-[160px] max-h-[260px] overflow-y-auto cursor-text break-normal whitespace-pre-wrap ${
+        className={`relative p-6 rounded-2xl bg-zinc-900/80 border transition-all font-mono text-xl sm:text-2xl leading-[1.85] sm:leading-[1.95] tracking-wide select-none min-h-[160px] max-h-[260px] overflow-y-auto cursor-text break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] ${
           isFocused
             ? 'border-purple-500/60 ring-2 ring-purple-500/20 shadow-inner'
             : 'border-amber-500/50 ring-1 ring-amber-500/20'
@@ -254,10 +254,10 @@ export const ConquestCombatPanel: React.FC<ConquestCombatPanelProps> = ({
             charClass = 'text-cyan-300 font-bold';
           }
 
-          const displayChar = char === ' ' ? (isMistake ? '␣' : '\u00A0') : char;
+          const displayChar = char === ' ' ? (isMistake ? '␣' : ' ') : char;
 
           return (
-            <span key={idx} className={`relative inline-block transition-colors duration-75 ${charClass}`}>
+            <span key={idx} className={`relative inline transition-colors duration-75 ${charClass}`}>
               {isCurrent && (
                 <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
               )}

@@ -541,7 +541,7 @@ export default function EnduranceArena() {
             <div
               ref={textContainerRef}
               onClick={() => !isPaused && focusTypingInput()}
-              className="p-6 sm:p-8 bg-slate-950/40 border border-slate-800/80 rounded-2xl cursor-text select-none leading-[1.85] sm:leading-[1.95] text-xl sm:text-2xl md:text-[28px] tracking-wide font-mono text-slate-500 max-h-[420px] overflow-y-auto outline-none transition-all focus-within:border-cyan-500/50 break-normal whitespace-pre-wrap"
+              className="p-6 sm:p-8 bg-slate-950/40 border border-slate-800/80 rounded-2xl cursor-text select-none leading-[1.85] sm:leading-[1.95] text-xl sm:text-2xl md:text-[28px] tracking-wide font-mono text-slate-500 max-h-[420px] overflow-y-auto outline-none transition-all focus-within:border-cyan-500/50 break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word]"
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
             {passage.length === 0 ? (
@@ -563,10 +563,10 @@ export default function EnduranceArena() {
                   colorClass = 'text-cyan-300 font-bold';
                 }
 
-                const displayChar = char === ' ' ? (isMistake ? '␣' : '\u00A0') : char;
+                const displayChar = char === ' ' ? (isMistake ? '␣' : ' ') : char;
 
                 return (
-                  <span key={index} className={`relative inline-block transition-colors duration-75 ${colorClass}`}>
+                  <span key={index} className={`relative inline transition-colors duration-75 ${colorClass}`}>
                     {isCurrent && (
                       <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
                     )}

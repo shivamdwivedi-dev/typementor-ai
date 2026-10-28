@@ -120,7 +120,7 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
       const char = passage[i] || '';
       const typed = typedText[i];
       if (typed === char) {
-        currentCorrectRun += char === ' ' ? '\u00A0' : char;
+        currentCorrectRun += char;
       } else {
         if (currentCorrectRun) {
           elements.push(
@@ -154,13 +154,13 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
           className="relative inline-block text-cyan-300 font-bold"
         >
           <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
-          {cursorChar === ' ' ? '\u00A0' : cursorChar}
+          {cursorChar === ' ' ? ' ' : cursorChar}
         </span>
       );
     }
 
     if (typedLen + 1 < passage.length) {
-      const remainder = passage.slice(typedLen + 1).replace(/ /g, '\u00A0');
+      const remainder = passage.slice(typedLen + 1);
       elements.push(
         <span key="remainder" className="text-slate-500">
           {remainder}
@@ -257,7 +257,7 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
         onClick={() => inputRef.current?.focus()}
         className="p-6 sm:p-8 rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl relative cursor-text select-none min-h-[160px] focus-within:border-cyan-500/50 transition-colors"
       >
-        <p className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide break-normal whitespace-pre-wrap">
+        <p className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide whitespace-pre-wrap break-words [word-break:normal] [overflow-wrap:break-word]">
           {renderedPassage}
         </p>
 
