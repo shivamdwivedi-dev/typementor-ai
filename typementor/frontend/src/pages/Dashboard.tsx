@@ -3,13 +3,11 @@ import { useAuthStore } from '../store/AuthStore';
 import { useTypingStore } from '../store/TypingStore';
 import KeyboardHeatmap from '../components/KeyboardHeatmap';
 import CursorDrivenParticleTypography from '../components/ui/particle-typography';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import TypingAnalyticsBento from '../components/TypingAnalyticsBento';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trophy, TrendingUp, Clock, AlertTriangle, ShieldCheck, Flame, Compass, Sparkles, Award, Star, Activity, Play } from 'lucide-react';
 import { getSmartResumeTarget, ResumeTarget } from '../utils/ResumeTracker';
 import { getStorageKey, safeFetch } from '../utils/api';
-
-// Fallback mock history if no sessions exist
-const MOCK_SESSION_HISTORY: any[] = [];
 
 interface SessionRow {
   id: string;
@@ -238,21 +236,6 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
   }, [recoveryReport]);
 
   const recoverySessionsCompleted = recoveryReport.history ? recoveryReport.history.length : 0;
-
-  // Combine fetched sessions or fall back to mock history for graphs
-  const getGraphData = (): any[] => {
-    if (sessionHistory.length > 0) {
-      // Last 10 sessions chronologically
-      const last10 = sessionHistory.slice(0, 10).reverse();
-      return last10.map((s, i) => ({
-        ...s,
-        createdAt: `Session ${i + 1}`,
-      }));
-    }
-    return MOCK_SESSION_HISTORY;
-  };
-
-  const graphData = getGraphData();
 
   // Load heatmap statistics (use real database telemetry or empty fallback only, no mock data)
   const heatmapData = analytics || {
@@ -947,73 +930,18 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
         )}
       </div>
 
-      {/* Speed & Accuracy Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="glass-panel p-6 rounded-2xl border border-brand-border/40">
-          <div className="flex items-center justify-between mb-4 border-b border-brand-border/30 pb-3">
-            <h3 className="font-bold text-white text-base flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-brand-primary" />
-              WPM Speed Trend
-            </h3>
-            <span className="text-[10px] bg-brand-primary/10 text-brand-primary font-bold px-2 py-0.5 rounded">
-              Last 10 sessions
-            </span>
+      {/* ── Realtime Analytics Bento ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-brand-border/30 pb-3">
+          <div className="flex items-center gap-2.5">
+            <Activity className="w-5 h-5 text-brand-primary animate-pulse" />
+            <h3 className="font-bold text-white text-base">Adaptive Keystroke Telemetry & Ergonomics</h3>
           </div>
-          <div className="h-64 w-full flex items-center justify-center">
-            {sessionHistory.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={graphData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                  <XAxis dataKey="createdAt" stroke="#94a3b8" fontSize={10} />
-                  <YAxis stroke="#94a3b8" fontSize={10} domain={['dataMin - 5', 'dataMax + 5']} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
-                  <Line type="monotone" dataKey="wpm" stroke="#6366f1" strokeWidth={3} activeDot={{ r: 8 }} name="WPM" />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="text-center p-4 space-y-3">
-                <Activity className="w-8 h-8 text-brand-primary/30 mx-auto animate-pulse" />
-                <div>
-                  <p className="text-xs font-bold text-white">No Telemetry Recorded Yet</p>
-                  <p className="text-[10px] text-brand-muted max-w-xs mt-1">Complete your first practice drill to compile speed and raw words-per-minute statistics.</p>
-                </div>
-              </div>
-            )}
-          </div>
+          <span className="text-[10px] bg-brand-primary/10 text-brand-primary font-bold px-2.5 py-1 rounded-lg border border-brand-primary/20">
+            Realtime Analytics Bento
+          </span>
         </div>
-
-        <div className="glass-panel p-6 rounded-2xl border border-brand-border/40">
-          <div className="flex items-center justify-between mb-4 border-b border-brand-border/30 pb-3">
-            <h3 className="font-bold text-white text-base flex items-center gap-2">
-              <Compass className="w-5 h-5 text-brand-success" />
-              Accuracy Progression
-            </h3>
-            <span className="text-[10px] bg-brand-success/10 text-brand-success font-bold px-2 py-0.5 rounded">
-              Telemetry accuracy %
-            </span>
-          </div>
-          <div className="h-64 w-full flex items-center justify-center">
-            {sessionHistory.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={graphData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                  <XAxis dataKey="createdAt" stroke="#94a3b8" fontSize={10} />
-                  <YAxis stroke="#94a3b8" fontSize={10} domain={[80, 100]} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
-                  <Area type="monotone" dataKey="accuracy" stroke="#10b981" fill="rgba(16, 185, 129, 0.05)" strokeWidth={2.5} name="Accuracy %" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="text-center p-4 space-y-3">
-                <Compass className="w-8 h-8 text-brand-success/30 mx-auto animate-pulse" />
-                <div>
-                  <p className="text-xs font-bold text-white">No Accuracy Telemetry Yet</p>
-                  <p className="text-[10px] text-brand-muted max-w-xs mt-1">Practice consistently to track your typing accuracy progression over time.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <TypingAnalyticsBento sessionHistory={sessionHistory} completedLessonsCount={completedLessons.length} />
       </div>
 
       {/* Keyboard Heatmap and Controls */}

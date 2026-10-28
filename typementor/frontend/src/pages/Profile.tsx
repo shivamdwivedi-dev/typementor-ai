@@ -1,7 +1,8 @@
 import { useAuthStore } from '../store/AuthStore';
 import { useTypingStore } from '../store/TypingStore';
 import { exportPerformancePdf } from '../utils/pdfGenerator';
-import { Download, Trophy, Star, Shield, Lock, Flame, Award } from 'lucide-react';
+import TypingAnalyticsBento from '../components/TypingAnalyticsBento';
+import { Download, Trophy, Star, Shield, Lock, Flame, Award, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Default mock achievements if user is guest
@@ -230,6 +231,20 @@ export default function Profile() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* ── Keystroke Analytics Bento ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-brand-border/30 pb-3">
+          <div className="flex items-center gap-2.5">
+            <Activity className="w-5 h-5 text-brand-primary animate-pulse" />
+            <h3 className="font-bold text-white text-base">Personal Keystroke Analytics & Ergonomics</h3>
+          </div>
+          <span className="text-[10px] bg-brand-primary/10 text-brand-primary font-bold px-2.5 py-1 rounded-lg border border-brand-primary/20">
+            Profile Telemetry
+          </span>
+        </div>
+        <TypingAnalyticsBento />
       </div>
 
       {/* Achievement Showcase */}

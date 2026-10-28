@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTypingStore } from '../store/TypingStore';
-import { Play, RotateCcw, ShieldAlert, Timer } from 'lucide-react';
+import { Play, RotateCcw, ShieldAlert, Timer, SlidersHorizontal, Sparkles } from 'lucide-react';
 import SessionResults from './SessionResults';
 import { soundEngine } from '../utils/soundEngine';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
@@ -22,6 +22,8 @@ interface TypingEngineProps {
   onViewDashboard?: () => void;
   onStartRecoveryPractice?: () => void;
   onNavigateToAcademy?: () => void;
+  isZenMode?: boolean;
+  onToggleZen?: () => void;
 }
 
 // ─── Memoized single character span ───────────────────────────────────────────
@@ -31,14 +33,35 @@ interface CharSpanProps {
   showCaret: boolean;
 }
 
-const CharSpan = React.memo(({ char, charClass, showCaret }: CharSpanProps) => (
-  <span className={`relative rounded px-[1px] ${charClass}`}>
-    {char === ' ' ? '␣' : char}
-    {showCaret && (
-      <span className="absolute left-0 bottom-0 top-0 w-[2.5px] bg-brand-primary animate-blink rounded" />
-    )}
-  </span>
-));
+const CharSpan = React.memo(({ char, charClass, showCaret }: CharSpanProps) => {
+  const isSpace = char === ' ';
+  const isMistake = charClass.includes('text-rose-400') || charClass.includes('text-brand-danger');
+
+  return (
+    <span className={`relative rounded px-[1px] transition-colors duration-75 ${charClass}`}>
+      {char === '\n' ? (
+        <>
+          <span className="text-slate-600/70 text-xs select-none">↵</span>
+          <br />
+        </>
+      ) : isSpace ? (
+        isMistake ? (
+          <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
+        ) : (
+          '\u00A0'
+        )
+      ) : (
+        char
+      )}
+      {showCaret && (
+        <span
+          className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none"
+          style={{ willChange: 'opacity' }}
+        />
+      )}
+    </span>
+  );
+});
 CharSpan.displayName = 'CharSpan';
 
 // ─── Memoized token component ─────────────────────────────────────────────────
@@ -53,27 +76,28 @@ interface TokenItemProps {
 const TokenItem = React.memo(({ token, start, currentIndex, keystrokes }: TokenItemProps) => {
   // Pending token: user hasn't reached it yet
   if (currentIndex < start) {
+    const isWhitespace = /^\s+$/.test(token);
     return (
-      <span className="inline-block whitespace-nowrap text-brand-muted">
-        {token === ' ' ? '␣' : token}
+      <span className="inline-block whitespace-pre text-slate-500 font-normal select-none">
+        {isWhitespace ? token.replace(/ /g, '\u00A0') : token}
       </span>
     );
   }
 
   // Active or Completed token: render character-by-character
   return (
-    <span className="inline-block whitespace-nowrap">
+    <span className="inline-block whitespace-pre">
       {token.split('').map((char, offset) => {
         const index = start + offset;
-        let charClass = 'text-brand-muted';
+        let charClass = 'text-slate-500 font-normal';
 
         if (index < currentIndex) {
           const keyLog = keystrokes[index];
           charClass = keyLog && !keyLog.isMistake
-            ? 'text-brand-success font-semibold border-b-2 border-brand-success/30'
-            : 'text-brand-danger font-semibold bg-brand-danger/10 border-b-2 border-brand-danger/30';
+            ? 'text-slate-100 font-medium'
+            : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
         } else if (index === currentIndex) {
-          charClass = 'text-white bg-brand-primary/20 font-bold';
+          charClass = 'text-white bg-cyan-500/15 font-semibold rounded';
         }
 
         return (
@@ -108,9 +132,10 @@ interface TextBoardProps {
   words: string;
   currentIndex: number;
   keystrokes: { isMistake: boolean }[];
+  isZenMode?: boolean;
 }
 
-const TextBoard = React.memo(({ words, currentIndex, keystrokes }: TextBoardProps) => {
+const TextBoard = React.memo(({ words, currentIndex, keystrokes, isZenMode }: TextBoardProps) => {
   const parsedTokens = useMemo(() => {
     const matches = words.match(/\S+|\s+/g) ?? [];
     let offset = 0;
@@ -122,7 +147,13 @@ const TextBoard = React.memo(({ words, currentIndex, keystrokes }: TextBoardProp
   }, [words]);
 
   return (
-    <div className="text-xl md:text-2xl leading-relaxed tracking-wide font-mono select-none break-normal whitespace-normal [overflow-wrap:normal]">
+    <div
+      className={`font-mono tracking-wide select-none break-normal whitespace-pre-wrap [overflow-wrap:normal] transition-all duration-200 ${
+        isZenMode
+          ? 'text-2xl sm:text-3xl md:text-[36px] leading-[1.8] sm:leading-[1.9] md:leading-[2.05]'
+          : 'text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]'
+      }`}
+    >
       {parsedTokens.map((t) => (
         <TokenItem
           key={`${t.start}-${t.tokenIndex}`}
@@ -145,6 +176,8 @@ export default function TypingEngine({
   onViewDashboard,
   onStartRecoveryPractice,
   onNavigateToAcademy,
+  isZenMode = false,
+  onToggleZen,
 }: TypingEngineProps) {
   const {
     words,
@@ -171,7 +204,18 @@ export default function TypingEngine({
 
   const [cheatDetected, setCheatDetected] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [hudStyle, setHudStyle] = useState<'minimal' | 'cards'>(() => {
+    return (localStorage.getItem('typementor_hud_style') as 'minimal' | 'cards') || 'minimal';
+  });
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const toggleHudStyle = useCallback(() => {
+    setHudStyle(prev => {
+      const next = prev === 'minimal' ? 'cards' : 'minimal';
+      localStorage.setItem('typementor_hud_style', next);
+      return next;
+    });
+  }, []);
 
   // AI Coach Pulse Hook integration
   const { pulseMessage, processPulse, clearPulse, resetSessionState } = useAICoachPulse();
@@ -281,8 +325,24 @@ export default function TypingEngine({
     }
   }, [isCompleted]);
 
+  // Mid-session reset / restart
+  const handleReset = useCallback(() => {
+    setCheatDetected(false);
+    setIsPaused(false);
+    const state = useTypingStore.getState();
+    initializeSession(state.words, state.mode, state.difficulty, state.riskKeys);
+    setTimeout(focusInput, 50);
+  }, [initializeSession, focusInput]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (isCompleted || cheatDetected || isPaused) return;
+
+    // Hotkey: Tab (unless typing a tab character) or Escape instantly restarts session
+    if ((e.key === 'Tab' && words[currentIndex] !== '\t') || e.key === 'Escape') {
+      e.preventDefault();
+      handleReset();
+      return;
+    }
 
     if (!isActive) startSession();
 
@@ -330,7 +390,7 @@ export default function TypingEngine({
     } else {
       soundEngine.play('key');
     }
-  }, [isCompleted, cheatDetected, isActive, words, currentIndex, keystrokes, startSession, handleBackspace, recordKeystroke]);
+  }, [isCompleted, cheatDetected, isPaused, words, currentIndex, handleReset, isActive, startSession, handleBackspace, keystrokes, recordKeystroke]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
@@ -346,7 +406,7 @@ export default function TypingEngine({
     setTimeout(focusInput, 50);
   }, [initializeSession, focusInput]);
 
-  // Next = App.tsx decides what text comes next
+  // Next = App decides what text comes next
   const handleNext = useCallback(() => {
     setCheatDetected(false);
     setIsPaused(false);
@@ -358,15 +418,6 @@ export default function TypingEngine({
   const handleDashboard = useCallback(() => {
     if (onViewDashboard) onViewDashboard();
   }, [onViewDashboard]);
-
-  // Reset button in the header (mid-session restart)
-  const handleReset = useCallback(() => {
-    setCheatDetected(false);
-    setIsPaused(false);
-    const state = useTypingStore.getState();
-    initializeSession(state.words, state.mode, state.difficulty, state.riskKeys);
-    setTimeout(focusInput, 50);
-  }, [initializeSession, focusInput]);
 
   // ── If session is complete → show full results screen ────────────────────────
   if (isCompleted && !cheatDetected) {
@@ -391,54 +442,140 @@ export default function TypingEngine({
     );
   }
 
+  const mistakesCount = keystrokes.filter(k => k.isMistake).length;
+
   return (
-    <div className="w-full max-w-4xl mx-auto relative" onClick={focusInput}>
-      {/* Live Metrics Header */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center relative overflow-hidden">
-          <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
-            WPM
+    <div className={`w-full mx-auto relative ${isZenMode ? 'max-w-6xl' : 'max-w-5xl'}`} onClick={focusInput}>
+      {/* ── Live Metrics Header ── */}
+      {hudStyle === 'minimal' || isZenMode ? (
+        <div
+          className={`flex items-center justify-between gap-4 mb-6 px-4 py-3 rounded-2xl bg-slate-900/50 border border-slate-800/80 backdrop-blur-md transition-opacity duration-300 ${
+            isZenMode && isActive && !isPaused ? 'opacity-25 hover:opacity-100' : 'opacity-100'
+          }`}
+        >
+          {/* Left: Mode tag & Difficulty */}
+          <div className="flex items-center gap-2.5">
+            <span className="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-extrabold text-[11px] tracking-wider uppercase">
+              {mode}
+            </span>
+            <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+              Tier {difficulty}
+            </span>
           </div>
-          <div className="text-2xl font-black text-brand-primary font-mono">{wpm}</div>
-        </div>
 
-        <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center">
-          <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
-            Accuracy
-          </div>
-          <div className="text-2xl font-black text-brand-success font-mono">{accuracy}%</div>
-        </div>
+          {/* Center: Live Numbers */}
+          <div className="flex items-center gap-6 sm:gap-10 font-mono">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono tracking-tight">{wpm}</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">wpm</span>
+            </div>
 
-        <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center">
-          <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
-            Mode
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-tight">{accuracy}%</span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">acc</span>
+            </div>
+
+            <div className="flex items-baseline gap-1.5 hidden xs:flex">
+              <span className="text-2xl sm:text-3xl font-black text-rose-400 font-mono tracking-tight">
+                {mistakesCount}
+              </span>
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">miss</span>
+            </div>
+
+            <div className="hidden md:flex items-baseline gap-1.5 text-slate-400">
+              <span className="text-sm font-semibold">{currentIndex}/{words.length}</span>
+              <span className="text-[10px] uppercase font-bold text-slate-500">chars</span>
+            </div>
           </div>
-          <div className="text-sm font-black text-white mt-1.5 truncate uppercase tracking-wide">
-            {mode}
+
+          {/* Right: Restart & Options */}
+          <div className="flex items-center gap-2">
+            {!isZenMode && (
+              <button
+                type="button"
+                onClick={toggleHudStyle}
+                className="p-2 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white transition-all text-xs"
+                title="Switch to Card HUD"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onToggleZen && !isZenMode && (
+              <button
+                type="button"
+                onClick={onToggleZen}
+                className="p-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-all text-xs"
+                title="⚡ Zen Focus Mode"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-all text-xs font-semibold"
+              title="Restart Test (Tab or Esc)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline text-[10px] text-slate-400 font-mono">Tab</span>
+            </button>
           </div>
         </div>
-
-        <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center">
-          <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
-            Mistakes
+      ) : (
+        /* Traditional 5-card HUD */
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center relative overflow-hidden">
+            <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
+              WPM
+            </div>
+            <div className="text-2xl font-black text-brand-primary font-mono">{wpm}</div>
           </div>
-          <div className="text-2xl font-black text-brand-danger font-mono">
-            {keystrokes.filter(k => k.isMistake).length}
+
+          <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center">
+            <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
+              Accuracy
+            </div>
+            <div className="text-2xl font-black text-brand-success font-mono">{accuracy}%</div>
+          </div>
+
+          <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center">
+            <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
+              Mode
+            </div>
+            <div className="text-sm font-black text-white mt-1.5 truncate uppercase tracking-wide">
+              {mode}
+            </div>
+          </div>
+
+          <div className="glass-panel p-4 rounded-xl border border-brand-border/40 text-center">
+            <div className="text-[10px] font-bold text-brand-muted uppercase tracking-wider mb-1">
+              Mistakes
+            </div>
+            <div className="text-2xl font-black text-brand-danger font-mono">
+              {mistakesCount}
+            </div>
+          </div>
+
+          <div className="glass-panel p-4 rounded-xl border border-brand-border/40 flex items-center justify-center gap-2 col-span-2 md:col-span-1">
+            <button
+              onClick={toggleHudStyle}
+              className="p-2.5 rounded-lg border border-brand-border/40 hover:bg-brand-card/45 hover:border-brand-primary/50 text-brand-muted hover:text-white transition-all"
+              title="Switch to Minimal Monkeytype HUD"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleReset}
+              className="p-2.5 rounded-lg border border-brand-border/40 hover:bg-brand-card/45 hover:border-brand-primary/50 text-brand-muted hover:text-white transition-all"
+              title="Restart Session (Tab or Esc)"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="glass-panel p-4 rounded-xl border border-brand-border/40 flex items-center justify-center gap-3 col-span-2 md:col-span-1">
-          <button
-            onClick={handleReset}
-            className="flex-1 md:flex-none p-2.5 rounded-lg border border-brand-border/40 hover:bg-brand-card/45 hover:border-brand-primary/50 text-brand-muted hover:text-white transition-all focus:outline-none"
-            title="Restart Session"
-          >
-            <RotateCcw className="w-4 h-4 mx-auto" />
-          </button>
-        </div>
-      </div>
-
-      {/* Typing Board Panel */}
+      {/* ── Typing Board Panel ── */}
       <div
         onClick={() => {
           if (isPaused) {
@@ -447,11 +584,15 @@ export default function TypingEngine({
             inputRef.current?.focus();
           }
         }}
-        className="glass-panel p-6 md:p-8 rounded-2xl border border-brand-border/40 mb-4 relative min-h-[160px] flex items-center cursor-text"
+        className={`p-6 sm:p-8 md:p-12 rounded-3xl border transition-all duration-300 relative min-h-[220px] md:min-h-[260px] flex items-center cursor-text ${
+          isZenMode
+            ? 'bg-slate-950/70 border-slate-800/80 shadow-[0_16px_50px_rgba(0,0,0,0.5)]'
+            : 'glass-panel border-brand-border/40 shadow-2xl'
+        } focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)]`}
       >
         {isPaused && (
           <div
-            className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-2xl"
+            className="absolute inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-200 cursor-pointer rounded-3xl"
             onClick={(e) => {
               e.stopPropagation();
               handleResume();
@@ -473,6 +614,7 @@ export default function TypingEngine({
             </div>
           </div>
         )}
+
         {cheatDetected ? (
           <div className="w-full text-center space-y-3">
             <ShieldAlert className="w-12 h-12 text-brand-danger mx-auto animate-bounce" />
@@ -505,24 +647,41 @@ export default function TypingEngine({
               words={words}
               currentIndex={currentIndex}
               keystrokes={keystrokes}
+              isZenMode={isZenMode}
             />
           </div>
         )}
 
-        {/* Focus overlay */}
+        {/* Clean, Non-intrusive Start Indicator */}
         {!isActive && !isCompleted && !cheatDetected && (
-          <div className="absolute inset-0 bg-brand-card/45 backdrop-blur-[2px] flex items-center justify-center transition-all cursor-pointer pointer-events-none">
-            <div className="bg-brand-bg/85 border border-brand-border px-5 py-3 rounded-xl shadow-lg flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-primary animate-pulse">
-              <Play className="w-4 h-4" />
-              Click inside to start typing
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none transition-all">
+            <div className="bg-slate-900/90 border border-cyan-500/30 px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-[11px] font-semibold text-cyan-300 backdrop-blur-md animate-pulse">
+              <Play className="w-3 h-3 text-cyan-400" />
+              <span>Press any key to start typing</span>
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-brand-muted px-2">
-        <p>Telemetry Speed tracking is calculated per minute based on characters typed.</p>
-        <p>Active key length: {words.length} chars</p>
+      {/* Subtle Bottom Helper Hint */}
+      <div
+        className={`flex items-center justify-between text-xs text-slate-500 px-3 mt-3 transition-opacity duration-300 ${
+          isZenMode && isActive && !isPaused ? 'opacity-20 hover:opacity-100' : 'opacity-100'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/60 font-mono text-[10px] text-slate-300">Tab</kbd>
+            <span>or</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-800/80 border border-slate-700/60 font-mono text-[10px] text-slate-300">Esc</kbd>
+            <span className="text-[11px] text-slate-400">restart</span>
+          </span>
+          <span className="text-slate-600 hidden sm:inline">•</span>
+          <span className="hidden sm:inline text-[11px] text-slate-400">120 FPS Keystroke Telemetry</span>
+        </div>
+        <div className="text-[11px] text-slate-400 font-mono">
+          {words.length} chars
+        </div>
       </div>
 
       {/* Coach Pulse notification popup */}

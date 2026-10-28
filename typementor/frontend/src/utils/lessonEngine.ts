@@ -168,3 +168,38 @@ export function extractWeakKeys(
     .slice(0, topN)
     .map(([k]) => k);
 }
+
+/**
+ * Generate a text prompt with an exact target word count (e.g. 15, 25, 50, 100).
+ * Gathers words from prompt candidates and slices to targetWords.
+ */
+export function getPromptForWordCount(
+  targetWords: number,
+  tier = 1,
+  weakKeys: string[] = []
+): { text: string; tier: number; reason: string } {
+  const wordsList: string[] = [];
+  let attempts = 0;
+
+  while (wordsList.length < targetWords && attempts < 12) {
+    attempts++;
+    const lesson = selectNextLesson(tier, weakKeys);
+    const splitWords = lesson.text.trim().split(/\s+/);
+    for (const w of splitWords) {
+      if (w) wordsList.push(w);
+      if (wordsList.length >= targetWords) break;
+    }
+  }
+
+  // Fallback if pool exhausted
+  while (wordsList.length < targetWords && wordsList.length > 0) {
+    wordsList.push(...wordsList.slice(0, targetWords - wordsList.length));
+  }
+
+  const resultText = wordsList.slice(0, targetWords).join(' ');
+  return {
+    text: resultText,
+    tier,
+    reason: `${targetWords} words Monkeytype sprint (Tier ${tier})`,
+  };
+}

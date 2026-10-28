@@ -3,6 +3,7 @@ import SEOMeta from '../components/SEOMeta';
 import TubesBackground from '../components/ui/neon-flow';
 import { ShinyButton } from '../components/ui/shiny-button';
 import GlassCard from '../components/ui/glass-card';
+import DoodleCrewFooter from '../components/DoodleCrewFooter';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -87,7 +88,7 @@ const LANDING_JSON_LD = {
   ]
 };
 
-export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPage }: LandingPageProps) {
+export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPage: _onNavigateToPage }: LandingPageProps) {
   return (
     <div className="w-full space-y-16 py-10 pb-20">
       <SEOMeta
@@ -533,78 +534,10 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
         </div>
       </section>
 
-      {/* ── 8. Footer ── */}
-      <footer className="border-t border-brand-border/40 pt-10 px-4 text-center max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8">
-          <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-brand-primary" />
-            <span className="font-bold text-white text-sm">TypeMentor AI Beta</span>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-brand-muted font-medium">
-            <span>Built by Shivam Dwivedi</span>
-            <span className="text-brand-border">|</span>
-            <a
-              href="/about"
-              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('about'); }}
-              className="hover:text-white hover:underline transition-colors"
-            >
-              About Us
-            </a>
-            <span className="text-brand-border">•</span>
-            <a
-              href="/contact"
-              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('contact'); }}
-              className="hover:text-white hover:underline transition-colors"
-            >
-              Contact Us
-            </a>
-            <span className="text-brand-border">•</span>
-            <a
-              href="/guides"
-              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('guides'); }}
-              className="hover:text-white hover:underline transition-colors"
-            >
-              Typing Guides
-            </a>
-            <span className="text-brand-border">•</span>
-            <a
-              href="/blog"
-              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('blog'); }}
-              className="hover:text-white hover:underline transition-colors"
-            >
-              Blog
-            </a>
-            <span className="text-brand-border">•</span>
-            <a
-              href="/privacy"
-              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('privacy'); }}
-              className="hover:text-white hover:underline transition-colors"
-            >
-              Privacy Policy
-            </a>
-            <span className="text-brand-border">•</span>
-            <a
-              href="/terms"
-              onClick={(e) => { e.preventDefault(); onNavigateToPage?.('terms'); }}
-              className="hover:text-white hover:underline transition-colors"
-            >
-              Terms of Service
-            </a>
-            <span className="text-brand-border">|</span>
-            <a
-              href="/academy"
-              className="text-brand-primary hover:underline"
-            >
-              Try Typing Academy
-            </a>
-          </div>
-        </div>
-
-        <p className="text-[10px] text-brand-muted">
-          © 2026 TypeMentor AI. Prepared for public beta pre-launch release testing.
-        </p>
-      </footer>
+      {/* ── 8. Interactive Doodle Crew Footer ── */}
+      <section className="pt-8 -mx-6 md:-mx-8">
+        <DoodleCrewFooter preset="typementor" className="border-t border-brand-border/40" />
+      </section>
     </div>
   );
 }
