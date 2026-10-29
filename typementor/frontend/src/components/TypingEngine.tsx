@@ -4,6 +4,7 @@ import { Play, RotateCcw, ShieldAlert, Timer, SlidersHorizontal, Sparkles } from
 import SessionResults from './SessionResults';
 import { soundEngine } from '../utils/soundEngine';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
+import { useAutomatedCaretScroll } from '../utils/useAutomatedCaretScroll';
 
 interface TypingEngineProps {
   onSessionComplete?: (metrics: {
@@ -212,72 +213,19 @@ export default function TypingEngine({
     return (localStorage.getItem('typementor_hud_style') as 'minimal' | 'cards') || 'minimal';
   });
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Automated Smooth Viewport Caret Tracking
-  // Automatically scrolls the typing container and browser viewport as the user advances through lines,
-  // ensuring upcoming words and paragraphs are always smoothly visible ahead without manual scrolling.
-  useEffect(() => {
-    if (!scrollContainerRef.current) return;
-    const container = scrollContainerRef.current;
-
-    // Reset scroll when rewound to start or starting a new session
-    if (currentIndex === 0) {
-      if (typeof container.scrollTo === 'function') {
-        container.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-      } else {
-        container.scrollTop = 0;
-      }
-      return;
-    }
-
-    const caretEl = container.querySelector('[data-caret="true"]') as HTMLElement | null;
-    if (!caretEl) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const caretRect = caretEl.getBoundingClientRect();
-
-    if (!caretRect.height) return;
-
-    // Relative vertical position inside the scrollable container content
-    const caretRelativeTop = caretRect.top - containerRect.top + container.scrollTop;
-    const lineHeight = caretRect.height || 48;
-
-    // Maintain active caret at ~line 2 (1.2x to 1.4x lineHeight from top of container).
-    // This provides 1 line of preceding context and 2-3 lines of upcoming preview text.
-    const targetScrollTop = Math.max(0, caretRelativeTop - lineHeight * 1.3);
-
-    // Only scroll when crossing a line boundary (diff > 12px) to prevent micro-jitter across characters
-    if (Math.abs(targetScrollTop - container.scrollTop) > 12) {
-      if (typeof container.scrollTo === 'function') {
-        container.scrollTo({
-          top: targetScrollTop,
-          behavior: 'smooth',
-        });
-      } else {
-        container.scrollTop = targetScrollTop;
-      }
-    }
-
-    // Viewport auto-scroll: if active typing area is near or below the screen bottom
-    if (!isZenMode && typeof window !== 'undefined') {
-      const windowHeight = window.innerHeight;
-      const caretScreenBottom = caretRect.bottom;
-      const caretScreenTop = caretRect.top;
-
-      if (caretScreenBottom > windowHeight - 120 && typeof window.scrollBy === 'function') {
-        window.scrollBy({
-          top: caretScreenBottom - (windowHeight * 0.45),
-          behavior: 'smooth',
-        });
-      } else if (caretScreenTop < 100 && window.scrollY > 0 && typeof window.scrollBy === 'function') {
-        window.scrollBy({
-          top: caretScreenTop - 160,
-          behavior: 'smooth',
-        });
-      }
-    }
-  }, [currentIndex, words, isZenMode]);
+  // Advanced multi-device automated caret tracking & smooth viewport scroll
+  const {
+    containerRef: scrollContainerRef,
+    maskStyle,
+  } = useAutomatedCaretScroll({
+    activeCharIndex: currentIndex,
+    totalLength: words.length,
+    isZenMode,
+    enableHorizontalScroll: true,
+    enableViewportScroll: true,
+    selector: '[data-caret="true"]',
+  });
 
   const toggleHudStyle = useCallback(() => {
     setHudStyle(prev => {
@@ -719,6 +667,7 @@ export default function TypingEngine({
             {/* Scrollable Viewport with Automated Caret Tracking */}
             <div
               ref={scrollContainerRef}
+              style={maskStyle}
               className={`w-full overflow-y-auto no-scrollbar relative transition-all duration-200 py-1 ${
                 isZenMode
                   ? 'max-h-[220px] sm:max-h-[270px] md:max-h-[330px]'

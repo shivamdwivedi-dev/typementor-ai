@@ -5,6 +5,7 @@ import { generateEndurancePassage } from '../utils/endurancePassages';
 import { soundEngine } from '../utils/soundEngine';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { saveLastActivity } from '../utils/ResumeTracker';
+import { useAutomatedCaretScroll } from '../utils/useAutomatedCaretScroll';
 import {
   Trophy, Award,
   RefreshCw, RotateCcw, ChevronRight, Activity, Clock, Timer
@@ -59,7 +60,18 @@ export default function EnduranceArena() {
   const { pulseMessage, processPulse, clearPulse, resetSessionState } = useAICoachPulse();
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const textContainerRef = useRef<HTMLDivElement>(null);
+
+  // Advanced multi-device automated caret tracking & smooth viewport scroll
+  const {
+    containerRef: textContainerRef,
+    maskStyle,
+  } = useAutomatedCaretScroll({
+    activeCharIndex: typedText.length,
+    totalLength: passage.length,
+    enableHorizontalScroll: true,
+    enableViewportScroll: true,
+    selector: '[data-caret="true"]',
+  });
 
   const categories = ['Technology', 'AI', 'Science', 'Space', 'History', 'Programming', 'Business', 'Random'];
   const lengths = [200, 500, 1000];
@@ -541,8 +553,8 @@ export default function EnduranceArena() {
             <div
               ref={textContainerRef}
               onClick={() => !isPaused && focusTypingInput()}
-              className="p-6 sm:p-8 bg-slate-950/40 border border-slate-800/80 rounded-2xl cursor-text select-none leading-[1.85] sm:leading-[1.95] text-xl sm:text-2xl md:text-[28px] tracking-wide font-mono text-slate-500 max-h-[420px] overflow-y-auto outline-none transition-all focus-within:border-cyan-500/50 break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word]"
-              style={{ WebkitTapHighlightColor: 'transparent' }}
+              style={{ ...maskStyle, WebkitTapHighlightColor: 'transparent' }}
+              className="p-6 sm:p-8 bg-slate-950/40 border border-slate-800/80 rounded-2xl cursor-text select-none leading-[1.85] sm:leading-[1.95] text-xl sm:text-2xl md:text-[28px] tracking-wide font-mono text-slate-500 max-h-[220px] sm:max-h-[260px] md:max-h-[300px] overflow-y-auto no-scrollbar outline-none transition-all focus-within:border-cyan-500/50 break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word]"
             >
             {passage.length === 0 ? (
               <div className="text-center text-xs text-brand-muted py-6">No passage available.</div>
@@ -566,7 +578,11 @@ export default function EnduranceArena() {
                 const displayChar = char === ' ' ? (isMistake ? '␣' : ' ') : char;
 
                 return (
-                  <span key={index} className={`relative inline transition-colors duration-75 ${colorClass}`}>
+                  <span
+                    key={index}
+                    data-caret={isCurrent ? 'true' : undefined}
+                    className={`relative inline transition-colors duration-75 ${colorClass}`}
+                  >
                     {isCurrent && (
                       <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
                     )}

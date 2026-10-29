@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTypingStore } from '../store/TypingStore';
 import { Timer, Skull, Award, AlertOctagon, RotateCcw } from 'lucide-react';
 import { soundEngine } from '../utils/soundEngine';
+import { useAutomatedCaretScroll } from '../utils/useAutomatedCaretScroll';
 
 // Mock candidates database for interview room
 const INITIAL_CANDIDATES = [
@@ -30,6 +31,18 @@ export default function InterviewRoom() {
   const [failed, setFailed] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Advanced multi-device automated caret tracking & smooth viewport scroll
+  const {
+    containerRef: interviewScrollRef,
+    maskStyle,
+  } = useAutomatedCaretScroll({
+    activeCharIndex: currentIndex,
+    totalLength: words.length,
+    enableHorizontalScroll: true,
+    enableViewportScroll: true,
+    selector: '[data-caret="true"]',
+  });
 
   const interviewText = "SELECT name, email, wpm FROM candidates WHERE wpm > 80 ORDER BY accuracy DESC LIMIT 5;";
 
@@ -297,7 +310,11 @@ export default function InterviewRoom() {
                   className="absolute inset-0 opacity-0 cursor-default"
                 />
 
-                <div className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] min-h-[160px] p-2">
+                <div
+                  ref={interviewScrollRef}
+                  style={maskStyle}
+                  className="font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] sm:leading-[1.95] tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] min-h-[140px] max-h-[220px] sm:max-h-[260px] overflow-y-auto no-scrollbar p-2"
+                >
                   {words.split('').map((char, index) => {
                     const isTyped = index < currentIndex;
                     const isCurrent = index === currentIndex;
@@ -316,7 +333,11 @@ export default function InterviewRoom() {
                     const displayChar = char === ' ' ? (isMistake ? '␣' : ' ') : char;
 
                     return (
-                      <span key={index} className={`relative inline transition-colors duration-75 ${charClass}`}>
+                      <span
+                        key={index}
+                        data-caret={isCurrent ? 'true' : undefined}
+                        className={`relative inline transition-colors duration-75 ${charClass}`}
+                      >
                         {isCurrent && (
                           <span className="absolute -left-[1.5px] top-1 bottom-1 w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none" />
                         )}
