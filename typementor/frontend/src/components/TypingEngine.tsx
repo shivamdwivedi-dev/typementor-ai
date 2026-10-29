@@ -38,7 +38,10 @@ const CharSpan = React.memo(({ char, charClass, showCaret }: CharSpanProps) => {
   const isMistake = charClass.includes('text-rose-400') || charClass.includes('text-brand-danger');
 
   return (
-    <span className={`relative rounded px-[1px] transition-colors duration-75 ${charClass}`}>
+    <span
+      data-caret={showCaret ? 'true' : undefined}
+      className={`relative rounded px-[1px] transition-colors duration-75 ${charClass}`}
+    >
       {char === '\n' ? (
         <>
           <span className="text-slate-600/70 text-xs select-none">↵</span>
@@ -209,6 +212,72 @@ export default function TypingEngine({
     return (localStorage.getItem('typementor_hud_style') as 'minimal' | 'cards') || 'minimal';
   });
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Automated Smooth Viewport Caret Tracking
+  // Automatically scrolls the typing container and browser viewport as the user advances through lines,
+  // ensuring upcoming words and paragraphs are always smoothly visible ahead without manual scrolling.
+  useEffect(() => {
+    if (!scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+
+    // Reset scroll when rewound to start or starting a new session
+    if (currentIndex === 0) {
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      } else {
+        container.scrollTop = 0;
+      }
+      return;
+    }
+
+    const caretEl = container.querySelector('[data-caret="true"]') as HTMLElement | null;
+    if (!caretEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const caretRect = caretEl.getBoundingClientRect();
+
+    if (!caretRect.height) return;
+
+    // Relative vertical position inside the scrollable container content
+    const caretRelativeTop = caretRect.top - containerRect.top + container.scrollTop;
+    const lineHeight = caretRect.height || 48;
+
+    // Maintain active caret at ~line 2 (1.2x to 1.4x lineHeight from top of container).
+    // This provides 1 line of preceding context and 2-3 lines of upcoming preview text.
+    const targetScrollTop = Math.max(0, caretRelativeTop - lineHeight * 1.3);
+
+    // Only scroll when crossing a line boundary (diff > 12px) to prevent micro-jitter across characters
+    if (Math.abs(targetScrollTop - container.scrollTop) > 12) {
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({
+          top: targetScrollTop,
+          behavior: 'smooth',
+        });
+      } else {
+        container.scrollTop = targetScrollTop;
+      }
+    }
+
+    // Viewport auto-scroll: if active typing area is near or below the screen bottom
+    if (!isZenMode && typeof window !== 'undefined') {
+      const windowHeight = window.innerHeight;
+      const caretScreenBottom = caretRect.bottom;
+      const caretScreenTop = caretRect.top;
+
+      if (caretScreenBottom > windowHeight - 120 && typeof window.scrollBy === 'function') {
+        window.scrollBy({
+          top: caretScreenBottom - (windowHeight * 0.45),
+          behavior: 'smooth',
+        });
+      } else if (caretScreenTop < 100 && window.scrollY > 0 && typeof window.scrollBy === 'function') {
+        window.scrollBy({
+          top: caretScreenTop - 160,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [currentIndex, words, isZenMode]);
 
   const toggleHudStyle = useCallback(() => {
     setHudStyle(prev => {
@@ -647,13 +716,23 @@ export default function TypingEngine({
               spellCheck={false}
             />
 
-            {/* Memoized text render — token-level virtualization for 120 FPS */}
-            <TextBoard
-              words={words}
-              currentIndex={currentIndex}
-              keystrokes={keystrokes}
-              isZenMode={isZenMode}
-            />
+            {/* Scrollable Viewport with Automated Caret Tracking */}
+            <div
+              ref={scrollContainerRef}
+              className={`w-full overflow-y-auto no-scrollbar relative transition-all duration-200 py-1 ${
+                isZenMode
+                  ? 'max-h-[220px] sm:max-h-[270px] md:max-h-[330px]'
+                  : 'max-h-[180px] sm:max-h-[220px] md:max-h-[270px]'
+              }`}
+            >
+              {/* Memoized text render — token-level virtualization for 120 FPS */}
+              <TextBoard
+                words={words}
+                currentIndex={currentIndex}
+                keystrokes={keystrokes}
+                isZenMode={isZenMode}
+              />
+            </div>
           </div>
         )}
 

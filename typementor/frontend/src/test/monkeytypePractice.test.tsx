@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
 import { getPromptForWordCount } from '../utils/lessonEngine';
 import { generateEndurancePassage } from '../utils/endurancePassages';
+import TypingEngine from '../components/TypingEngine';
+import { useTypingStore } from '../store/TypingStore';
 
 describe('Monkeytype Practice Engine', () => {
   it('generates exact word count prompts for 15, 25, 50, and 100 words', () => {
@@ -28,5 +31,21 @@ describe('Monkeytype Practice Engine', () => {
     expect(endurance.text).not.toContain('␣');
     expect(endurance.text.length).toBeGreaterThan(500);
     expect(endurance.idsUsed.length).toBeGreaterThan(0);
+  });
+
+  it('renders a scrollable viewport container with data-caret tracking for multi-line tests', () => {
+    const prompt100 = getPromptForWordCount(100, 2);
+    useTypingStore.getState().initializeSession(prompt100.text, 'English', 2);
+
+    const { container } = render(<TypingEngine />);
+    
+    // Viewport scroll container with no-scrollbar styling
+    const scrollContainer = container.querySelector('.no-scrollbar');
+    expect(scrollContainer).toBeInTheDocument();
+    expect(scrollContainer?.classList.contains('overflow-y-auto')).toBe(true);
+
+    // Initial caret at character 0
+    const activeCaret = container.querySelector('[data-caret="true"]');
+    expect(activeCaret).toBeInTheDocument();
   });
 });

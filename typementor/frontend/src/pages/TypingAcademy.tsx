@@ -100,6 +100,100 @@ export default function TypingAcademy() {
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const testInputRef = useRef<HTMLTextAreaElement>(null);
+  const lessonScrollRef = useRef<HTMLDivElement>(null);
+  const testScrollRef = useRef<HTMLDivElement>(null);
+
+  // Automated Smooth Viewport Caret Tracking for Academy Lesson Practice
+  useEffect(() => {
+    if (!lessonScrollRef.current) return;
+    const container = lessonScrollRef.current;
+
+    if (typedText.length === 0) {
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      } else {
+        container.scrollTop = 0;
+      }
+      return;
+    }
+
+    const caretEl = container.querySelector('[data-caret="true"]') as HTMLElement | null;
+    if (!caretEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const caretRect = caretEl.getBoundingClientRect();
+    if (!caretRect.height) return;
+
+    const caretRelativeTop = caretRect.top - containerRect.top + container.scrollTop;
+    const lineHeight = caretRect.height || 48;
+    const targetScrollTop = Math.max(0, caretRelativeTop - lineHeight * 1.3);
+
+    if (Math.abs(targetScrollTop - container.scrollTop) > 12) {
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+      } else {
+        container.scrollTop = targetScrollTop;
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      const windowHeight = window.innerHeight;
+      const caretScreenBottom = caretRect.bottom;
+      const caretScreenTop = caretRect.top;
+
+      if (caretScreenBottom > windowHeight - 120 && typeof window.scrollBy === 'function') {
+        window.scrollBy({ top: caretScreenBottom - (windowHeight * 0.45), behavior: 'smooth' });
+      } else if (caretScreenTop < 100 && window.scrollY > 0 && typeof window.scrollBy === 'function') {
+        window.scrollBy({ top: caretScreenTop - 160, behavior: 'smooth' });
+      }
+    }
+  }, [typedText.length, selectedLesson]);
+
+  // Automated Smooth Viewport Caret Tracking for Academy Assessment Test
+  useEffect(() => {
+    if (!testScrollRef.current) return;
+    const container = testScrollRef.current;
+
+    if (testTyped.length === 0) {
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+      } else {
+        container.scrollTop = 0;
+      }
+      return;
+    }
+
+    const caretEl = container.querySelector('[data-caret="true"]') as HTMLElement | null;
+    if (!caretEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const caretRect = caretEl.getBoundingClientRect();
+    if (!caretRect.height) return;
+
+    const caretRelativeTop = caretRect.top - containerRect.top + container.scrollTop;
+    const lineHeight = caretRect.height || 48;
+    const targetScrollTop = Math.max(0, caretRelativeTop - lineHeight * 1.3);
+
+    if (Math.abs(targetScrollTop - container.scrollTop) > 12) {
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+      } else {
+        container.scrollTop = targetScrollTop;
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      const windowHeight = window.innerHeight;
+      const caretScreenBottom = caretRect.bottom;
+      const caretScreenTop = caretRect.top;
+
+      if (caretScreenBottom > windowHeight - 120 && typeof window.scrollBy === 'function') {
+        window.scrollBy({ top: caretScreenBottom - (windowHeight * 0.45), behavior: 'smooth' });
+      } else if (caretScreenTop < 100 && window.scrollY > 0 && typeof window.scrollBy === 'function') {
+        window.scrollBy({ top: caretScreenTop - 160, behavior: 'smooth' });
+      }
+    }
+  }, [testTyped.length, testText]);
 
   // Load progress from localStorage dynamically based on active user context
   useEffect(() => {
@@ -1643,8 +1737,9 @@ export default function TypingAcademy() {
               {/* Text display board */}
               <div className="relative">
                 <div
+                  ref={testScrollRef}
                   onClick={() => !isPaused && testInputRef.current?.focus()}
-                  className="p-6 sm:p-8 bg-slate-950/60 border border-slate-800/80 rounded-2xl cursor-text font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] text-slate-400 select-none text-left focus-within:border-cyan-500/40 shadow-xl whitespace-pre-wrap break-words [word-break:normal] [overflow-wrap:break-word]"
+                  className="max-h-[190px] sm:max-h-[230px] md:max-h-[270px] overflow-y-auto no-scrollbar p-6 sm:p-8 bg-slate-950/60 border border-slate-800/80 rounded-2xl cursor-text font-mono text-xl sm:text-2xl md:text-[28px] leading-[1.85] text-slate-400 select-none text-left focus-within:border-cyan-500/40 shadow-xl whitespace-pre-wrap break-words [word-break:normal] [overflow-wrap:break-word]"
                 >
                   {testText.split('').map((char, index) => {
                     let colorClass = 'text-slate-500 font-normal';
@@ -1662,7 +1757,11 @@ export default function TypingAcademy() {
                     const isMistake = colorClass.includes('text-rose-400');
 
                     return (
-                      <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
+                      <span
+                        key={index}
+                        data-caret={isCurrent ? 'true' : undefined}
+                        className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}
+                      >
                         {char === '\n' ? (
                           <>
                             <span className="text-slate-600/70 text-xs select-none">↵</span>
@@ -1954,7 +2053,10 @@ export default function TypingAcademy() {
               onClick={() => !isPaused && focusTypingInput()}
               className="p-6 sm:p-8 md:p-12 rounded-3xl bg-slate-950/60 border border-slate-800/80 shadow-2xl backdrop-blur-xl flex items-center cursor-text transition-all duration-300 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)] min-h-[220px]"
             >
-              <div className="w-full text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]">
+              <div
+                ref={lessonScrollRef}
+                className="w-full max-h-[190px] sm:max-h-[230px] md:max-h-[270px] overflow-y-auto no-scrollbar text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]"
+              >
                 {parsedLessonTokens.map((t) => (
                   <span key={t.start} className={`${t.isWhitespace ? 'inline' : 'inline-block whitespace-nowrap'}`}>
                     {t.token.split('').map((char, charOffset) => {
@@ -1978,7 +2080,11 @@ export default function TypingAcademy() {
                       const isMistake = colorClass.includes('text-rose-400');
 
                       return (
-                        <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
+                        <span
+                          key={index}
+                          data-caret={isCurrent ? 'true' : undefined}
+                          className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}
+                        >
                           {char === '\n' ? (
                             <>
                               <span className="text-slate-600/70 text-xs select-none">↵</span>
