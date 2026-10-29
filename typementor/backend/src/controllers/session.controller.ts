@@ -336,7 +336,12 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
         // 4. Calculate XP, Streak, and Lifetime Stats
         const gainedXp = calculateSessionXp(accuracyVal, wpmVal, difficulty || 1);
         const sessionCompletedAt = new Date();
-        const newStreak = resolveStreakTransition(user.lastActiveAt, user.streak, 'session', sessionCompletedAt);
+        const clientTzOffset = typeof req.body?.timezoneOffset === 'number'
+          ? req.body.timezoneOffset
+          : req.headers?.['x-timezone-offset']
+            ? parseInt(req.headers['x-timezone-offset'] as string, 10)
+            : undefined;
+        const newStreak = resolveStreakTransition(user.lastActiveAt, user.streak, 'session', sessionCompletedAt, clientTzOffset);
         const newLongestStreak = Math.max(user.longestStreak, newStreak);
 
         // 4. Calculate XP, Streak, and Lifetime Stats (Optimized O(1) DB aggregation)
@@ -431,7 +436,14 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
         }
 
         const totalXpGained = gainedXp + extraChallengeXp + achievementXp;
-        const finalXp = user.xp + totalXpGained;
+
+        // Re-read fresh user XP inside transaction to prevent concurrency lost updates
+        const freshUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { xp: true, level: true },
+        });
+        const currentXp = typeof freshUser?.xp === 'number' ? freshUser.xp : user.xp;
+        const finalXp = currentXp + totalXpGained;
         const finalLevel = getLevelFromCumulativeXp(finalXp);
 
         // 6. Single atomic user update inside transaction

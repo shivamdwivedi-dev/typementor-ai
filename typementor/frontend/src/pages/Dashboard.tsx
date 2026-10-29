@@ -40,7 +40,8 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
     return getSmartResumeTarget(completedLessons, weakKey, user);
   }, [completedLessons, user]);
 
-  const progressPercent = Math.min(100, Math.round((completedLessons.length / 50) * 100));
+  const TOTAL_ACADEMY_LESSONS = 125;
+  const progressPercent = Math.min(100, Math.round((completedLessons.length / TOTAL_ACADEMY_LESSONS) * 100));
   const [heatmapMode, setHeatmapMode] = useState<'usage' | 'mistakes' | 'risk'>('usage');
 
   // Load cached dashboard metrics from localStorage immediately for 0ms initial render latency
@@ -385,7 +386,7 @@ export default function Dashboard({ onStartRecoveryPractice, onContinueJourney }
                 Est. Time: <strong className="text-white font-mono">{resumeTarget.type === 'academy' ? '4 min' : resumeTarget.type === 'recovery' ? '3 min' : resumeTarget.type === 'endurance' ? '5 min' : '2 min'}</strong>
               </span>
               <span>•</span>
-              <span>Academy Progress: <strong className="text-white font-mono">{completedLessons.length} / 50 Lessons ({progressPercent}%)</strong></span>
+              <span>Academy Progress: <strong className="text-white font-mono">{completedLessons.length} / {TOTAL_ACADEMY_LESSONS} Lessons ({progressPercent}%)</strong></span>
             </div>
           </div>
         </div>

@@ -75,6 +75,23 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
     ? Math.min(100, Math.round((typedText.length / passage.length) * 100))
     : 0;
 
+  // Auto-submit on timeout when timer hits 0 to prevent permanent match lockup
+  useEffect(() => {
+    if (secondsRemaining === 0 && !hasFinished) {
+      setHasFinished(true);
+      arenaSocket.send('SUBMIT_COMPLETION', {
+        matchId: match.id,
+        submittedText: typedText,
+        metrics: {
+          wpm: localWpm,
+          accuracy: localAccuracy,
+          progress: localProgress,
+          elapsedSeconds: Math.round((Date.now() - startTimeRef.current) / 1000),
+        },
+      });
+    }
+  }, [secondsRemaining, hasFinished, match.id, typedText, localWpm, localAccuracy, localProgress]);
+
   // Handle keystroke typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (hasFinished) return;

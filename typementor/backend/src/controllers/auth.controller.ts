@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { Challenge } from '@prisma/client';
 import { prisma } from '../app';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { getStreakOnLogin, resolveStreakTransition } from '../services/gamification.service';
+import { getStreakOnLogin, resolveStreakTransition, getLevelFromCumulativeXp } from '../services/gamification.service';
 import { profileCache, invalidateUserCaches } from '../utils/cache';
 
 import { JWT_SECRET } from '../config/env';
@@ -17,9 +17,11 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email, password, and name are required.' });
     }
 
+    const normalizedEmail = (email || '').trim().toLowerCase();
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({ error: 'Please provide a valid email address.' });
     }
 
@@ -34,7 +36,7 @@ export const register = async (req: Request, res: Response) => {
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (existingUser) {
@@ -48,9 +50,9 @@ export const register = async (req: Request, res: Response) => {
     // Create user
     const newUser = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         passwordHash,
-        name,
+        name: name.trim(),
         streak: 0,
         lastActiveAt: new Date(0),
       }
@@ -113,8 +115,10 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email: normalizedEmail }
     });
 
     if (!user || !user.passwordHash) {
@@ -305,7 +309,8 @@ export const googleLogin = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'This Google email is not verified.' });
     }
 
-    console.log('[Google Auth] Token verified successfully. Email:', payload.email);
+    const googleEmail = (payload.email || '').trim().toLowerCase();
+    console.log('[Google Auth] Token verified successfully. Email:', googleEmail);
     console.log('[Google Auth] Querying database for user...');
 
     // Find user by Google ID or by verified Email
@@ -313,7 +318,7 @@ export const googleLogin = async (req: Request, res: Response) => {
       where: {
         OR: [
           { googleId: payload.sub },
-          { email: payload.email }
+          { email: googleEmail }
         ]
       }
     });
@@ -325,7 +330,7 @@ export const googleLogin = async (req: Request, res: Response) => {
       // Register new user automatically
       user = await prisma.user.create({
         data: {
-          email: payload.email,
+          email: googleEmail,
           googleId: payload.sub,
           name: payload.name,
           avatar: payload.picture || null,
@@ -533,11 +538,13 @@ export const spendXp = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Insufficient XP.' });
     }
 
-    // Deduct XP without updating lastActiveAt or streak
+    const newXp = Math.max(0, currentXp - amount);
+
+    // Deduct XP without resetting lastActiveAt or streak
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        xp: currentXp - amount
+        xp: newXp,
       }
     });
 
@@ -545,7 +552,7 @@ export const spendXp = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      xp: updatedUser.xp
+      xp: updatedUser.xp,
     });
   } catch (error: unknown) {
     console.error('Spend XP error:', error);

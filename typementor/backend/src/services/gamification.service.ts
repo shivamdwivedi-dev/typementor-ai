@@ -38,7 +38,8 @@ export function resolveStreakTransition(
   lastActiveAt: Date | string | null | undefined,
   currentStreak: number,
   activityType: StreakActivityType,
-  now: Date = new Date()
+  now: Date = new Date(),
+  timezoneOffsetMinutes?: number
 ): number {
   const safeStreak = Number.isFinite(currentStreak) && currentStreak > 0 ? Math.floor(currentStreak) : 0;
 
@@ -46,11 +47,24 @@ export function resolveStreakTransition(
   if (lastActiveAt) {
     const parsed = new Date(lastActiveAt);
     if (!isNaN(parsed.getTime()) && parsed.getTime() > 0) {
-      lastActiveDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+      if (typeof timezoneOffsetMinutes === 'number' && Number.isFinite(timezoneOffsetMinutes)) {
+        // Adjust timestamp by client offset before taking UTC calendar day
+        const adjusted = new Date(parsed.getTime() - timezoneOffsetMinutes * 60000);
+        lastActiveDate = new Date(Date.UTC(adjusted.getUTCFullYear(), adjusted.getUTCMonth(), adjusted.getUTCDate()));
+      } else {
+        lastActiveDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+      }
     }
   }
 
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let today: Date;
+  if (typeof timezoneOffsetMinutes === 'number' && Number.isFinite(timezoneOffsetMinutes)) {
+    const adjustedNow = new Date(now.getTime() - timezoneOffsetMinutes * 60000);
+    today = new Date(Date.UTC(adjustedNow.getUTCFullYear(), adjustedNow.getUTCMonth(), adjustedNow.getUTCDate()));
+  } else {
+    today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
@@ -84,17 +98,19 @@ export function resolveStreakTransition(
 export function getStreakOnLogin(
   lastActiveAt: Date | string | null | undefined,
   currentStreak: number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  timezoneOffsetMinutes?: number
 ): number {
-  return resolveStreakTransition(lastActiveAt, currentStreak, 'login', now);
+  return resolveStreakTransition(lastActiveAt, currentStreak, 'login', now, timezoneOffsetMinutes);
 }
 
 export function getUpdatedStreakOnSession(
   lastActiveAt: Date | string | null | undefined,
   currentStreak: number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  timezoneOffsetMinutes?: number
 ): number {
-  return resolveStreakTransition(lastActiveAt, currentStreak, 'session', now);
+  return resolveStreakTransition(lastActiveAt, currentStreak, 'session', now, timezoneOffsetMinutes);
 }
 
 export interface StreakCountdownInfo {

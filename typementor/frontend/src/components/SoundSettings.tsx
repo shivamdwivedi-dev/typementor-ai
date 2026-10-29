@@ -70,7 +70,7 @@ export default function SoundSettings() {
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-3.5 w-76 sm:w-80 bg-brand-bg/95 border border-brand-border rounded-2xl glass-panel p-5 shadow-2xl z-50 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="sound-settings-title">
+          <div className="absolute right-0 mt-3 w-76 sm:w-80 max-w-[calc(100vw-2rem)] bg-zinc-950/95 border border-zinc-800 rounded-2xl p-5 shadow-2xl shadow-black/80 z-50 animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="sound-settings-title">
             <div className="flex items-center justify-between border-b border-brand-border/20 pb-3 mb-4">
               <div className="flex items-center gap-2 text-white">
                 <Settings className="w-4.5 h-4.5 text-brand-primary" />

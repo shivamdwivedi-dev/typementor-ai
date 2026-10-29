@@ -103,17 +103,18 @@ export default function PracticeBoard() {
     });
   };
 
-  // Keyboard listener: Escape exits Zen mode if test is not active
+  // Keyboard listener: Escape exits Zen mode reliably anytime
   useEffect(() => {
     if (!isZenMode) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isActive) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
         handleToggleZen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isZenMode, isActive, handleToggleZen]);
+  }, [isZenMode, handleToggleZen]);
 
   // Initial prompt setup if empty
   useEffect(() => {
@@ -629,7 +630,7 @@ export default function PracticeBoard() {
           {/* Top Minimal Zen Navigation Bar — auto-dims during active typing */}
           <div
             className={`w-full max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4 py-2 transition-opacity duration-300 ${
-              isActive && !isCompleted ? 'opacity-0 hover:opacity-100 pointer-events-none hover:pointer-events-auto' : 'opacity-100'
+              isActive && !isCompleted ? 'opacity-20 hover:opacity-100' : 'opacity-100'
             }`}
           >
             {/* Brand & Focus badge */}

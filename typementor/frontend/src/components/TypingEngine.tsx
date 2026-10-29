@@ -501,12 +501,16 @@ export default function TypingEngine({
                 <SlidersHorizontal className="w-3.5 h-3.5" />
               </button>
             )}
-            {onToggleZen && !isZenMode && (
+            {onToggleZen && (
               <button
                 type="button"
                 onClick={onToggleZen}
-                className="p-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition-all text-xs"
-                title="⚡ Zen Focus Mode"
+                className={`p-2 rounded-lg border transition-all text-xs ${
+                  isZenMode
+                    ? 'border-cyan-400/50 bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+                    : 'border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400'
+                }`}
+                title={isZenMode ? "Exit Zen Focus Mode (Esc)" : "⚡ Zen Focus Mode"}
               >
                 <Sparkles className="w-3.5 h-3.5" />
               </button>

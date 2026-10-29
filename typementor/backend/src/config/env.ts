@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'typementor_secret_key_12345';
-export const ADMIN_SECRET = process.env.ADMIN_SECRET || 'typementor_feedback_secret_key_2026';
+export const ADMIN_SECRET = process.env.ADMIN_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'dev_admin_secret_key_change_in_production');
 
 const DEFAULT_PERMANENT_ADMINS = [
   'shivamdwivedi.dev@gmail.com',

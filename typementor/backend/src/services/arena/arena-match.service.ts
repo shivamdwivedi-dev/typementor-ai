@@ -139,6 +139,11 @@ export class ArenaMatchService {
         },
       });
 
+      // Atomically lock creator stake within transaction if wagered
+      if (stakeAmount > 0) {
+        await this.pointsService.lockStake(creatorId, createdMatch.id, stakeAmount, tx);
+      }
+
       return await tx.arenaMatch.findUniqueOrThrow({
         where: { id: createdMatch.id },
         include: {
@@ -147,11 +152,6 @@ export class ArenaMatchService {
         },
       });
     });
-
-    // 6. Lock creator's stake if wagered
-    if (stakeAmount > 0) {
-      await this.pointsService.lockStake(creatorId, match.id, stakeAmount);
-    }
 
     return this.formatPublicMatch(match, creatorId);
   }
@@ -244,6 +244,11 @@ export class ArenaMatchService {
         },
       });
 
+      // Atomically lock joining player's stake inside transaction
+      if (match.stakeAmount > 0) {
+        await this.pointsService.lockStake(userId, match.id, match.stakeAmount, tx);
+      }
+
       return await tx.arenaMatch.update({
         where: { id: match.id },
         data: {
@@ -256,11 +261,6 @@ export class ArenaMatchService {
         },
       });
     });
-
-    // 6. Lock joining player's stake
-    if (match.stakeAmount > 0) {
-      await this.pointsService.lockStake(userId, match.id, match.stakeAmount);
-    }
 
     return this.formatPublicMatch(updated, userId);
   }

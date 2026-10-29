@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import SEOMeta from '../components/SEOMeta';
 import { ACADEMY_LESSONS, AcademyLesson, ACADEMY_MILESTONES } from '../utils/academyLessons';
@@ -19,6 +19,18 @@ export default function TypingAcademy() {
   const [activeTab, setActiveTab] = useState<'beginner' | 'intermediate' | 'advanced' | 'test'>('beginner');
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
   const [selectedLesson, setSelectedLesson] = useState<AcademyLesson | null>(null);
+
+  // Tokenize lesson text for robust word-level wrapping (prevents word breaking mid-word across line boundaries)
+  const parsedLessonTokens = useMemo(() => {
+    if (!selectedLesson?.text) return [];
+    const matches = selectedLesson.text.match(/\S+|\s+/g) ?? [];
+    let offset = 0;
+    return matches.map((token, tokenIndex) => {
+      const start = offset;
+      offset += token.length;
+      return { token, tokenIndex, start, end: offset, isWhitespace: /^\s+$/.test(token) };
+    });
+  }, [selectedLesson?.text]);
 
   // Lesson Play States
   const [typedText, setTypedText] = useState<string>('');
@@ -291,12 +303,10 @@ export default function TypingAcademy() {
   // Listen for global keydown events to support pressing Enter to advance/retry lessons
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isZenMode && !isStarted && !endTime) {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          setIsZenMode(false);
-          return;
-        }
+      if (isZenMode && e.key === 'Escape') {
+        e.preventDefault();
+        setIsZenMode(false);
+        return;
       }
 
       if (showCelebration) {
@@ -577,57 +587,64 @@ export default function TypingAcademy() {
     const type = celebrationCourse;
     const stats = celebrationStats;
 
-    const { jsPDF } = await import('jspdf');
-    const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-    const width = 297;
-    const height = 210;
+      const width = 297;
+      const height = 210;
 
-    // Dark-blue / slate premium background
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, width, height, 'F');
+      // Safe normalization for standard jsPDF Helvetica fonts (prevent WinAnsi encoding crash on non-ASCII/Unicode)
+      const safeUserName = (userName || 'TypeMentor Student')
+        .normalize('NFKD')
+        .replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+        .trim() || 'TypeMentor Student';
 
-    // Inner gold border
-    doc.setDrawColor(234, 179, 8);
-    doc.setLineWidth(1.5);
-    doc.rect(8, 8, width - 16, height - 16, 'D');
+      // Dark-blue / slate premium background
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, width, height, 'F');
 
-    // Thin inner gold border
-    doc.setDrawColor(234, 179, 8);
-    doc.setLineWidth(0.5);
-    doc.rect(10, 10, width - 20, height - 20, 'D');
+      // Inner gold border
+      doc.setDrawColor(234, 179, 8);
+      doc.setLineWidth(1.5);
+      doc.rect(8, 8, width - 16, height - 16, 'D');
 
-    // Branding
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('TYPEMENTOR AI', width / 2, 25, { align: 'center' });
+      // Thin inner gold border
+      doc.setDrawColor(234, 179, 8);
+      doc.setLineWidth(0.5);
+      doc.rect(10, 10, width - 20, height - 20, 'D');
 
-    doc.setTextColor(148, 163, 184);
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text('ADAPTIVE TYPING ACADEMY', width / 2, 30, { align: 'center' });
+      // Branding
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('TYPEMENTOR AI', width / 2, 25, { align: 'center' });
 
-    // Certificate Title
-    doc.setTextColor(234, 179, 8);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(28);
-    doc.text('CERTIFICATE OF COMPLETION', width / 2, 55, { align: 'center' });
+      doc.setTextColor(148, 163, 184);
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text('ADAPTIVE TYPING ACADEMY', width / 2, 30, { align: 'center' });
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('Helvetica', 'italic');
-    doc.setFontSize(12);
-    doc.text('This is proudly presented to', width / 2, 70, { align: 'center' });
+      // Certificate Title
+      doc.setTextColor(234, 179, 8);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(28);
+      doc.text('CERTIFICATE OF COMPLETION', width / 2, 55, { align: 'center' });
 
-    // Student Name
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(24);
-    doc.text(userName, width / 2, 85, { align: 'center' });
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('Helvetica', 'italic');
+      doc.setFontSize(12);
+      doc.text('This is proudly presented to', width / 2, 70, { align: 'center' });
+
+      // Student Name
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(24);
+      doc.text(safeUserName, width / 2, 85, { align: 'center' });
 
     // Divider
     doc.setDrawColor(71, 85, 105);
@@ -698,10 +715,24 @@ export default function TypingAcademy() {
     doc.text('Best wishes for your typing journey', width - 95, 182);
 
     doc.save(`TypeMentor_Certificate_${type}.pdf`);
+    } catch (pdfErr) {
+      console.error('PDF certificate generation error:', pdfErr);
+      showPrToast('⚠️ Could not generate PDF. Please ensure standard characters are used.');
+    }
   };
 
   // ── Typing Mechanics ──────────────────────────────────────────────────────
   const startLesson = (lesson: AcademyLesson) => {
+    // Validate tier lock requirements to prevent unauthorized access or sequence skipping
+    if (lesson.id > ACADEMY_MILESTONES.intermediate && !isAdvancedUnlocked) {
+      showPrToast('🔒 Complete Intermediate tier to unlock Advanced lessons.');
+      return;
+    }
+    if (lesson.id > ACADEMY_MILESTONES.beginner && !isIntermediateUnlocked) {
+      showPrToast('🔒 Complete Beginner tier to unlock Intermediate lessons.');
+      return;
+    }
+
     if (lesson.id <= ACADEMY_MILESTONES.beginner) {
       setActiveTab('beginner');
     } else if (lesson.id <= ACADEMY_MILESTONES.intermediate) {
@@ -899,16 +930,23 @@ export default function TypingAcademy() {
 
   const handleAcceptBribe = async () => {
     if (!selectedLesson || !user) return;
-    const bribeCost = Math.floor((user.xp ?? 0) * 0.70);
+    const userXp = user.xp ?? 0;
+    const bribeCost = Math.max(50, Math.floor(userXp * 0.70));
+
+    if (userXp < bribeCost) {
+      showPrToast(`⚠️ Insufficient XP! You need at least ${bribeCost} XP to bribe the instructor.`);
+      setShowBribeOffer(false);
+      return;
+    }
 
     // Stop voice if it's still playing
-    window.speechSynthesis.cancel();
+    window.speechSynthesis?.cancel();
 
     // Deduct XP via API
     const token = localStorage.getItem('typementor_token');
     if (token && user.id) {
       try {
-        await fetch(getApiUrl('/api/auth/profile/spend-xp'), {
+        const res = await fetch(getApiUrl('/api/auth/profile/spend-xp'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -916,9 +954,15 @@ export default function TypingAcademy() {
           },
           body: JSON.stringify({ amount: bribeCost, reason: `Shady Bribe to skip Lesson ${selectedLesson.id}` }),
         });
-        fetchProfile();
-      } catch {
-        // Silently fail API, frontend state will still update temporarily
+        if (!res.ok) {
+          showPrToast('⚠️ Bribe transaction failed. XP could not be deducted.');
+          return;
+        }
+        await fetchProfile();
+      } catch (err) {
+        console.error('Bribe transaction error:', err);
+        showPrToast('⚠️ Network error during bribe transaction.');
+        return;
       }
     }
 
@@ -1911,64 +1955,69 @@ export default function TypingAcademy() {
               className="p-6 sm:p-8 md:p-12 rounded-3xl bg-slate-950/60 border border-slate-800/80 shadow-2xl backdrop-blur-xl flex items-center cursor-text transition-all duration-300 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)] min-h-[220px]"
             >
               <div className="w-full text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-xl sm:text-2xl md:text-[32px] leading-[1.85] sm:leading-[1.95] md:leading-[2.05]">
-                {selectedLesson.text.split('').map((char, index) => {
-                  let colorClass = 'text-slate-500 font-normal';
-                  const isCurrent = index === typedText.length;
-                  const isGhostCurrent = ghostEnabled && isStarted && !endTime && index === ghostIndex;
-                  const isBehindGhost = ghostEnabled && isStarted && !endTime && index < ghostIndex && index >= typedText.length;
+                {parsedLessonTokens.map((t) => (
+                  <span key={t.start} className={`${t.isWhitespace ? 'inline' : 'inline-block whitespace-nowrap'}`}>
+                    {t.token.split('').map((char, charOffset) => {
+                      const index = t.start + charOffset;
+                      let colorClass = 'text-slate-500 font-normal';
+                      const isCurrent = index === typedText.length;
+                      const isGhostCurrent = ghostEnabled && isStarted && !endTime && index === ghostIndex;
+                      const isBehindGhost = ghostEnabled && isStarted && !endTime && index < ghostIndex && index >= typedText.length;
 
-                  if (index < typedText.length) {
-                    colorClass = typedText[index] === char
-                      ? 'text-slate-100 font-medium'
-                      : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
-                  } else if (isCurrent) {
-                    colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
-                  } else if (isBehindGhost) {
-                    colorClass = 'text-purple-300/80 font-normal bg-purple-500/10 border-b border-purple-550/40 rounded';
-                  }
+                      if (index < typedText.length) {
+                        colorClass = typedText[index] === char
+                          ? 'text-slate-100 font-medium'
+                          : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
+                      } else if (isCurrent) {
+                        colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
+                      } else if (isBehindGhost) {
+                        colorClass = 'text-purple-300/80 font-normal bg-purple-500/10 border-b border-purple-550/40 rounded';
+                      }
 
-                  const isSpace = char === ' ';
-                  const isMistake = colorClass.includes('text-rose-400');
+                      const isSpace = char === ' ';
+                      const isMistake = colorClass.includes('text-rose-400');
 
-                  return (
-                    <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
-                      {char === '\n' ? (
-                        <>
-                          <span className="text-slate-600/70 text-xs select-none">↵</span>
-                          <br />
-                        </>
-                      ) : isSpace ? (
-                        isMistake ? (
-                          <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
-                        ) : (
-                          ' '
-                        )
-                      ) : (
-                        char
-                      )}
-                      {isCurrent && (
-                        <span
-                          className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none z-10"
-                          style={{ willChange: 'opacity' }}
-                        />
-                      )}
-                      {isGhostCurrent && (
-                        <span
-                          title={`Ghost Pace-Car (${ghostWpm} WPM)`}
-                          className={`absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] rounded-full pointer-events-none z-20 transition-all duration-75 ${
-                            isCurrent
-                              ? 'bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,1)]'
-                              : 'bg-purple-400 shadow-[0_0_14px_rgba(192,132,252,0.9)]'
-                          }`}
-                        >
-                          <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] select-none pointer-events-none drop-shadow">
-                            👻
-                          </span>
+                      return (
+                        <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
+                          {char === '\n' ? (
+                            <>
+                              <span className="text-slate-600/70 text-xs select-none">↵</span>
+                              <br />
+                            </>
+                          ) : isSpace ? (
+                            isMistake ? (
+                              <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
+                            ) : (
+                              ' '
+                            )
+                          ) : (
+                            char
+                          )}
+                          {isCurrent && (
+                            <span
+                              className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none z-10"
+                              style={{ willChange: 'opacity' }}
+                            />
+                          )}
+                          {isGhostCurrent && (
+                            <span
+                              title={`Ghost Pace-Car (${ghostWpm} WPM)`}
+                              className={`absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] rounded-full pointer-events-none z-20 transition-all duration-75 ${
+                                isCurrent
+                                  ? 'bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,1)]'
+                                  : 'bg-purple-400 shadow-[0_0_14px_rgba(192,132,252,0.9)]'
+                              }`}
+                            >
+                              <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] select-none pointer-events-none drop-shadow">
+                                👻
+                              </span>
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
-                  );
-                })}
+                      );
+                    })}
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -2122,7 +2171,7 @@ export default function TypingAcademy() {
           {/* Top Minimal Zen Navigation Bar — auto-dims during active typing */}
           <div
             className={`w-full max-w-5xl md:max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4 py-2 transition-opacity duration-300 ${
-              isStarted && !endTime && !isPaused ? 'opacity-0 hover:opacity-100 pointer-events-none hover:pointer-events-auto' : 'opacity-100'
+              isStarted && !endTime && !isPaused ? 'opacity-20 hover:opacity-100' : 'opacity-100'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -2317,64 +2366,69 @@ export default function TypingAcademy() {
                 className="p-6 sm:p-8 md:p-12 rounded-3xl bg-slate-950/70 border border-slate-800/80 shadow-[0_16px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl flex items-center cursor-text transition-all duration-300 focus-within:border-cyan-500/40 focus-within:shadow-[0_0_30px_rgba(6,182,212,0.12)] min-h-[240px]"
               >
                 <div className="w-full text-left font-mono tracking-wide select-none break-words whitespace-pre-wrap [word-break:normal] [overflow-wrap:break-word] text-2xl sm:text-3xl md:text-[36px] leading-[1.8] sm:leading-[1.9] md:leading-[2.05]">
-                  {selectedLesson.text.split('').map((char, index) => {
-                    let colorClass = 'text-slate-500 font-normal';
-                    const isCurrent = index === typedText.length;
-                    const isGhostCurrent = ghostEnabled && isStarted && !endTime && index === ghostIndex;
-                    const isBehindGhost = ghostEnabled && isStarted && !endTime && index < ghostIndex && index >= typedText.length;
+                  {parsedLessonTokens.map((t) => (
+                    <span key={t.start} className={`${t.isWhitespace ? 'inline' : 'inline-block whitespace-nowrap'}`}>
+                      {t.token.split('').map((char, charOffset) => {
+                        const index = t.start + charOffset;
+                        let colorClass = 'text-slate-500 font-normal';
+                        const isCurrent = index === typedText.length;
+                        const isGhostCurrent = ghostEnabled && isStarted && !endTime && index === ghostIndex;
+                        const isBehindGhost = ghostEnabled && isStarted && !endTime && index < ghostIndex && index >= typedText.length;
 
-                    if (index < typedText.length) {
-                      colorClass = typedText[index] === char
-                        ? 'text-slate-100 font-medium'
-                        : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
-                    } else if (isCurrent) {
-                      colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
-                    } else if (isBehindGhost) {
-                      colorClass = 'text-purple-300/80 font-normal bg-purple-500/10 border-b border-purple-550/40 rounded';
-                    }
+                        if (index < typedText.length) {
+                          colorClass = typedText[index] === char
+                            ? 'text-slate-100 font-medium'
+                            : 'text-rose-400 font-semibold bg-rose-500/15 border-b-2 border-rose-500/60 rounded';
+                        } else if (isCurrent) {
+                          colorClass = 'text-white bg-cyan-500/15 font-semibold rounded';
+                        } else if (isBehindGhost) {
+                          colorClass = 'text-purple-300/80 font-normal bg-purple-500/10 border-b border-purple-550/40 rounded';
+                        }
 
-                    const isSpace = char === ' ';
-                    const isMistake = colorClass.includes('text-rose-400');
+                        const isSpace = char === ' ';
+                        const isMistake = colorClass.includes('text-rose-400');
 
-                    return (
-                      <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
-                        {char === '\n' ? (
-                          <>
-                            <span className="text-slate-600/70 text-xs select-none">↵</span>
-                            <br />
-                          </>
-                        ) : isSpace ? (
-                          isMistake ? (
-                            <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
-                          ) : (
-                            ' '
-                          )
-                        ) : (
-                          char
-                        )}
-                        {isCurrent && (
-                          <span
-                            className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none z-10"
-                            style={{ willChange: 'opacity' }}
-                          />
-                        )}
-                        {isGhostCurrent && (
-                          <span
-                            title={`Ghost Pace-Car (${ghostWpm} WPM)`}
-                            className={`absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] rounded-full pointer-events-none z-20 transition-all duration-75 ${
-                              isCurrent
-                                ? 'bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,1)]'
-                                : 'bg-purple-400 shadow-[0_0_14px_rgba(192,132,252,0.9)]'
-                            }`}
-                          >
-                            <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] select-none pointer-events-none drop-shadow">
-                              👻
-                            </span>
+                        return (
+                          <span key={index} className={`relative rounded px-[1px] transition-colors duration-75 ${colorClass}`}>
+                            {char === '\n' ? (
+                              <>
+                                <span className="text-slate-600/70 text-xs select-none">↵</span>
+                                <br />
+                              </>
+                            ) : isSpace ? (
+                              isMistake ? (
+                                <span className="text-rose-400 bg-rose-500/25 rounded px-0.5 font-bold">␣</span>
+                              ) : (
+                                ' '
+                              )
+                            ) : (
+                              char
+                            )}
+                            {isCurrent && (
+                              <span
+                                className="absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] bg-cyan-400 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9),0_0_4px_rgba(34,211,238,1)] animate-pulse pointer-events-none z-10"
+                                style={{ willChange: 'opacity' }}
+                              />
+                            )}
+                            {isGhostCurrent && (
+                              <span
+                                title={`Ghost Pace-Car (${ghostWpm} WPM)`}
+                                className={`absolute -left-[1.5px] top-[10%] bottom-[10%] w-[3px] rounded-full pointer-events-none z-20 transition-all duration-75 ${
+                                  isCurrent
+                                    ? 'bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,1)]'
+                                    : 'bg-purple-400 shadow-[0_0_14px_rgba(192,132,252,0.9)]'
+                                }`}
+                              >
+                                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] select-none pointer-events-none drop-shadow">
+                                  👻
+                                </span>
+                              </span>
+                            )}
                           </span>
-                        )}
-                      </span>
-                    );
-                  })}
+                        );
+                      })}
+                    </span>
+                  ))}
                 </div>
               </div>
 

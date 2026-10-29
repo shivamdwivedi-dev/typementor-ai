@@ -54,11 +54,13 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
   const userCompletedKey = `academy_completed_lessons_${user.id}`;
   const userResultsKey = `academy_lesson_results_${user.id}`;
   const userIntermediateUnlockedKey = `academy_intermediate_unlocked_${user.id}`;
+  const userAdvancedUnlockedKey = `academy_advanced_unlocked_${user.id}`;
   const userTestUnlockedKey = `academy_test_unlocked_${user.id}`;
 
   const guestCompletedKey = 'academy_completed_lessons_guest';
   const guestResultsKey = 'academy_lesson_results_guest';
   const guestIntermediateUnlockedKey = 'academy_intermediate_unlocked_guest';
+  const guestAdvancedUnlockedKey = 'academy_advanced_unlocked_guest';
   const guestTestUnlockedKey = 'academy_test_unlocked_guest';
 
   // 1. Check if guest progress exists and needs migration
@@ -71,6 +73,7 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
     const guestResults = guestResultsStr ? JSON.parse(guestResultsStr) : {};
 
     const guestIntermediateUnlocked = localStorage.getItem(guestIntermediateUnlockedKey) === 'true';
+    const guestAdvancedUnlocked = localStorage.getItem(guestAdvancedUnlockedKey) === 'true';
     const guestTestUnlocked = localStorage.getItem(guestTestUnlockedKey) === 'true';
 
     // Merge/overwrite user storage with guest progress
@@ -92,10 +95,14 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
     // Update user's localStorage
     localStorage.setItem(userCompletedKey, JSON.stringify(mergedCompleted));
     localStorage.setItem(userResultsKey, JSON.stringify(mergedResults));
-    if (guestIntermediateUnlocked || mergedCompleted.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every((id: any) => mergedCompleted.includes(id))) {
+
+    if (guestIntermediateUnlocked || mergedCompleted.includes(50) || mergedCompleted.some((id: any) => id > 50)) {
       localStorage.setItem(userIntermediateUnlockedKey, 'true');
     }
-    if (guestTestUnlocked || mergedCompleted.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every((id: any) => mergedCompleted.includes(id))) {
+    if (guestAdvancedUnlocked || mergedCompleted.includes(90) || mergedCompleted.some((id: any) => id > 90)) {
+      localStorage.setItem(userAdvancedUnlockedKey, 'true');
+    }
+    if (guestTestUnlocked || mergedCompleted.includes(125) || mergedCompleted.some((id: any) => id >= 121)) {
       localStorage.setItem(userTestUnlockedKey, 'true');
     }
 
@@ -103,6 +110,7 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
     localStorage.removeItem(guestCompletedKey);
     localStorage.removeItem(guestResultsKey);
     localStorage.removeItem(guestIntermediateUnlockedKey);
+    localStorage.removeItem(guestAdvancedUnlockedKey);
     localStorage.removeItem(guestTestUnlockedKey);
 
     // Sync merged progress to the database
@@ -174,13 +182,17 @@ async function syncAndMigrateAcademyProgress(user: any, token: string) {
       localStorage.setItem(userCompletedKey, JSON.stringify(mergedCompleted));
       localStorage.setItem(userResultsKey, JSON.stringify(mergedResults));
 
-      // Unlock milestones based on completed lessons
-      const isBeginnerCompleted = mergedCompleted.includes(30) || Array.from({ length: 30 }, (_, i) => i + 1).every((id: any) => mergedCompleted.includes(id));
-      if (isBeginnerCompleted || mergedCompleted.some(id => id >= 31)) {
+      // Unlock milestones based on completed lessons across 125 curriculum
+      const isBeginnerCompleted = mergedCompleted.includes(50) || mergedCompleted.some(id => id > 50);
+      if (isBeginnerCompleted) {
         localStorage.setItem(userIntermediateUnlockedKey, 'true');
       }
-      const isIntermediateCompleted = mergedCompleted.includes(50) || Array.from({ length: 20 }, (_, i) => i + 31).every((id: any) => mergedCompleted.includes(id));
-      if (isIntermediateCompleted || mergedCompleted.some(id => id >= 51)) {
+      const isIntermediateCompleted = mergedCompleted.includes(90) || mergedCompleted.some(id => id > 90);
+      if (isIntermediateCompleted) {
+        localStorage.setItem(userAdvancedUnlockedKey, 'true');
+      }
+      const isAdvancedCompleted = mergedCompleted.includes(125) || mergedCompleted.some(id => id >= 121);
+      if (isAdvancedCompleted) {
         localStorage.setItem(userTestUnlockedKey, 'true');
       }
 

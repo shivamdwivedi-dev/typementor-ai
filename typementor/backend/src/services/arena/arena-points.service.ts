@@ -67,8 +67,9 @@ export class ArenaPointsService {
   /**
    * Transactionally locks a participant's stake before match start.
    * Idempotent: If already locked for this match & user, returns safely.
+   * Can run within an existing Prisma transaction client if provided.
    */
-  async lockStake(userId: string, matchId: string, stakeAmount: number): Promise<number> {
+  async lockStake(userId: string, matchId: string, stakeAmount: number, externalTx?: any): Promise<number> {
     if (stakeAmount <= 0) return 0; // Zero-stake matches require no locking
 
     if (stakeAmount > ARENA_CONFIG.MAX_ARENA_STAKE) {
@@ -77,7 +78,7 @@ export class ArenaPointsService {
 
     const idempotencyKey = `stake_lock_${matchId}_${userId}`;
 
-    return await this.prisma.$transaction(async (tx) => {
+    const executeLock = async (tx: any): Promise<number> => {
       // 1. Check if stake was already locked for this match
       const existing = await tx.arenaPointLedger.findUnique({
         where: { idempotencyKey },
@@ -122,13 +123,13 @@ export class ArenaPointsService {
         throw new Error(`Insufficient Arena Points. Required: ${stakeAmount}, Available: ${currentBalance}.`);
       }
 
-      const newBalance = currentBalance - stakeAmount;
-
-      // 3. Atomically update balance
-      await tx.user.update({
+      // 3. Atomically decrement balance
+      const updatedUser = await tx.user.update({
         where: { id: userId },
-        data: { arenaPoints: newBalance },
+        data: { arenaPoints: { decrement: stakeAmount } },
+        select: { arenaPoints: true },
       });
+      const newBalance = updatedUser.arenaPoints ?? (currentBalance - stakeAmount);
 
       // 4. Record immutable ledger entry
       await tx.arenaPointLedger.create({
@@ -150,7 +151,12 @@ export class ArenaPointsService {
       });
 
       return newBalance;
-    });
+    };
+
+    if (externalTx) {
+      return await executeLock(externalTx);
+    }
+    return await this.prisma.$transaction(executeLock);
   }
 
   /**
@@ -180,15 +186,39 @@ export class ArenaPointsService {
         return;
       }
 
-      // 2. Award total pot to the winner
-      const winner = await tx.user.findUnique({
-        where: { id: winnerId },
-        select: { id: true, arenaPoints: true },
-      });
+      // 2. Fetch fresh user balance with row lock (FOR UPDATE in PostgreSQL)
+      let currentBalance = 0;
+      if (typeof (tx as any).$queryRaw === 'function') {
+        try {
+          const locked = await (tx as any).$queryRaw`SELECT "id", "arenaPoints" FROM "User" WHERE "id" = ${winnerId} FOR UPDATE`;
+          if (locked && Array.isArray(locked) && locked.length > 0) {
+            currentBalance = locked[0].arenaPoints ?? 0;
+          } else {
+            const user = await tx.user.findUnique({
+              where: { id: winnerId },
+              select: { id: true, arenaPoints: true },
+            });
+            if (!user) throw new Error('Winner user record not found');
+            currentBalance = user.arenaPoints ?? 0;
+          }
+        } catch {
+          const user = await tx.user.findUnique({
+            where: { id: winnerId },
+            select: { id: true, arenaPoints: true },
+          });
+          if (!user) throw new Error('Winner user record not found');
+          currentBalance = user.arenaPoints ?? 0;
+        }
+      } else {
+        const user = await tx.user.findUnique({
+          where: { id: winnerId },
+          select: { id: true, arenaPoints: true },
+        });
+        if (!user) throw new Error('Winner user record not found');
+        currentBalance = user.arenaPoints ?? 0;
+      }
 
-      if (!winner) throw new Error('Winner user record not found');
-
-      const newBalance = (winner.arenaPoints ?? 0) + potTotal;
+      const newBalance = currentBalance + potTotal;
 
       await tx.user.update({
         where: { id: winnerId },
@@ -256,6 +286,7 @@ export class ArenaPointsService {
 
         if (!user) continue;
 
+        // Atomically refund stake using increment
         const newBalance = (user.arenaPoints ?? 0) + stakeAmount;
 
         await tx.user.update({

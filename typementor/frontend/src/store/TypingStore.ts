@@ -129,22 +129,28 @@ export const useTypingStore = create<TypingState>((set, get) => {
         pauseDuration,
       };
 
-      keystrokes.push(fullKeystroke);
+      // Immutable array update to ensure Zustand subscribers react properly
+      const newKeystrokes = [...keystrokes, fullKeystroke];
       const newIndex = currentIndex + 1;
 
       // Calculate WPM and Accuracy
       const durationMin = (now - startTime) / 60000;
-      const totalChars = keystrokes.length;
-      const correctChars = keystrokes.filter(k => !k.isMistake).length;
+      const totalChars = newKeystrokes.length;
+      const correctChars = newKeystrokes.filter(k => !k.isMistake).length;
 
-      const rawWpm = durationMin > 0 ? Math.round((totalChars / 5) / durationMin) : 0;
-      const wpm = durationMin > 0 ? Math.round((correctChars / 5) / durationMin) : 0;
+      // Smooth initial WPM spike: require at least 500ms and 2 keystrokes
+      let rawWpm = 0;
+      let wpm = 0;
+      if (durationMin >= 0.00833 && totalChars >= 2) {
+        rawWpm = Math.round((totalChars / 5) / durationMin);
+        wpm = Math.round((correctChars / 5) / durationMin);
+      }
       const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
 
       // Consistency
       let consistency = 100;
-      if (keystrokes.length > 5) {
-        const times = keystrokes.map(k => k.reactionTime);
+      if (newKeystrokes.length > 5) {
+        const times = newKeystrokes.map(k => k.reactionTime);
         const mean = times.reduce((a, b) => a + b, 0) / times.length;
         const variance = times.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / times.length;
         const stdDev = Math.sqrt(variance);
@@ -153,12 +159,12 @@ export const useTypingStore = create<TypingState>((set, get) => {
       }
 
       // Focus score
-      const pauseCount = keystrokes.filter(k => k.pauseDuration > 0).length;
+      const pauseCount = newKeystrokes.filter(k => k.pauseDuration > 0).length;
       const focusScore = Math.max(0, 100 - (backspaceCount * 3) - (pauseCount * 5));
 
       set({
         currentIndex: newIndex,
-        keystrokes,
+        keystrokes: newKeystrokes,
         wpm,
         rawWpm,
         accuracy,
@@ -176,8 +182,9 @@ export const useTypingStore = create<TypingState>((set, get) => {
       if (isCompleted || pauseTime !== null) return;
       if (currentIndex === 0 || !get().startTime) return;
 
-      const popped = keystrokes.pop();
+      const popped = keystrokes[keystrokes.length - 1];
       const isCorrection = popped ? popped.isMistake : false;
+      const newKeystrokes = keystrokes.slice(0, -1);
 
       const backspaceHistory = [...get().backspaceHistory, {
         timestamp: Date.now(),
@@ -186,7 +193,7 @@ export const useTypingStore = create<TypingState>((set, get) => {
 
       set({
         currentIndex: currentIndex - 1,
-        keystrokes,
+        keystrokes: newKeystrokes,
         backspaceCount: backspaceCount + 1,
         correctionCount: get().correctionCount + (isCorrection ? 1 : 0),
         backspaceHistory,

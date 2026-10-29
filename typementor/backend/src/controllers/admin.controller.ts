@@ -112,8 +112,16 @@ import { exec } from 'child_process';
 
 /**
  * Executes prisma db push directly on the live backend server to create/sync Supabase tables.
+ * Strictly blocked in production to protect against data loss.
  */
-export async function pushDatabaseSchema(_req: Request, res: Response) {
+export async function pushDatabaseSchema(req: Request & { user?: any }, res: Response) {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DB_PUSH !== 'true') {
+    return res.status(403).json({
+      success: false,
+      error: 'Database schema push with --accept-data-loss is strictly disabled in production environment.'
+    });
+  }
+
   try {
     console.log('[Admin] Triggering database schema push on server...');
     exec('npx prisma db push --accept-data-loss', (error, stdout, stderr) => {

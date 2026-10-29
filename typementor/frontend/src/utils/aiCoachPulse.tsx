@@ -16,7 +16,7 @@ export function useAICoachPulse() {
   const pulseCount = useRef<number>(0);
   const hasShownBackspaceWarning = useRef<boolean>(false);
 
-  // Sync with settings
+  // Sync with settings via event listeners instead of aggressive 1-second polling
   useEffect(() => {
     const checkSetting = () => {
       const saved = localStorage.getItem('typementor_ai_coach_pulses');
@@ -27,8 +27,19 @@ export function useAICoachPulse() {
       }
     };
     checkSetting();
-    const interval = setInterval(checkSetting, 1000);
-    return () => clearInterval(interval);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'typementor_ai_coach_pulses') {
+        checkSetting();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('typementor_coach_setting_changed', checkSetting);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('typementor_coach_setting_changed', checkSetting);
+    };
   }, []);
 
   const processPulse = (stats: PulseStats) => {

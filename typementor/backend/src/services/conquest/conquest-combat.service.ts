@@ -189,21 +189,19 @@ export class ConquestCombatService {
       };
     }
 
-    // 2. Authoritative character-by-character comparison (normalizing CRLF to LF)
+    // 2. Authoritative comparison using Longest Common Subsequence (prevents off-by-one accuracy cascade)
     const expected = activeChallenge.passageText.replace(/\r\n/g, '\n').trim();
     const actual = (submittedText || '').replace(/\r\n/g, '\n').trim();
 
     let correctChars = 0;
-    const compareLength = Math.min(actual.length, expected.length);
-
-    for (let i = 0; i < compareLength; i++) {
-      if (actual[i] === expected[i]) {
-        correctChars++;
-      }
+    if (actual === expected) {
+      correctChars = actual.length;
+    } else {
+      correctChars = this.computeLcsLength(actual, expected);
     }
 
-    const totalChars = Math.max(actual.length, 1);
-    const accuracy = Math.min(100, Math.max(0, Math.round((correctChars / totalChars) * 1000) / 10));
+    const maxLen = Math.max(actual.length, expected.length, 1);
+    const accuracy = Math.min(100, Math.max(0, Math.round((correctChars / maxLen) * 1000) / 10));
 
     const elapsedMs = Math.max(10, now - activeChallenge.startedAt);
     const elapsedMinutes = elapsedMs / 60000;
@@ -367,5 +365,40 @@ export class ConquestCombatService {
     const wpm = Math.max(0, Math.round((netWords / elapsedMinutes) * 10) / 10);
 
     return { progressPercent, wpm };
+  }
+
+  /**
+   * Computes the length of the Longest Common Subsequence between two strings.
+   * Space-optimized O(min(m, n)) DP algorithm for fast resilient typing accuracy matching.
+   */
+  static computeLcsLength(s1: string, s2: string): number {
+    if (s1 === s2) return s1.length;
+    const m = s1.length;
+    const n = s2.length;
+    if (m === 0 || n === 0) return 0;
+
+    const [shortStr, longStr] = m < n ? [s1, s2] : [s2, s1];
+    const shortLen = shortStr.length;
+    const longLen = longStr.length;
+
+    let prev = new Uint16Array(shortLen + 1);
+    let curr = new Uint16Array(shortLen + 1);
+
+    for (let i = 1; i <= longLen; i++) {
+      const charLong = longStr.charCodeAt(i - 1);
+      for (let j = 1; j <= shortLen; j++) {
+        if (charLong === shortStr.charCodeAt(j - 1)) {
+          curr[j] = prev[j - 1] + 1;
+        } else {
+          curr[j] = Math.max(prev[j], curr[j - 1]);
+        }
+      }
+      const temp = prev;
+      prev = curr;
+      curr = temp;
+      curr.fill(0);
+    }
+
+    return prev[shortLen];
   }
 }

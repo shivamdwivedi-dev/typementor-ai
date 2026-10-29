@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
@@ -8,6 +8,8 @@ import { registerToastListener, ToastMessage } from '../utils/toastHelper';
 import { useBodyScrollLock } from '../utils/scrollLock';
 import { motion, AnimatePresence } from 'framer-motion';
 import TubesBackground from './ui/neon-flow';
+import LiquidNavbar, { LiquidNavItem, NimbusIcons } from './LiquidNavbar';
+import { soundEngine } from '../utils/soundEngine';
 
 // Components
 import SoundSettings from './SoundSettings';
@@ -49,6 +51,37 @@ export default function AppLayout() {
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   const hasShownWelcome = useRef(false);
   const { current: currentAchievement, addAchievement, dismiss: dismissAchievement } = useAchievementToast();
+
+  const navItems: LiquidNavItem[] = useMemo(() => {
+    const baseItems: LiquidNavItem[] = [
+      { label: 'Academy', href: '/academy', icon: NimbusIcons.academy, fx: 'glow' },
+      { label: 'Practice', href: '/practice', icon: NimbusIcons.practice, fx: 'wave' },
+      { label: 'Guides', href: '/guides', icon: NimbusIcons.guides, fx: 'drop' },
+    ];
+
+    if (!isAuthenticated) return baseItems;
+
+    return [
+      ...baseItems,
+      { label: 'Arena', href: '/arena', icon: NimbusIcons.arena, fx: 'plane' },
+      { label: 'Endurance', href: '/endurance', icon: NimbusIcons.endurance, fx: 'pop' },
+      { label: 'Path', href: '/path', icon: NimbusIcons.path, fx: 'spin' },
+      { label: 'Stats', href: '/dashboard', icon: NimbusIcons.stats, fx: 'glow' },
+      { label: 'Profile', href: '/profile', icon: NimbusIcons.user, fx: 'wave' },
+    ];
+  }, [isAuthenticated]);
+
+  const activeNavIndex = useMemo(() => {
+    const p = location.pathname;
+    const idx = navItems.findIndex((it) => {
+      if (!it.href) return false;
+      if (it.href === '/practice') return p === '/practice' || p === '/';
+      if (it.href === '/guides') return p.startsWith('/guides') || p.startsWith('/blog');
+      if (it.href === '/arena') return p.startsWith('/arena');
+      return p === it.href;
+    });
+    return idx >= 0 ? idx : undefined;
+  }, [location.pathname, navItems]);
 
   // Clear guest session when authenticated, or sync from localStorage on route change
   useEffect(() => {
@@ -222,40 +255,20 @@ export default function AppLayout() {
             </div>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-1.5">
-            <Link to="/academy" title="Typing Academy" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/academy' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-              <BookOpen className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Academy</span>
-            </Link>
-            <Link to="/practice" title="Practice" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/practice' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-              <Code className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Practice</span>
-            </Link>
-            <Link to="/guides" title="Typing Guides & Blog" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname.startsWith('/guides') || location.pathname.startsWith('/blog') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-              <FileText className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Guides</span>
-            </Link>
+          <div className="hidden lg:flex items-center justify-center flex-1 mx-3 min-w-0">
+            <LiquidNavbar
+              items={navItems}
+              active={activeNavIndex}
+              onChange={(_index, item) => {
+                const dest = item.href || item.to;
+                if (dest) navigate(dest);
+              }}
+              tone="dark"
+              sound={soundEngine.isEnabled()}
+            />
+          </div>
 
-            {isAuthenticated && (
-              <>
-                <Link to="/arena" title="Typing Arena" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname.startsWith('/arena') ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-                  <Swords className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Arena</span>
-                </Link>
-                <Link to="/endurance" title="Endurance Arena" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/endurance' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-                  <Activity className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Endurance</span>
-                </Link>
-                <Link to="/path" title="Learning Path" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/path' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-                  <Award className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Path</span>
-                </Link>
-                <Link to="/dashboard" title="Dashboard" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-                  <Activity className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Stats</span>
-                </Link>
-                <Link to="/profile" title="Profile" className={`px-3.5 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${location.pathname === '/profile' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 border border-blue-400/40' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'}`}>
-                  <UserIcon className="w-4 h-4 flex-shrink-0" /> <span className="hidden xl:inline">Profile</span>
-                </Link>
-              </>
-            )}
-
-            <SoundSettings />
-            <div className="h-5 w-[1px] bg-zinc-800 mx-1" />
-
+          <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
             {isAuthenticated ? (
               <div className="flex items-center gap-2">
                 <StreakFireWidget streak={user?.streak ?? 0} />
@@ -266,21 +279,24 @@ export default function AppLayout() {
                     {user?.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <button onClick={handleLogout} title="Sign Out" className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-red-400 flex-shrink-0">
-                  <LogOut className="w-4 h-4" />
-                </button>
               </div>
             ) : (
               isGuestSession && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-zinc-400 font-semibold border border-zinc-800 px-2.5 py-1 rounded-lg bg-zinc-900/60">Guest</span>
-                  <button onClick={handleLogout} title="Exit Guest" className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-red-500/10 transition-all text-red-400 flex-shrink-0">
-                    <LogOut className="w-4 h-4" />
-                  </button>
                 </div>
               )
             )}
-          </nav>
+
+            <div className="h-5 w-[1px] bg-zinc-800 mx-0.5" />
+            <SoundSettings />
+
+            {(isAuthenticated || isGuestSession) && (
+              <button onClick={handleLogout} title={isGuestSession ? "Exit Guest" : "Sign Out"} className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-red-400 flex-shrink-0">
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
           <div className="flex lg:hidden items-center gap-2">
             {isAuthenticated && (
