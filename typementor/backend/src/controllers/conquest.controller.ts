@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { prisma } from '../app';
 import { ConquestMatchService } from '../services/conquest/conquest-match.service';
 import { arenaTicketService } from '../services/arena/arena-ticket.service';
+import { getConquestSocketService } from '../services/conquest/conquest-socket.service';
 
 const conquestMatchService = new ConquestMatchService(prisma);
 
@@ -53,6 +54,10 @@ export async function joinMatch(req: AuthRequest, res: Response): Promise<void> 
 
   try {
     const match = await conquestMatchService.joinMatch(userId, matchCode);
+    const socketService = getConquestSocketService();
+    if (socketService) {
+      socketService.notifyMatchUpdated(match.id).catch(() => {});
+    }
     res.status(200).json(match);
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Failed to join Word Conquest match' });

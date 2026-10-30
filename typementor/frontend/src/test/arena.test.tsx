@@ -6,7 +6,10 @@ import { CreateMatchModal } from '../components/arena/CreateMatchModal';
 import { JoinMatchModal } from '../components/arena/JoinMatchModal';
 import { ArenaWaitingRoom } from '../components/arena/ArenaWaitingRoom';
 import { ArenaCountdown } from '../components/arena/ArenaCountdown';
+import { ConquestCountdown } from '../components/conquest/ConquestCountdown';
 import { ArenaResults } from '../components/arena/ArenaResults';
+import { arenaSocket } from '../utils/arenaSocket';
+import { conquestSocket } from '../utils/conquestSocket';
 import { PublicArenaMatch, MatchHistoryItem } from '../types/arena';
 
 describe('Frontend Arena Components & UX', () => {
@@ -240,15 +243,37 @@ describe('Frontend Arena Components & UX', () => {
       const readyBtn = screen.getByRole('button', { name: /I'm Ready!/i });
       fireEvent.click(readyBtn);
       expect(onReady).toHaveBeenCalled();
+      expect(screen.getByText(/Confirming Ready.../i)).toBeInTheDocument();
     });
   });
 
-  // ── 5. ArenaCountdown ─────────────────────────────────────────────────────
-  describe('ArenaCountdown', () => {
-    it('renders large synchronized countdown seconds', () => {
+  // ── 5. ArenaCountdown & ConquestCountdown ─────────────────────────────────
+  describe('ArenaCountdown & ConquestCountdown', () => {
+    it('renders large synchronized countdown seconds for Arena', () => {
       render(<ArenaCountdown secondsRemaining={3} />);
       expect(screen.getByText('3')).toBeInTheDocument();
       expect(screen.getByText(/Both Players Ready/i)).toBeInTheDocument();
+    });
+
+    it('renders synchronized countdown digits and instructions for Word Conquest', () => {
+      render(<ConquestCountdown secondsRemaining={2} />);
+      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.getByText(/Both Commanders Ready/i)).toBeInTheDocument();
+      expect(screen.getByText(/Synchronizing Battlefield/i)).toBeInTheDocument();
+    });
+  });
+
+  // ── 5b. Socket Message Queueing & Reconnect Reliability ─────────────────────
+  describe('Socket Message Buffer & Reconnect Resilience', () => {
+    it('buffers messages in arenaSocket when not connected and does not drop them', () => {
+      const sendResult = arenaSocket.send('READY_UP', { matchId: 'match_queued_1' });
+      expect(sendResult).toBe(true);
+    });
+
+    it('buffers messages in conquestSocket when not connected and does not drop them', () => {
+      expect(() => {
+        conquestSocket.send('CONQUEST_READY', { matchId: 'match_cq_queued_1' });
+      }).not.toThrow();
     });
   });
 

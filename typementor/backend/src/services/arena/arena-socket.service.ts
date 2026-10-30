@@ -87,6 +87,12 @@ interface InFlightMatchState {
   participants: Map<string, InFlightParticipantProgress>;
 }
 
+let arenaSocketInstance: ArenaSocketService | null = null;
+
+export function getArenaSocketService(): ArenaSocketService | null {
+  return arenaSocketInstance;
+}
+
 export class ArenaSocketService {
   private wss: WebSocketServer | null = null;
   private socketSessions = new Map<WebSocket, SocketSession>();
@@ -102,7 +108,25 @@ export class ArenaSocketService {
     private prisma: PrismaClient,
     private pointsService: ArenaPointsService,
     private matchService: ArenaMatchService
-  ) {}
+  ) {
+    arenaSocketInstance = this;
+  }
+
+  /**
+   * Proactively broadcasts state updates when a participant joins via HTTP REST API.
+   */
+  async notifyMatchUpdated(matchId: string): Promise<void> {
+    try {
+      const room = this.matchRooms.get(matchId);
+      if (!room || room.size === 0) return;
+
+      const fullMatch = await this.matchService.getMatchDetails(matchId);
+      this.broadcastToRoom(matchId, 'MATCH_STATE', fullMatch);
+      this.broadcastToRoom(matchId, 'OPPONENT_JOINED', { match: fullMatch });
+    } catch (err: any) {
+      console.warn(`[Arena WS] notifyMatchUpdated error for ${matchId}:`, err?.message);
+    }
+  }
 
   /**
    * Initializes the WebSocket server attached to the shared Express HTTP server.
@@ -374,6 +398,13 @@ export class ArenaSocketService {
 
     const fullMatch = await this.matchService.getMatchDetails(matchId, session.userId);
     this.send(ws, 'MATCH_STATE', fullMatch, reqId, true);
+
+    // Broadcast updated match state and OPPONENT_JOINED to existing participants in room
+    this.broadcastToRoom(matchId, 'MATCH_STATE', fullMatch, ws);
+    this.broadcastToRoom(matchId, 'OPPONENT_JOINED', {
+      userId: session.userId,
+      match: fullMatch,
+    }, ws);
   }
 
   /**

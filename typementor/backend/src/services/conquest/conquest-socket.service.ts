@@ -25,11 +25,18 @@ interface ConquestSocketSession {
   isAlive: boolean;
 }
 
+let conquestSocketInstance: ConquestSocketService | null = null;
+
+export function getConquestSocketService(): ConquestSocketService | null {
+  return conquestSocketInstance;
+}
+
 export class ConquestSocketService {
   private wss: WebSocketServer | null = null;
   private socketSessions = new Map<WebSocket, ConquestSocketSession>();
   private userSockets = new Map<string, Set<WebSocket>>();
   private matchRooms = new Map<string, Set<WebSocket>>();
+  private matchTimers = new Map<string, NodeJS.Timeout>();
   private disconnectTimers = new Map<string, NodeJS.Timeout>(); // key: `${matchId}_${userId}`
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private reconcileInterval: NodeJS.Timeout | null = null;
@@ -37,7 +44,25 @@ export class ConquestSocketService {
   constructor(
     private prisma: PrismaClient,
     private matchService: ConquestMatchService
-  ) {}
+  ) {
+    conquestSocketInstance = this;
+  }
+
+  /**
+   * Proactively broadcasts state updates when a participant joins via HTTP REST API.
+   */
+  async notifyMatchUpdated(matchId: string): Promise<void> {
+    try {
+      const room = this.matchRooms.get(matchId);
+      if (!room || room.size === 0) return;
+
+      const match = await this.matchService.getMatchDetails(matchId);
+      this.broadcastToRoom(matchId, 'CONQUEST_ROOM_JOINED', { match });
+      this.broadcastToRoom(matchId, 'CONQUEST_PLAYER_JOINED', { match });
+    } catch (err: any) {
+      console.warn(`[Conquest WS] notifyMatchUpdated error for ${matchId}:`, err?.message);
+    }
+  }
 
   /**
    * Attaches the Word Conquest WebSocket server to the shared Node HTTP server on /conquest-ws.
@@ -298,6 +323,9 @@ export class ConquestSocketService {
     }
 
     this.send(ws, 'CONQUEST_ROOM_JOINED', { match }, reqId);
+    // Broadcast updated match state and player arrival to the rest of the room
+    this.broadcastToRoom(matchId, 'CONQUEST_ROOM_JOINED', { match }, ws);
+    this.broadcastToRoom(matchId, 'CONQUEST_PLAYER_JOINED', { userId: session.userId, match }, ws);
   }
 
   private async handlePlayerReady(
@@ -316,12 +344,41 @@ export class ConquestSocketService {
     });
 
     if (isAllReady) {
-      this.broadcastToRoom(matchId, 'CONQUEST_MATCH_STARTED', {
-        matchId,
-        startedAt: match.startedAt,
-        board: match.board,
-      });
+      await this.startCountdown(matchId, match);
     }
+  }
+
+  /**
+   * Synchronized 3-second countdown before activating conquest battle mode.
+   * Gives both players explicit sensory and tactical hints.
+   */
+  private async startCountdown(matchId: string, match: any): Promise<void> {
+    const timerKey = `countdown_${matchId}`;
+    const existingTimer = this.matchTimers.get(timerKey);
+    if (existingTimer) {
+      clearInterval(existingTimer);
+      this.matchTimers.delete(timerKey);
+    }
+
+    let seconds = 3;
+    this.broadcastToRoom(matchId, 'CONQUEST_COUNTDOWN_TICK', { secondsRemaining: seconds });
+
+    const interval = setInterval(async () => {
+      seconds -= 1;
+      if (seconds > 0) {
+        this.broadcastToRoom(matchId, 'CONQUEST_COUNTDOWN_TICK', { secondsRemaining: seconds });
+      } else {
+        clearInterval(interval);
+        this.matchTimers.delete(timerKey);
+        this.broadcastToRoom(matchId, 'CONQUEST_MATCH_STARTED', {
+          matchId,
+          startedAt: match.startedAt || new Date(),
+          board: match.board,
+        });
+      }
+    }, 1000);
+
+    this.matchTimers.set(timerKey, interval);
   }
 
   private async handleAttackStart(
@@ -593,6 +650,11 @@ export class ConquestSocketService {
       clearTimeout(timer);
     }
     this.disconnectTimers.clear();
+
+    for (const timer of this.matchTimers.values()) {
+      clearInterval(timer);
+    }
+    this.matchTimers.clear();
 
     for (const ws of this.socketSessions.keys()) {
       try {

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Copy, Check, Swords, User, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Copy, Check, Swords, User, Clock, AlertTriangle, ShieldCheck, Loader2, Sparkles } from 'lucide-react';
 import { PublicArenaMatch } from '../../types/arena';
+import { playOpponentJoinedSound, playReadySound } from '../../utils/soundEffects';
 
 interface ArenaWaitingRoomProps {
   match: PublicArenaMatch;
@@ -16,15 +17,39 @@ export const ArenaWaitingRoom: React.FC<ArenaWaitingRoomProps> = ({
   onReady,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [isReadyPending, setIsReadyPending] = useState(false);
+  const prevOpponentRef = useRef<boolean>(false);
 
   const isCreator = match.creatorId === currentUserId;
   const myParticipant = match.participants.find((p) => p.userId === currentUserId);
   const opponent = match.participants.find((p) => p.userId !== currentUserId);
 
+  // Play sound when opponent joins room
+  useEffect(() => {
+    const hasOpponent = Boolean(opponent);
+    if (!prevOpponentRef.current && hasOpponent) {
+      playOpponentJoinedSound();
+    }
+    prevOpponentRef.current = hasOpponent;
+  }, [opponent]);
+
+  // Sync optimistic ready state
+  useEffect(() => {
+    if (myParticipant?.isReady) {
+      setIsReadyPending(false);
+    }
+  }, [myParticipant?.isReady]);
+
   const handleCopyCode = () => {
     navigator.clipboard.writeText(match.matchCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleReadyClick = () => {
+    setIsReadyPending(true);
+    playReadySound();
+    onReady();
   };
 
   return (
@@ -101,9 +126,10 @@ export const ArenaWaitingRoom: React.FC<ArenaWaitingRoomProps> = ({
                 </h3>
                 <p className="text-xs text-zinc-400 font-semibold">Seat 2 (Challenger)</p>
               </div>
-              {match.participants[1]?.isReady ? (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  ✓ Ready
+              {match.participants[1]?.isReady || (!isCreator && isReadyPending) ? (
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Ready</span>
                 </span>
               ) : (
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse">
@@ -144,12 +170,34 @@ export const ArenaWaitingRoom: React.FC<ArenaWaitingRoomProps> = ({
         {/* Ready button for player 2 */}
         {!isCreator && myParticipant && !myParticipant.isReady && (
           <button
-            onClick={onReady}
-            className="w-full sm:w-auto px-8 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-xl shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
+            onClick={handleReadyClick}
+            disabled={isReadyPending}
+            className={`w-full sm:w-auto px-8 py-3 rounded-2xl font-extrabold text-sm shadow-xl transition-all flex items-center justify-center gap-2 ${
+              isReadyPending
+                ? 'bg-emerald-700 text-emerald-100 cursor-wait opacity-80'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30'
+            }`}
           >
-            <Check className="w-5 h-5" />
-            <span>I'm Ready!</span>
+            {isReadyPending ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Confirming Ready...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-5 h-5" />
+                <span>I'm Ready!</span>
+              </>
+            )}
           </button>
+        )}
+
+        {/* Status hint if user is already locked in */}
+        {!isCreator && myParticipant?.isReady && (
+          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-2xl">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span>Ready! Launching synchronized countdown...</span>
+          </div>
         )}
       </div>
     </div>

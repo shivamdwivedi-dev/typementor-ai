@@ -4,6 +4,7 @@ import { prisma } from '../app';
 import { ArenaPointsService } from '../services/arena/arena-points.service';
 import { ArenaMatchService } from '../services/arena/arena-match.service';
 import { arenaTicketService } from '../services/arena/arena-ticket.service';
+import { getArenaSocketService } from '../services/arena/arena-socket.service';
 
 export const getPointsService = () => new ArenaPointsService(prisma);
 export const getMatchService = () => new ArenaMatchService(prisma, getPointsService());
@@ -113,6 +114,11 @@ export const joinMatch = async (req: AuthRequest, res: Response) => {
 
     const idempotencyKey = (req.headers['idempotency-key'] as string) || req.body.idempotencyKey;
     const match = await getMatchService().joinMatch(userId, query, idempotencyKey);
+
+    const socketService = getArenaSocketService();
+    if (socketService) {
+      socketService.notifyMatchUpdated(match.id).catch(() => {});
+    }
 
     res.json({ match });
   } catch (err: any) {

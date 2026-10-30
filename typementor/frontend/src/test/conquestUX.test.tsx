@@ -6,7 +6,8 @@ import { ConquestLegend } from '../components/conquest/ConquestLegend';
 import { ConquestCombatPanel } from '../components/conquest/ConquestCombatPanel';
 import { ConquestEventFeed, ConquestFeedItem } from '../components/conquest/ConquestEventFeed';
 import { ConquestGrid } from '../components/conquest/ConquestGrid';
-import { TerritoryCell, ActiveAttackChallenge, ConquestBoard } from '../types/conquest';
+import { ConquestWaitingRoom } from '../components/conquest/ConquestWaitingRoom';
+import { TerritoryCell, ActiveAttackChallenge, ConquestBoard, PublicConquestMatch } from '../types/conquest';
 
 describe('Word Conquest UX, Alerts, Grid Ownership & State Synchronization', () => {
   beforeEach(() => {
@@ -468,6 +469,104 @@ describe('Word Conquest UX, Alerts, Grid Ownership & State Synchronization', () 
       expect(screen.getByText('Tactical Live Feed')).toBeInTheDocument();
       expect(screen.getByText('Assault Launched: r0_c1')).toBeInTheDocument();
       expect(screen.getByText('🎉 Territory Captured!')).toBeInTheDocument();
+    });
+  });
+
+  describe('7. ConquestWaitingRoom Real-Time Connectivity & Hints', () => {
+    const mockWaitingMatch: PublicConquestMatch = {
+      id: 'match_cq_wait_1',
+      matchCode: 'CQ8888',
+      creatorId: 'user_blue',
+      status: 'WAITING',
+      mapSeed: 'seed_123',
+      currentTurn: 1,
+      winnerId: null,
+      startedAt: null,
+      finishedAt: null,
+      createdAt: new Date().toISOString(),
+      activeChallenge: null,
+      participants: [
+        {
+          id: 'part_blue',
+          userId: 'user_blue',
+          seat: 1,
+          isReady: true,
+          isConnected: true,
+          territoriesCount: 1,
+          user: {
+            id: 'user_blue',
+            name: 'Commander Blue',
+            avatar: null,
+            level: 5,
+          },
+        },
+      ],
+      board: {
+        gridSize: 6,
+        totalCells: 36,
+        cells: [],
+        cellMap: {},
+        capitals: { player1: { row: 0, col: 0 }, player2: { row: 5, col: 5 } },
+        fortresses: [],
+      },
+    };
+
+    it('displays invite code and waiting for rival when player 2 has not joined', () => {
+      render(
+        <ConquestWaitingRoom
+          match={mockWaitingMatch}
+          currentUserId="user_blue"
+          onReady={vi.fn()}
+          onCancel={vi.fn()}
+          isReady={true}
+        />
+      );
+
+      expect(screen.getByText('CQ8888')).toBeInTheDocument();
+      expect(screen.getByText('Commander Blue')).toBeInTheDocument();
+      expect(screen.getByText(/Waiting for rival to join.../i)).toBeInTheDocument();
+    });
+
+    it('displays rival info and allows player 2 to ready up with optimistic state', () => {
+      const handleReady = vi.fn();
+      const matchWithBoth: PublicConquestMatch = {
+        ...mockWaitingMatch,
+        status: 'READY',
+        participants: [
+          mockWaitingMatch.participants[0],
+          {
+            id: 'part_red',
+            userId: 'user_red',
+            seat: 2,
+            isReady: false,
+            isConnected: true,
+            territoriesCount: 1,
+            user: {
+              id: 'user_red',
+              name: 'Commander Red',
+              avatar: null,
+              level: 8,
+            },
+          },
+        ],
+      };
+
+      render(
+        <ConquestWaitingRoom
+          match={matchWithBoth}
+          currentUserId="user_red"
+          onReady={handleReady}
+          onCancel={vi.fn()}
+          isReady={false}
+        />
+      );
+
+      expect(screen.getByText('Commander Red')).toBeInTheDocument();
+      const readyBtn = screen.getByRole('button', { name: /Ready Up/i });
+      fireEvent.click(readyBtn);
+
+      expect(handleReady).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/Confirming Ready.../i)).toBeInTheDocument();
     });
   });
 });

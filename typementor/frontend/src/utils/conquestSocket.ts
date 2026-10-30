@@ -16,6 +16,7 @@ class ConquestSocketClient {
   private heartbeatInterval: any = null;
   private intentionalClose = false;
   private sendQueue: Array<{ type: ConquestClientEvent; payload?: any; reqId?: string }> = [];
+  private currentMatchId: string | null = null;
 
   public getStatus(): SocketStatus {
     return this.status;
@@ -92,6 +93,11 @@ class ConquestSocketClient {
           this.setStatus('connected');
           this.startHeartbeat();
 
+          // If subscribed to a match and CONQUEST_JOIN_ROOM is not queued, auto-resubscribe on reconnect
+          if (this.currentMatchId && !this.sendQueue.some(item => item.type === 'CONQUEST_JOIN_ROOM' && item.payload?.matchId === this.currentMatchId)) {
+            this.send('CONQUEST_JOIN_ROOM', { matchId: this.currentMatchId });
+          }
+
           // Flush queued messages once connected
           while (this.sendQueue.length > 0) {
             const item = this.sendQueue.shift();
@@ -147,6 +153,8 @@ class ConquestSocketClient {
 
   public disconnect(): void {
     this.intentionalClose = true;
+    this.currentMatchId = null;
+    this.sendQueue = [];
     this.stopHeartbeat();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -162,12 +170,13 @@ class ConquestSocketClient {
   }
 
   public send(type: ConquestClientEvent, payload?: any, reqId?: string): void {
+    if (type === 'CONQUEST_JOIN_ROOM' && payload?.matchId) {
+      this.currentMatchId = payload.matchId;
+    }
+
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
-        this.sendQueue.push({ type, payload, reqId });
-        return;
-      }
-      console.warn(`[Conquest Socket] Cannot send ${type}: socket not connected`);
+      // Buffer outgoing messages even during ticket fetch or reconnect
+      this.sendQueue.push({ type, payload, reqId });
       return;
     }
 
@@ -175,6 +184,7 @@ class ConquestSocketClient {
       this.ws.send(JSON.stringify({ type, payload, reqId }));
     } catch (err) {
       console.error(`[Conquest Socket] Error sending ${type}:`, err);
+      this.sendQueue.push({ type, payload, reqId });
     }
   }
 

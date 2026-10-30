@@ -14,6 +14,8 @@ class ArenaSocketClient {
   private reconnectTimer: any = null;
   private heartbeatInterval: any = null;
   private intentionalClose = false;
+  private sendQueue: Array<{ event: string; payload?: any; reqId?: string }> = [];
+  private currentMatchId: string | null = null;
 
   public getStatus(): SocketStatus {
     return this.status;
@@ -89,6 +91,19 @@ class ArenaSocketClient {
         this.reconnectAttempts = 0;
         this.setStatus('connected');
         this.startHeartbeat();
+
+        // If subscribed to a match and JOIN_MATCH is not already queued, ensure it's sent on reconnect
+        if (this.currentMatchId && !this.sendQueue.some(item => item.event === 'JOIN_MATCH' && item.payload?.matchId === this.currentMatchId)) {
+          this.send('JOIN_MATCH', { matchId: this.currentMatchId });
+        }
+
+        // Flush all queued messages once socket opens
+        while (this.sendQueue.length > 0) {
+          const item = this.sendQueue.shift();
+          if (item) {
+            this.send(item.event, item.payload, item.reqId);
+          }
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -131,6 +146,8 @@ class ArenaSocketClient {
 
   public disconnect(): void {
     this.intentionalClose = true;
+    this.currentMatchId = null;
+    this.sendQueue = [];
     this.stopHeartbeat();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -177,12 +194,27 @@ class ArenaSocketClient {
   }
 
   public send(event: string, payload?: any, reqId?: string): boolean {
+    if (event === 'JOIN_MATCH' && payload?.matchId) {
+      this.currentMatchId = payload.matchId;
+    } else if (event === 'LEAVE_MATCH') {
+      this.currentMatchId = null;
+    }
+
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      // Buffer the outgoing event so it is dispatched the instant the socket connects
+      this.sendQueue.push({ event, payload, reqId });
+      return true;
+    }
+
+    try {
+      const msg = JSON.stringify({ event, payload, reqId });
+      this.ws.send(msg);
+      return true;
+    } catch (err) {
+      console.warn(`[Arena Socket] Error sending ${event}:`, err);
+      this.sendQueue.push({ event, payload, reqId });
       return false;
     }
-    const msg = JSON.stringify({ event, payload, reqId });
-    this.ws.send(msg);
-    return true;
   }
 
   public on(event: string, handler: SocketEventHandler): () => void {

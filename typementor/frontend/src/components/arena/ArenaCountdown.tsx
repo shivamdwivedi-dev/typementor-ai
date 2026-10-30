@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Swords } from 'lucide-react';
+import { playCountdownTickSound } from '../../utils/soundEffects';
 
 interface ArenaCountdownProps {
   secondsRemaining: number;
 }
 
 export const ArenaCountdown: React.FC<ArenaCountdownProps> = ({ secondsRemaining }) => {
+  useEffect(() => {
+    playCountdownTickSound(secondsRemaining);
+  }, [secondsRemaining]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
       <div className="text-center space-y-4">

@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/AuthStore';
 import { safeFetch } from '../utils/api';
 import { arenaSocket, SocketStatus } from '../utils/arenaSocket';
 import { PublicArenaMatch, MatchHistoryItem } from '../types/arena';
+import { playOpponentJoinedSound, playReadySound, playMatchStartSound } from '../utils/soundEffects';
 
 import { ArenaLobby } from '../components/arena/ArenaLobby';
 import { CreateMatchModal } from '../components/arena/CreateMatchModal';
@@ -121,11 +122,34 @@ export const ArenaPage: React.FC = () => {
       }
     });
 
+    const unbindOpponentJoined = arenaSocket.on('OPPONENT_JOINED', (data: any) => {
+      if (data && data.match) {
+        setActiveMatch(data.match);
+        playOpponentJoinedSound();
+      } else {
+        fetchActiveMatch();
+      }
+    });
+
+    const unbindOpponentReady = arenaSocket.on('OPPONENT_READY', (data: { userId: string }) => {
+      playReadySound();
+      setActiveMatch((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          participants: prev.participants.map((p) =>
+            p.userId === data.userId ? { ...p, isReady: true } : p
+          ),
+        };
+      });
+    });
+
     const unbindCountdown = arenaSocket.on('COUNTDOWN_TICK', (data: { secondsRemaining: number }) => {
       setCountdownSeconds(data.secondsRemaining);
     });
 
     const unbindMatchStarted = arenaSocket.on('MATCH_STARTED', (data: any) => {
+      playMatchStartSound();
       setCountdownSeconds(null);
       setActiveMatch((prev) => (prev ? { ...prev, status: 'ACTIVE', passageText: data.passageText } : null));
     });
@@ -160,6 +184,8 @@ export const ArenaPage: React.FC = () => {
     return () => {
       unbindStatus();
       unbindMatchState();
+      unbindOpponentJoined();
+      unbindOpponentReady();
       unbindCountdown();
       unbindMatchStarted();
       unbindOpponentProgress();
@@ -170,6 +196,19 @@ export const ArenaPage: React.FC = () => {
       arenaSocket.disconnect();
     };
   }, [token, fetchBalance, fetchHistory, fetchOpenMatches, fetchActiveMatch]);
+
+  // Fail-safe waiting room polling to ensure 100% sync if socket packets drop
+  useEffect(() => {
+    if (!activeMatch || (activeMatch.status !== 'WAITING' && activeMatch.status !== 'READY')) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      fetchActiveMatch();
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [activeMatch?.id, activeMatch?.status, fetchActiveMatch]);
 
   // Initial data loading
   useEffect(() => {

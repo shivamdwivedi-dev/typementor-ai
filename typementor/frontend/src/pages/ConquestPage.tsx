@@ -13,6 +13,7 @@ import {
 
 import { ConquestLobby } from '../components/conquest/ConquestLobby';
 import { ConquestWaitingRoom } from '../components/conquest/ConquestWaitingRoom';
+import { ConquestCountdown } from '../components/conquest/ConquestCountdown';
 import { ConquestGrid } from '../components/conquest/ConquestGrid';
 import { ConquestCombatPanel } from '../components/conquest/ConquestCombatPanel';
 import { ConquestResultsModal } from '../components/conquest/ConquestResultsModal';
@@ -27,6 +28,7 @@ import {
   ConquestFeedItem,
   ConquestFeedEventType,
 } from '../components/conquest/ConquestEventFeed';
+import { playOpponentJoinedSound, playReadySound, playMatchStartSound } from '../utils/soundEffects';
 
 export const ConquestPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,6 +39,7 @@ export const ConquestPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [challengeError, setChallengeError] = useState<string | null>(null);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
   // Live match state
   const [activeChallenge, setActiveChallenge] = useState<ActiveAttackChallenge | null>(null);
@@ -220,8 +223,19 @@ export const ConquestPage: React.FC = () => {
       }
     });
 
+    // 1b. Rival commander joined room
+    const unbindPlayerJoined = conquestSocket.on('CONQUEST_PLAYER_JOINED', (payload: any) => {
+      if (payload && payload.match) {
+        setActiveMatch(payload.match);
+        playOpponentJoinedSound();
+      } else {
+        fetchActiveMatch();
+      }
+    });
+
     // 2. Player ready
     const unbindPlayerReady = conquestSocket.on('CONQUEST_PLAYER_READY', (payload: any) => {
+      playReadySound();
       setActiveMatch((prev) => {
         if (!prev) return prev;
         return {
@@ -233,8 +247,17 @@ export const ConquestPage: React.FC = () => {
       });
     });
 
+    // 2b. Synchronized countdown before battle start
+    const unbindCountdownTick = conquestSocket.on('CONQUEST_COUNTDOWN_TICK', (payload: any) => {
+      if (payload && typeof payload.secondsRemaining === 'number') {
+        setCountdownSeconds(payload.secondsRemaining);
+      }
+    });
+
     // 3. Match started
     const unbindMatchStarted = conquestSocket.on('CONQUEST_MATCH_STARTED', (payload: any) => {
+      setCountdownSeconds(null);
+      playMatchStartSound();
       setActiveMatch((prev) => {
         if (!prev) return prev;
         return {
@@ -477,7 +500,9 @@ export const ConquestPage: React.FC = () => {
     return () => {
       unbindStatus();
       unbindRoomJoined();
+      unbindPlayerJoined();
       unbindPlayerReady();
+      unbindCountdownTick();
       unbindMatchStarted();
       unbindAttackAssigned();
       unbindOpponentAttackStarted();
@@ -490,6 +515,19 @@ export const ConquestPage: React.FC = () => {
       unbindError();
     };
   }, [token, fetchActiveMatch, addFeedItem]);
+
+  // Fail-safe waiting room polling to guarantee opponent presence and ready sync
+  useEffect(() => {
+    if (!activeMatch || (activeMatch.status !== 'WAITING' && activeMatch.status !== 'READY')) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      fetchActiveMatch();
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [activeMatch?.id, activeMatch?.status, fetchActiveMatch]);
 
   // Disconnect timer countdown effect
   useEffect(() => {
@@ -647,6 +685,11 @@ export const ConquestPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto w-full py-6 px-4 sm:px-6 space-y-6 animate-in fade-in duration-300">
+      {/* 0. Synchronized Tactical Countdown Overlay */}
+      {countdownSeconds !== null && countdownSeconds > 0 && (
+        <ConquestCountdown secondsRemaining={countdownSeconds} />
+      )}
+
       {/* Top Navigation & Status Bar */}
       <div className="flex items-center justify-between gap-3">
         <button
