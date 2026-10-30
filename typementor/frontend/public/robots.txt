@@ -3,6 +3,7 @@
 
 User-agent: *
 Allow: /
+Allow: /practice
 Allow: /academy
 Allow: /guides
 Allow: /blog

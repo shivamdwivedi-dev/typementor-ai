@@ -27,7 +27,7 @@ const AIGuide = lazy(() => import('./AIGuide'));
 // Icons
 import {
   Brain, Activity, User as UserIcon, Code, Award,
-  LogOut, Menu, X, BookOpen, WifiOff, RefreshCw, Swords, FileText
+  LogOut, Menu, X, BookOpen, WifiOff, RefreshCw, Swords, FileText, LogIn
 } from 'lucide-react';
 
 export default function AppLayout() {
@@ -281,25 +281,34 @@ export default function AppLayout() {
                 )}
               </div>
             ) : (
-              isGuestSession && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-400 font-semibold border border-zinc-800 px-2.5 py-1 rounded-lg bg-zinc-900/60">Guest</span>
-                </div>
-              )
+              <div className="flex items-center gap-2">
+                {isGuestSession && (
+                  <span className="text-xs text-zinc-400 font-semibold border border-zinc-800 px-2 py-1 rounded-lg bg-zinc-900/60">
+                    Guest
+                  </span>
+                )}
+                <button
+                  onClick={() => navigate('/auth')}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </button>
+              </div>
             )}
 
             <div className="h-5 w-[1px] bg-zinc-800 mx-0.5" />
             <SoundSettings />
 
-            {(isAuthenticated || isGuestSession) && (
-              <button onClick={handleLogout} title={isGuestSession ? "Exit Guest" : "Sign Out"} className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-red-400 flex-shrink-0">
+            {isAuthenticated && (
+              <button onClick={handleLogout} title="Sign Out" className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-red-500/10 hover:border-red-500/30 transition-all text-red-400 flex-shrink-0">
                 <LogOut className="w-4 h-4" />
               </button>
             )}
           </div>
 
           <div className="flex lg:hidden items-center gap-2">
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <>
                 <StreakFireWidget streak={user?.streak ?? 0} />
                 {user?.avatar ? (
@@ -310,12 +319,18 @@ export default function AppLayout() {
                   </div>
                 )}
               </>
-            )}
-            {(isAuthenticated || isGuestSession) && (
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 transition-all text-white focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}>
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            ) : (
+              <button
+                onClick={() => navigate('/auth')}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
               </button>
             )}
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 transition-all text-white focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}>
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </header>
 

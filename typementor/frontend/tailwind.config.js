@@ -23,6 +23,8 @@ export default {
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
         sans: ['Outfit', 'Inter', 'sans-serif'],
+        royal: ['Cinzel', 'serif'],
+        display: ['Syne', 'Outfit', 'sans-serif'],
       },
       animation: {
         'blink': 'blink 1s step-end infinite',

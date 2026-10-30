@@ -217,8 +217,8 @@ export function AppRoutes() {
 
         {/* Pages inside the standard Layout */}
         <Route element={<AppLayout />}>
-          {/* Guest OR Authenticated */}
-          <Route path="/practice" element={<ProtectedRoute><PracticeBoard /></ProtectedRoute>} />
+          {/* Guest OR Authenticated (Publicly accessible for SEO, Googlebot & direct speed testers) */}
+          <Route path="/practice" element={<PracticeBoard />} />
           <Route path="/academy" element={<ProtectedRoute><TypingAcademy /></ProtectedRoute>} />
           <Route path="/about" element={<AboutUs onBack={() => navigate(-1)} />} />
           <Route path="/contact" element={<ContactUs onBack={() => navigate(-1)} />} />

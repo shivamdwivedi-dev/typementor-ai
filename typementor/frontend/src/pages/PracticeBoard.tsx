@@ -10,7 +10,9 @@ import { CODING_TEMPLATES } from '../utils/codingTemplates';
 import { selectNextLesson, extractWeakKeys, getPromptForWordCount } from '../utils/lessonEngine';
 import { showPrToast } from '../utils/toastHelper';
 import TypingFingerGuide from '../components/TypingFingerGuide';
-import { Sparkles, Zap, Maximize2, Minimize2, X, Bot, Eye, EyeOff } from 'lucide-react';
+import GuestLoginGateModal from '../components/GuestLoginGateModal';
+import DailyGoalTracker from '../components/DailyGoalTracker';
+import { Sparkles, Zap, Maximize2, Minimize2, X, Bot, Eye, EyeOff, Lock } from 'lucide-react';
 
 type WordCountOption = 'full' | 15 | 25 | 50 | 100;
 
@@ -23,6 +25,37 @@ export default function PracticeBoard() {
   const [difficultyAlert, setDifficultyAlert] = useState<string | null>(null);
   const [pendingNextDifficulty, setPendingNextDifficulty] = useState(difficulty);
   const lastSessionKeystrokes = useRef<{ expectedKey: string; isMistake: boolean }[]>([]);
+
+  // ── Free Guest Preview Tracking & Hard Registration Gate ──
+  const [guestTestsCompleted, setGuestTestsCompleted] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('typementor_guest_tests_count') || '0', 10);
+    } catch {
+      return 0;
+    }
+  });
+
+  const [lastGuestMetrics, setLastGuestMetrics] = useState<{ wpm: number; accuracy: number }>(() => {
+    try {
+      const cached = localStorage.getItem('typementor_pending_guest_stats');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return { wpm: 0, accuracy: 0 };
+  });
+
+  const [showGuestLoginGate, setShowGuestLoginGate] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const isAuth = useAuthStore.getState().isAuthenticated;
+    const count = parseInt(localStorage.getItem('typementor_guest_tests_count') || '0', 10);
+    return !isAuth && count >= 2;
+  });
+
+  // Ensure guest session flag is active so layout and public navigation operate cleanly
+  useEffect(() => {
+    if (!isAuthenticated) {
+      localStorage.setItem('typementor_is_guest', 'true');
+    }
+  }, [isAuthenticated]);
 
   // Word count & customization states
   const [wordCount, setWordCount] = useState<WordCountOption>(() => {
@@ -138,6 +171,11 @@ export default function PracticeBoard() {
   }, [location.state]);
 
   const handleModeChange = (newMode: string) => {
+    if (!isAuthenticated && guestTestsCompleted >= 2) {
+      setShowGuestLoginGate(true);
+      return;
+    }
+
     if (newMode === 'English') {
       const weakKeys = lastSessionKeystrokes.current.length > 0
         ? extractWeakKeys(lastSessionKeystrokes.current)
@@ -158,6 +196,11 @@ export default function PracticeBoard() {
   };
 
   const handleWordCountChange = (count: WordCountOption) => {
+    if (!isAuthenticated && guestTestsCompleted >= 2) {
+      setShowGuestLoginGate(true);
+      return;
+    }
+
     setWordCount(count);
     localStorage.setItem('typementor_practice_word_count', String(count));
 
@@ -388,6 +431,35 @@ export default function PracticeBoard() {
     const acc = metrics.accuracy;
     let nextDiff = difficulty;
 
+    // Feed active duration into Daily 10-Minute Focus Tracker
+    if (typeof (window as any).__typementor_add_daily_practice_seconds === 'function') {
+      (window as any).__typementor_add_daily_practice_seconds(Math.round(durationSec));
+    }
+
+    // ── Free Guest Preview Limit Tracking & Hard Registration Gate ──
+    if (!isAuthenticated) {
+      const nextCount = guestTestsCompleted + 1;
+      setGuestTestsCompleted(nextCount);
+      try {
+        localStorage.setItem('typementor_guest_tests_count', String(nextCount));
+        localStorage.setItem(
+          'typementor_pending_guest_stats',
+          JSON.stringify({
+            wpm: Math.round(metrics.wpm),
+            accuracy: Math.round(metrics.accuracy),
+            timestamp: Date.now(),
+          })
+        );
+      } catch {}
+      setLastGuestMetrics({ wpm: metrics.wpm, accuracy: metrics.accuracy });
+
+      if (nextCount === 1) {
+        showPrToast('⚡ Free Guest Preview: 1 of 2 free test runs used. Sign up to save your stats & daily streak!');
+      } else if (nextCount >= 2) {
+        setShowGuestLoginGate(true);
+      }
+    }
+
     if (acc >= 96 && difficulty < 5) {
       nextDiff = difficulty + 1;
       setDifficultyAlert(`Smart Difficulty UP: Tier ${nextDiff}!`);
@@ -402,6 +474,11 @@ export default function PracticeBoard() {
   };
 
   const handleStartNext = () => {
+    if (!isAuthenticated && guestTestsCompleted >= 2) {
+      setShowGuestLoginGate(true);
+      return;
+    }
+
     const weakKeys = extractWeakKeys(lastSessionKeystrokes.current);
     if (mode === 'English') {
       if (wordCount !== 'full') {
@@ -426,6 +503,11 @@ export default function PracticeBoard() {
   };
 
   const handleStartRecoveryPractice = async () => {
+    if (!isAuthenticated && guestTestsCompleted >= 2) {
+      setShowGuestLoginGate(true);
+      return;
+    }
+
     const token = localStorage.getItem('typementor_token');
     try {
       const response = await fetch(getApiUrl('/api/coach/recovery-lesson'), {
@@ -560,6 +642,27 @@ export default function PracticeBoard() {
                 <Bot className={`w-3.5 h-3.5 ${showAICoach ? 'text-indigo-400' : 'text-slate-500'}`} />
               </button>
             </div>
+
+            {/* Daily 10-Minute Focus Goal Tracker */}
+            <div className="h-4 w-[1px] bg-slate-800 mx-1 hidden sm:inline" />
+            <div className="flex items-center gap-1.5">
+              <DailyGoalTracker />
+
+              {!isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={() => setShowGuestLoginGate(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-cyan-500/40 text-xs font-mono transition-all cursor-pointer"
+                  title="Free guest preview runs. Click to save your profile."
+                >
+                  <Lock className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-slate-400 hidden sm:inline">Guest:</span>
+                  <span className={`font-bold ${guestTestsCompleted >= 2 ? 'text-amber-400' : 'text-cyan-400'}`}>
+                    {Math.min(2, guestTestsCompleted)}/2
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -661,6 +764,7 @@ export default function PracticeBoard() {
 
             {/* Quick Actions (Fullscreen & Exit) */}
             <div className="flex items-center gap-2">
+              <DailyGoalTracker />
               <button
                 type="button"
                 onClick={toggleFullscreen}
@@ -715,6 +819,17 @@ export default function PracticeBoard() {
         </div>,
         document.body
       )}
+
+      {/* ── Forced Guest Registration Gate Modal (High-converting preview limit) ── */}
+      <GuestLoginGateModal
+        isOpen={showGuestLoginGate && !isAuthenticated}
+        lastWpm={lastGuestMetrics.wpm}
+        lastAccuracy={lastGuestMetrics.accuracy}
+        completedTests={guestTestsCompleted}
+        maxFreeTests={2}
+        onClose={() => setShowGuestLoginGate(false)}
+        onSignIn={() => navigate('/auth', { state: { from: '/practice' } })}
+      />
     </>
   );
 }
