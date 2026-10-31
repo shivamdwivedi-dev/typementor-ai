@@ -11,11 +11,11 @@ export function exportPerformancePdf(user: UserProfile | null, currentWpm: numbe
   const name = user?.name || 'Guest User';
   const email = user?.email || 'guest@typementor.ai';
   const level = user?.level || 1;
-  const streak = user?.streak || 1;
-  const wpm = Math.round(user?.lifetimeWpm || currentWpm || 45);
-  const accuracy = Math.round(user?.lifetimeAccuracy || currentAccuracy || 94);
-  const totalChars = user?.totalCharacters || 2800;
-  const hours = (user?.practiceHours || 0.4).toFixed(1);
+  const streak = user?.streak || 0;
+  const wpm = Math.round(user?.lifetimeWpm || currentWpm || 0);
+  const accuracy = Math.round(user?.lifetimeAccuracy || currentAccuracy || (user?.totalCharacters ? 100 : 0));
+  const totalChars = user?.totalCharacters || 0;
+  const hours = (user?.practiceHours || 0).toFixed(1);
 
   // Background and borders
   doc.setFillColor(248, 250, 252); // light slate bg

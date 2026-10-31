@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
 import { useAuthStore } from '../store/AuthStore';
 import { useTypingStore } from '../store/TypingStore';
 import { exportPerformancePdf } from '../utils/pdfGenerator';
 import TypingAnalyticsBento from '../components/TypingAnalyticsBento';
 import { Download, Trophy, Star, Shield, Lock, Flame, Award, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getStorageKey } from '../utils/api';
 
 // Default mock achievements if user is guest
 const DEFAULT_ACHIEVEMENTS = [
@@ -48,14 +50,35 @@ export default function Profile() {
 
   const achievements = getAchievements();
 
-  // Active challenges list
+  // Load cached session telemetry and academy progress for zero-data consistency
+  const sessionHistory = useMemo(() => {
+    try {
+      const key = getStorageKey('typementor_dashboard_cache', user?.id);
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed?.sessionHistory || [];
+    } catch {
+      return [];
+    }
+  }, [user?.id]);
+
+  const completedLessons = useMemo(() => {
+    try {
+      const saved = localStorage.getItem(getStorageKey('academy_completed_lessons', user?.id));
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  }, [user?.id]);
+
+  // Active challenges list - 0 progress default for new accounts
   const getChallenges = () => {
     if (user?.challenges && user.challenges.length > 0) {
       return user.challenges;
     }
     return [
-      { id: 'c1', currentValue: 2, challenge: { title: 'Daily Warmup', targetValue: 3, description: 'Complete 3 typing sessions today.', xpReward: 50 } },
-      { id: 'c2', currentValue: 4500, challenge: { title: 'Weekly Marathon', targetValue: 5000, description: 'Type a total of 5,000 characters this week.', xpReward: 250 } },
+      { id: 'c1', currentValue: 0, challenge: { title: 'Daily Warmup', targetValue: 3, description: 'Complete 3 typing sessions today.', xpReward: 50 } },
+      { id: 'c2', currentValue: 0, challenge: { title: 'Weekly Marathon', targetValue: 5000, description: 'Type a total of 5,000 characters this week.', xpReward: 250 } },
     ];
   };
 
@@ -244,7 +267,7 @@ export default function Profile() {
             Profile Telemetry
           </span>
         </div>
-        <TypingAnalyticsBento />
+        <TypingAnalyticsBento sessionHistory={sessionHistory} completedLessonsCount={completedLessons.length} />
       </div>
 
       {/* Achievement Showcase */}
