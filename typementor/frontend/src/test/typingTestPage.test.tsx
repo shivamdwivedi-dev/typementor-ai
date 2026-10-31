@@ -72,5 +72,32 @@ describe('Official Typing Test Page (Phase 2)', () => {
     // Should return to idle timer state
     expect(screen.getByText(/1:00|5:00/)).toBeDefined();
   });
+
+  it('renders official WPM benchmark tiers and civil service standards', () => {
+    renderWithProviders(<TypingTest />);
+
+    expect(screen.getByText(/GLOBAL ACCREDITATION BENCHMARK/i)).toBeInTheDocument();
+    expect(screen.getByText(/Official WPM Speed Tiers & Percentiles/i)).toBeInTheDocument();
+    expect(screen.getByText(/Grandmaster/i)).toBeInTheDocument();
+    expect(screen.getByText(/110\+ WPM/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/Civil Service, Judicial & Employment Standards Guide/i)).toBeInTheDocument();
+    expect(screen.getByText(/CIVIL SERVICE & SSC \(CGL \/ CHSL\)/i)).toBeInTheDocument();
+  });
+
+  it('toggles interactive FAQ accordion items', () => {
+    renderWithProviders(<TypingTest />);
+
+    const faqButton = screen.getByText(/How is Net WPM calculated on the official typing test\?/i);
+    expect(faqButton).toBeInTheDocument();
+
+    // Click to open FAQ answer
+    fireEvent.click(faqButton);
+    expect(screen.getByText(/one standard word equals 5 keystrokes/i)).toBeInTheDocument();
+
+    // Click again to close
+    fireEvent.click(faqButton);
+    expect(screen.queryByText(/one standard word equals 5 keystrokes/i)).toBeNull();
+  });
 });
 

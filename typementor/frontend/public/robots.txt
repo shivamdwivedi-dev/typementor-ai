@@ -6,6 +6,7 @@ Allow: /
 Allow: /practice
 Allow: /typing-test
 Allow: /test
+Allow: /verify
 Allow: /academy
 Allow: /guides
 Allow: /blog

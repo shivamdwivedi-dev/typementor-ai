@@ -223,6 +223,7 @@ export function AppRoutes() {
           <Route path="/practice" element={<PracticeBoard />} />
           <Route path="/typing-test" element={<TypingTest />} />
           <Route path="/test" element={<Navigate to="/typing-test" replace />} />
+          <Route path="/verify" element={<TypingTest />} />
           <Route path="/academy" element={<ProtectedRoute><TypingAcademy /></ProtectedRoute>} />
           <Route path="/about" element={<AboutUs onBack={() => navigate(-1)} />} />
           <Route path="/contact" element={<ContactUs onBack={() => navigate(-1)} />} />

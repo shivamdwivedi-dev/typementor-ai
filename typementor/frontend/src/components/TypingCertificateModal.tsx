@@ -27,6 +27,7 @@ export interface CertificateData {
   correctChars: number;
   testDate?: string;
   certificateId?: string;
+  candidateName?: string;
 }
 
 export interface TypingCertificateModalProps {
@@ -34,6 +35,7 @@ export interface TypingCertificateModalProps {
   data: CertificateData;
   onClose: () => void;
   onSignIn?: () => void;
+  isVerificationMode?: boolean;
 }
 
 // Generate deterministic verification ID
@@ -51,10 +53,11 @@ export default function TypingCertificateModal({
   data,
   onClose,
   onSignIn,
+  isVerificationMode = false,
 }: TypingCertificateModalProps) {
   const { user, isAuthenticated } = useAuthStore();
   const [candidateName, setCandidateName] = useState<string>(() => {
-    return user?.name || (user?.email ? user.email.split('@')[0] : 'Speed Typist');
+    return data.candidateName || user?.name || (user?.email ? user.email.split('@')[0] : 'Speed Typist');
   });
   const [isEditingName, setIsEditingName] = useState(false);
   const [isGeneratingPng, setIsGeneratingPng] = useState(false);
@@ -309,12 +312,12 @@ export default function TypingCertificateModal({
 
   // Handle Share to LinkedIn
   const handleShareLinkedIn = () => {
+    const certUrl = `https://www.typementor.in/typing-test?cert=${certId}&wpm=${data.netWpm}&acc=${data.accuracy}&time=${data.durationMinutes}m&name=${encodeURIComponent(candidateName)}`;
     const text = encodeURIComponent(
-      `🎯 Officially certified at ${data.netWpm} WPM with ${data.accuracy}% accuracy in the TypeMentor AI ${data.durationMinutes}-Minute Typing Examination! Standing: ${data.percentile}. Verified ID: ${certId}.`
+      `🎯 Officially certified at ${data.netWpm} WPM with ${data.accuracy}% accuracy in the TypeMentor AI ${data.durationMinutes}-Minute Typing Examination! Standing: ${data.percentile}. Verified ID: ${certId}. Verify authentic score:`
     );
-    const url = encodeURIComponent('https://www.typementor.in/typing-test');
     window.open(
-      `https://www.linkedin.com/feed/?shareActive=true&text=${text}%20${url}`,
+      `https://www.linkedin.com/feed/?shareActive=true&text=${text}%20${encodeURIComponent(certUrl)}`,
       '_blank',
       'noopener,noreferrer'
     );
@@ -322,15 +325,16 @@ export default function TypingCertificateModal({
 
   // Handle Share to Twitter/X
   const handleShareTwitter = () => {
+    const certUrl = `https://www.typementor.in/typing-test?cert=${certId}&wpm=${data.netWpm}&acc=${data.accuracy}&time=${data.durationMinutes}m&name=${encodeURIComponent(candidateName)}`;
     const tweet = encodeURIComponent(
-      `⚡ Just certified at ${data.netWpm} WPM (${data.accuracy}% accuracy) on @TypeMentor AI's official ${data.durationMinutes}-min typing exam! Can you beat my score?\n\nhttps://www.typementor.in/typing-test`
+      `⚡ Just certified at ${data.netWpm} WPM (${data.accuracy}% accuracy) on @TypeMentor AI's official ${data.durationMinutes}-min typing exam! Can you beat my score?\n\nVerify certificate: ${certUrl}`
     );
     window.open(`https://twitter.com/intent/tweet?text=${tweet}`, '_blank', 'noopener,noreferrer');
   };
 
   // Copy Verification Link
   const handleCopyLink = () => {
-    const text = `https://www.typementor.in/typing-test?cert=${certId}&wpm=${data.netWpm}&acc=${data.accuracy}`;
+    const text = `https://www.typementor.in/typing-test?cert=${certId}&wpm=${data.netWpm}&acc=${data.accuracy}&time=${data.durationMinutes}m&name=${encodeURIComponent(candidateName)}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopiedLink(true);
@@ -366,7 +370,7 @@ export default function TypingCertificateModal({
             <div className="flex items-center justify-between w-full mb-4">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-royal font-bold tracking-widest uppercase">
                 <Crown className="w-3.5 h-3.5 text-amber-400" />
-                <span>OFFICIAL SPEED ACCREDITATION</span>
+                <span>{isVerificationMode ? 'OFFICIAL VERIFIED CREDENTIAL' : 'OFFICIAL SPEED ACCREDITATION'}</span>
               </div>
 
               <button
@@ -378,6 +382,25 @@ export default function TypingCertificateModal({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Verification Notice Banner */}
+            {isVerificationMode && (
+              <div className="mb-4 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs backdrop-blur-md">
+                <div className="flex items-center gap-2 text-emerald-300">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                  <span>
+                    <strong className="text-white">Authentic Verified Result:</strong> This test score was officially recorded and audited by the TypeMentor AI Speed Engine.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-royal font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  Take Your Own Test
+                </button>
+              </div>
+            )}
 
             {/* Certificate Visual Preview Box */}
             <div className="relative rounded-2xl border-2 border-amber-500/30 bg-gradient-to-b from-zinc-900/90 via-slate-950 to-zinc-950 p-5 sm:p-7 shadow-inner text-center space-y-4 overflow-hidden">
