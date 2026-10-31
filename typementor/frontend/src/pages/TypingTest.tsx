@@ -173,6 +173,8 @@ export default function TypingTest() {
   const activeCharRef = useRef<HTMLSpanElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const targetEndTimeRef = useRef<number | null>(null);
+  const finishTestRef = useRef<() => void>(() => {});
 
   // Web Audio key click chime
   const playKeySound = useCallback((isError: boolean) => {
@@ -198,7 +200,11 @@ export default function TypingTest() {
 
   // Load new passage when duration or category changes (while idle)
   const handleReloadPassage = useCallback((newDuration = duration, newCategory = selectedCategory) => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    targetEndTimeRef.current = null;
     const newPassage = getTypingTestPassage({
       durationMinutes: newDuration,
       category: newCategory,
@@ -244,11 +250,17 @@ export default function TypingTest() {
 
   // Finish test and calculate official metrics
   const finishTest = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    targetEndTimeRef.current = null;
     setTestState('completed');
 
     const totalSeconds = DURATION_CONFIGS[duration].seconds;
-    const elapsedMinutes = (totalSeconds - timeLeft) / 60 || (totalSeconds / 60);
+    const elapsedMinutes = startTimeRef.current
+      ? Math.max(0.05, (Date.now() - startTimeRef.current) / 60000)
+      : (totalSeconds / 60);
 
     const targetText = passage.text;
     let correct = 0;
@@ -314,26 +326,46 @@ export default function TypingTest() {
       percentile,
       tier,
     });
-  }, [duration, timeLeft, typedChars, passage.text, keystrokes]);
+  }, [duration, typedChars, passage.text, keystrokes]);
 
-  // Countdown timer effect
+  // Keep ref up to date so decoupled timer always calls latest finish logic
+  finishTestRef.current = finishTest;
+
+  // Decoupled High-Precision Wall-Clock Countdown Timer Effect
+  // Uses Date.now() timestamp delta — completely immune to keystroke re-renders and interval drift
   useEffect(() => {
-    if (testState === 'running') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            finishTest();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (testState !== 'running') {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
     }
+
+    // High frequency interval (100ms) calculating exact remaining wall-clock seconds
+    timerRef.current = setInterval(() => {
+      if (!targetEndTimeRef.current) return;
+      const now = Date.now();
+      const remainingMs = Math.max(0, targetEndTimeRef.current - now);
+      const remainingSecs = Math.ceil(remainingMs / 1000);
+
+      setTimeLeft(remainingSecs);
+
+      if (remainingMs <= 0) {
+        clearInterval(timerRef.current!);
+        timerRef.current = null;
+        targetEndTimeRef.current = null;
+        finishTestRef.current();
+      }
+    }, 100);
+
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, [testState, finishTest]);
+  }, [testState]);
 
   // Keystroke handler for typing input
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -350,7 +382,9 @@ export default function TypingTest() {
     if (testState === 'idle') {
       if (e.key.length === 1 || e.key === 'Backspace') {
         setTestState('running');
-        startTimeRef.current = Date.now();
+        const now = Date.now();
+        startTimeRef.current = now;
+        targetEndTimeRef.current = now + DURATION_CONFIGS[duration].seconds * 1000;
       }
     }
 
@@ -555,8 +589,16 @@ export default function TypingTest() {
         </div>
 
         <h1 className="font-royal font-black text-3xl sm:text-5xl text-white tracking-wide uppercase drop-shadow-[0_4px_24px_rgba(255,255,255,0.15)]">
-          TYPING SPEED TEST
+          {DURATION_CONFIGS[duration].label} Speed Test
         </h1>
+
+        <div className="flex items-center justify-center gap-2 text-xs font-mono">
+          <span className="px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-bold uppercase tracking-wider">
+            {DURATION_CONFIGS[duration].badge} ({DURATION_CONFIGS[duration].seconds}s)
+          </span>
+          <span className="text-zinc-600">•</span>
+          <span className="text-zinc-400">Atomic Precision Keystroke Telemetry</span>
+        </div>
 
         <div className="h-6 flex items-center justify-center text-xs sm:text-sm font-mono text-zinc-400">
           <span className="text-cyan-400 mr-2">&gt;</span>
@@ -676,6 +718,9 @@ export default function TypingTest() {
             </div>
             <div>
               <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase">
+                  {DURATION_CONFIGS[duration].label}
+                </span>
                 <h4 className="font-royal font-bold text-white uppercase text-sm">
                   {passage.title}
                 </h4>
@@ -698,7 +743,10 @@ export default function TypingTest() {
                 : 'bg-zinc-900/80 border-zinc-800 text-cyan-300'
             }`}>
               <Timer className="w-4 h-4" />
-              <span className="text-base">{formatTime(timeLeft)}</span>
+              <span className="text-base font-black">{formatTime(timeLeft)}</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-sans">
+                {testState === 'running' ? 'left' : 'timer'}
+              </span>
             </div>
 
             {/* Live Net WPM */}

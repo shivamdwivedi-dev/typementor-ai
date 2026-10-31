@@ -24,11 +24,11 @@ describe('Official Typing Test Page (Phase 2)', () => {
     renderWithProviders(<TypingTest />);
 
     // Title
-    expect(screen.getByText(/TYPING SPEED TEST/i)).toBeDefined();
+    expect(screen.getByText(/1 Minute Speed Test/i)).toBeDefined();
     expect(screen.getByText(/OFFICIAL SPEED EXAMINATION/i)).toBeDefined();
 
     // 4 Durations
-    expect(screen.getByText(/1 Minute/i)).toBeDefined();
+    expect(screen.getAllByText(/1 Minute/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/2 Minutes/i)).toBeDefined();
     expect(screen.getByText(/3 Minutes/i)).toBeDefined();
     expect(screen.getByText(/5 Minutes/i)).toBeDefined();
