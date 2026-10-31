@@ -6,6 +6,7 @@ import { soundEngine } from '../utils/soundEngine';
 import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { saveLastActivity } from '../utils/ResumeTracker';
 import { useAutomatedCaretScroll } from '../utils/useAutomatedCaretScroll';
+import { recordDailyPracticeSeconds } from './DailyGoalTracker';
 import {
   Trophy, Award,
   RefreshCw, RotateCcw, ChevronRight, Activity, Clock, Timer
@@ -81,7 +82,7 @@ export default function EnduranceArena() {
     if (endTime !== null || !isStarted || step !== 'practice') return;
 
     const duration = startTime ? (Date.now() - startTime) / 60000 : 0;
-    const currentWpm = duration > 0 ? Math.round((typedText.split(' ').length) / duration) : 0;
+    const currentWpm = duration > 0 ? Math.round((typedText.length / 5) / duration) : 0;
     const currentAcc = passage.length > 0 ? Math.max(0, Math.round(((passage.length - errorCount) / passage.length) * 100)) : 100;
 
     const typedChars = keystrokesLog.map(k => ({
@@ -243,7 +244,8 @@ export default function EnduranceArena() {
       setEndTime(completionTime);
 
       const durationSec = startTime ? (completionTime - startTime) / 1000 : 0;
-      const wpm = durationSec > 0 ? Math.round((wordCount / (durationSec / 60))) : 0;
+      recordDailyPracticeSeconds(Math.round(durationSec));
+      const wpm = durationSec > 0 ? Math.round(((passage.length / 5) / (durationSec / 60))) : 0;
       const acc = passage.length > 0 ? Math.max(0, Math.round(((passage.length - (isMistake ? errorCount + 1 : errorCount)) / passage.length) * 100)) : 100;
       
       // Calculate consistency using latest logs
@@ -285,7 +287,7 @@ export default function EnduranceArena() {
 
   // ── Telemetry calculations ────────────────────────────────────────────────
   const durationInSeconds = startTime && endTime ? (endTime - startTime) / 1000 : 0;
-  const wordCount = passage.split(/\s+/).length;
+  const wordCount = Math.round(passage.length / 5);
   
   const averageWpm = durationInSeconds > 0 
     ? Math.round((wordCount / (durationInSeconds / 60))) 

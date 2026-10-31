@@ -148,6 +148,25 @@ export function loadDailyFocusRecord(userId?: string): DailyFocusRecord {
   };
 }
 
+export function recordDailyPracticeSeconds(seconds: number, userId?: string) {
+  if (typeof window === 'undefined' || seconds <= 0) return;
+  if (typeof (window as any).__typementor_add_daily_practice_seconds === 'function') {
+    (window as any).__typementor_add_daily_practice_seconds(seconds);
+  } else {
+    try {
+      const rec = loadDailyFocusRecord(userId);
+      const nextSeconds = rec.secondsToday + seconds;
+      const updated: DailyFocusRecord = {
+        ...rec,
+        secondsToday: nextSeconds,
+        dailyGoalCompleted: nextSeconds >= GOAL_SECONDS,
+      };
+      saveDailyFocusRecord(updated, userId);
+      window.dispatchEvent(new CustomEvent('typementor_daily_focus_updated', { detail: updated }));
+    } catch {}
+  }
+}
+
 export function saveDailyFocusRecord(record: DailyFocusRecord, userId?: string) {
   const storageKey = `typementor_daily_focus_${userId || 'guest'}_${record.date}`;
   try {
@@ -280,11 +299,18 @@ export default function DailyGoalTracker({ className = '', onGoalCompleted }: Da
     });
   }, [userId, isAuthenticated, user, updateUserStats, onGoalCompleted]);
 
-  // Expose function globally so PracticeBoard can feed duration on session complete
+  // Expose function globally and via custom event so any typing mode can feed duration
   useEffect(() => {
     (window as any).__typementor_add_daily_practice_seconds = addActiveDuration;
+    const handleAddEvent = (e: any) => {
+      if (e.detail && typeof e.detail.seconds === 'number') {
+        addActiveDuration(e.detail.seconds);
+      }
+    };
+    window.addEventListener('typementor_add_daily_practice_seconds', handleAddEvent);
     return () => {
       delete (window as any).__typementor_add_daily_practice_seconds;
+      window.removeEventListener('typementor_add_daily_practice_seconds', handleAddEvent);
     };
   }, [addActiveDuration]);
 

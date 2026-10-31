@@ -11,7 +11,7 @@ import { selectNextLesson, extractWeakKeys, getPromptForWordCount } from '../uti
 import { showPrToast } from '../utils/toastHelper';
 import TypingFingerGuide from '../components/TypingFingerGuide';
 import GuestLoginGateModal from '../components/GuestLoginGateModal';
-import DailyGoalTracker from '../components/DailyGoalTracker';
+import DailyGoalTracker, { recordDailyPracticeSeconds } from '../components/DailyGoalTracker';
 import { Sparkles, Zap, Maximize2, Minimize2, X, Bot, Eye, EyeOff, Lock } from 'lucide-react';
 
 type WordCountOption = 'full' | 15 | 25 | 50 | 100;
@@ -432,9 +432,7 @@ export default function PracticeBoard() {
     let nextDiff = difficulty;
 
     // Feed active duration into Daily 10-Minute Focus Tracker
-    if (typeof (window as any).__typementor_add_daily_practice_seconds === 'function') {
-      (window as any).__typementor_add_daily_practice_seconds(Math.round(durationSec));
-    }
+    recordDailyPracticeSeconds(Math.round(durationSec));
 
     // ── Free Guest Preview Limit Tracking & Hard Registration Gate ──
     if (!isAuthenticated) {

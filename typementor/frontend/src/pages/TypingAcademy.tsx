@@ -10,6 +10,7 @@ import { useAICoachPulse, AICoachPulseCard } from '../utils/aiCoachPulse';
 import { useAutomatedCaretScroll } from '../utils/useAutomatedCaretScroll';
 import { getStorageKey, getApiUrl } from '../utils/api';
 import TypingFingerGuide from '../components/TypingFingerGuide';
+import { recordDailyPracticeSeconds } from '../components/DailyGoalTracker';
 import {
   CheckCircle2, Lock,
   ChevronRight, RefreshCw, Star, Award, Download, X, Sparkles, Timer, Zap, AlertTriangle,
@@ -401,7 +402,7 @@ export default function TypingAcademy() {
     if (endTime !== null || !isStarted || !selectedLesson) return;
 
     const duration = startTime ? (Date.now() - startTime) / 60000 : 0;
-    const currentWpm = duration > 0 ? Math.round((typedText.split(' ').length) / duration) : 0;
+    const currentWpm = duration > 0 ? Math.round((typedText.length / 5) / duration) : 0;
     const currentAcc = typedText.length > 0 ? Math.round(((typedText.length - errors) / typedText.length) * 100) : 100;
 
     processPulse({
@@ -450,6 +451,7 @@ export default function TypingAcademy() {
 
       // 2. Submit session telemetry to count towards XP, Level, and Streak!
       const durationSec = Math.max(1, ((endTime || Date.now()) - (startTime || Date.now() - 30000)) / 1000);
+      recordDailyPracticeSeconds(Math.round(durationSec));
       const idempotencyKey = `academy-${id}-${startTime || Date.now()}`;
 
       // Optimistic update for 0ms UI latency
@@ -856,7 +858,7 @@ export default function TypingAcademy() {
       setEndTime(completionTime);
       soundEngine.stopMetronome();
       const duration = (completionTime - (startTime || completionTime)) / 60000;
-      const wpm = duration > 0 ? Math.round((selectedLesson.text.split(' ').length) / duration) : 0;
+      const wpm = duration > 0 ? Math.round((selectedLesson.text.length / 5) / duration) : 0;
       const acc = Math.round(((selectedLesson.text.length - errors) / selectedLesson.text.length) * 100);
 
       setFinalResult(Object.freeze({
@@ -1042,7 +1044,7 @@ export default function TypingAcademy() {
       const completionTime = Date.now();
       setTestEnd(completionTime);
       const duration = (completionTime - (testStart || completionTime)) / 60000;
-      const wpm = duration > 0 ? Math.round((testText.split(' ').length) / duration) : 0;
+      const wpm = duration > 0 ? Math.round((testText.length / 5) / duration) : 0;
       const acc = Math.round(((testText.length - testErrors) / testText.length) * 100);
 
       // Recommendation logic
@@ -1755,7 +1757,7 @@ export default function TypingAcademy() {
                 <h4 className="text-xl font-extrabold text-white">{recommendedLevel}</h4>
               </div>
               <p className="text-xs text-brand-muted max-w-md">
-                Assessment finished. You clocked {(testText.split(' ').length / ((testEnd! - testStart!) / 60000)).toFixed(0)} WPM with {Math.round(((testText.length - testErrors) / testText.length) * 100)}% accuracy.
+                Assessment finished. You clocked {((testText.length / 5) / ((testEnd! - testStart!) / 60000)).toFixed(0)} WPM with {Math.round(((testText.length - testErrors) / testText.length) * 100)}% accuracy.
               </p>
               <button
                 onClick={() => {
@@ -1926,7 +1928,7 @@ export default function TypingAcademy() {
             <div className="flex items-center gap-6 sm:gap-10 font-mono">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono tracking-tight">
-                  {endTime && finalResult ? finalResult.wpm : (startTime ? Math.round(typedText.split(' ').length / Math.max(0.01, (Date.now() - startTime) / 60000)) : 0)}
+                  {endTime && finalResult ? finalResult.wpm : (startTime ? Math.round((typedText.length / 5) / Math.max(0.01, (Date.now() - startTime) / 60000)) : 0)}
                 </span>
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">wpm</span>
               </div>
@@ -2362,7 +2364,7 @@ export default function TypingAcademy() {
               <div className="flex items-center gap-6 sm:gap-10 font-mono">
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono tracking-tight">
-                    {endTime && finalResult ? finalResult.wpm : (startTime ? Math.round(typedText.split(' ').length / Math.max(0.01, (Date.now() - startTime) / 60000)) : 0)}
+                    {endTime && finalResult ? finalResult.wpm : (startTime ? Math.round((typedText.length / 5) / Math.max(0.01, (Date.now() - startTime) / 60000)) : 0)}
                   </span>
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">wpm</span>
                 </div>

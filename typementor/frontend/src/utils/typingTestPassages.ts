@@ -499,7 +499,8 @@ export function getTypingTestPassage(options: {
   difficulty?: 'easy' | 'medium' | 'hard' | 'all';
 }): GeneratedTestPassage {
   const duration = Math.max(1, options.durationMinutes || 1);
-  const targetWords = duration === 1 ? 75 : duration === 2 ? 145 : duration === 3 ? 240 : 420;
+  // Ample continuous passage buffer so typists up to 160 WPM never run out of text early
+  const targetWords = duration === 1 ? 160 : duration === 2 ? 320 : duration === 3 ? 480 : 800;
 
   const seenIds = new Set(getSeenPassageIds());
 

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import SEOMeta from '../components/SEOMeta';
 import { GlowCard, Typewriter } from '../components/ui';
 import TypingCertificateModal, { CertificateData } from '../components/TypingCertificateModal';
+import { recordDailyPracticeSeconds } from '../components/DailyGoalTracker';
 import {
   getTypingTestPassage,
   getAvailableCategories,
@@ -326,6 +327,11 @@ export default function TypingTest() {
       percentile,
       tier,
     });
+
+    const actualElapsedSec = startTimeRef.current
+      ? Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000))
+      : totalSeconds;
+    recordDailyPracticeSeconds(actualElapsedSec);
   }, [duration, typedChars, passage.text, keystrokes]);
 
   // Keep ref up to date so decoupled timer always calls latest finish logic
