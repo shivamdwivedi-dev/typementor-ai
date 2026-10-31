@@ -529,18 +529,18 @@ export const ConquestPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [activeMatch?.id, activeMatch?.status, fetchActiveMatch]);
 
-  // Disconnect timer countdown effect
+  // Disconnect timer countdown effect (anchored to high-precision wall-clock time)
   useEffect(() => {
     if (!opponentDisconnected) return;
+    const targetEndTime = Date.now() + 60000;
     const interval = setInterval(() => {
-      setDisconnectSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      const remainingMs = Math.max(0, targetEndTime - Date.now());
+      const remainingSecs = Math.ceil(remainingMs / 1000);
+      setDisconnectSecondsLeft(remainingSecs);
+      if (remainingMs <= 0) {
+        clearInterval(interval);
+      }
+    }, 250);
     return () => clearInterval(interval);
   }, [opponentDisconnected]);
 

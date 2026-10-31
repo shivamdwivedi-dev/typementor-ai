@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Swords, Clock, Wifi, WifiOff } from 'lucide-react';
 import { PublicArenaMatch } from '../../types/arena';
 import { arenaSocket } from '../../utils/arenaSocket';
@@ -44,20 +44,6 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
     return () => window.removeEventListener('click', handleWindowClick);
   }, []);
 
-  // Timer countdown
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Compute live local metrics
   const elapsedMinutes = Math.max(0.01, (Date.now() - startTimeRef.current) / 60000);
   let correctChars = 0;
@@ -75,22 +61,52 @@ export const ArenaLiveMatch: React.FC<ArenaLiveMatchProps> = ({
     ? Math.min(100, Math.round((typedText.length / passage.length) * 100))
     : 0;
 
-  // Auto-submit on timeout when timer hits 0 to prevent permanent match lockup
+  const maxDuration = match.maxDuration || 120;
+  const targetEndTimeRef = useRef<number>(startTimeRef.current + maxDuration * 1000);
+  const typedTextRef = useRef(typedText);
+  typedTextRef.current = typedText;
+  const localWpmRef = useRef(localWpm);
+  localWpmRef.current = localWpm;
+  const localAccuracyRef = useRef(localAccuracy);
+  localAccuracyRef.current = localAccuracy;
+  const localProgressRef = useRef(localProgress);
+  localProgressRef.current = localProgress;
+
+  const handleTimeoutSubmit = useCallback(() => {
+    if (hasFinished) return;
+    setHasFinished(true);
+    arenaSocket.send('SUBMIT_COMPLETION', {
+      matchId: match.id,
+      submittedText: typedTextRef.current,
+      metrics: {
+        wpm: localWpmRef.current,
+        accuracy: localAccuracyRef.current,
+        progress: localProgressRef.current,
+        elapsedSeconds: Math.round((Date.now() - startTimeRef.current) / 1000),
+      },
+    });
+  }, [hasFinished, match.id]);
+
+  const handleTimeoutSubmitRef = useRef(handleTimeoutSubmit);
+  handleTimeoutSubmitRef.current = handleTimeoutSubmit;
+
+  // High-precision wall-clock countdown timer (100% immune to background tab throttling)
   useEffect(() => {
-    if (secondsRemaining === 0 && !hasFinished) {
-      setHasFinished(true);
-      arenaSocket.send('SUBMIT_COMPLETION', {
-        matchId: match.id,
-        submittedText: typedText,
-        metrics: {
-          wpm: localWpm,
-          accuracy: localAccuracy,
-          progress: localProgress,
-          elapsedSeconds: Math.round((Date.now() - startTimeRef.current) / 1000),
-        },
-      });
-    }
-  }, [secondsRemaining, hasFinished, match.id, typedText, localWpm, localAccuracy, localProgress]);
+    if (hasFinished) return;
+
+    const timer = setInterval(() => {
+      const remainingMs = Math.max(0, targetEndTimeRef.current - Date.now());
+      const remainingSecs = Math.ceil(remainingMs / 1000);
+      setSecondsRemaining(remainingSecs);
+
+      if (remainingMs <= 0) {
+        clearInterval(timer);
+        handleTimeoutSubmitRef.current();
+      }
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [hasFinished]);
 
   // Handle keystroke typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

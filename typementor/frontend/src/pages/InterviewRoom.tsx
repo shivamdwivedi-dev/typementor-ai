@@ -32,6 +32,16 @@ export default function InterviewRoom() {
   const [isPaused, setIsPaused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // High-precision wall-clock countdown and typing refs
+  const targetEndTimeRef = useRef<number | null>(null);
+  const remainingMsRef = useRef<number>(60000);
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const wpmRef = useRef(wpm);
+  wpmRef.current = wpm;
+  const wordsLengthRef = useRef(words.length);
+  wordsLengthRef.current = words.length;
+
   // Advanced multi-device automated caret tracking & smooth viewport scroll
   const {
     containerRef: interviewScrollRef,
@@ -88,44 +98,70 @@ export default function InterviewRoom() {
 
   const handleResume = () => {
     setIsPaused(false);
+    targetEndTimeRef.current = Date.now() + remainingMsRef.current;
     setTimeout(() => {
       inputRef.current?.focus();
     }, 50);
   };
 
-  // Timer loop
+  // Decoupled High-Precision Wall-Clock Countdown & Opponent Simulation
+  // Completely immune to keystroke re-renders and interval drift
   useEffect(() => {
-    if (!isActive || isCompleted || failed || isPaused) return;
+    if (!isActive || isCompleted || failed || isPaused) {
+      if (isPaused && targetEndTimeRef.current) {
+        remainingMsRef.current = Math.max(0, targetEndTimeRef.current - Date.now());
+        targetEndTimeRef.current = null;
+      }
+      return;
+    }
+
+    if (!targetEndTimeRef.current) {
+      targetEndTimeRef.current = Date.now() + remainingMsRef.current;
+    }
+
+    let lastOpponentTick = Date.now();
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setFailed(true);
-          return 0;
-        }
-        return prev - 1;
-      });
+      if (!targetEndTimeRef.current) return;
+      const now = Date.now();
+      const remainingMs = Math.max(0, targetEndTimeRef.current - now);
+      const remainingSecs = Math.ceil(remainingMs / 1000);
+      setTimeLeft(remainingSecs);
 
-      // Update mock opponent stats slowly
-      setCandidates((prev) => {
-        return prev
-          .map((c) => {
-            if (c.isSelf) {
-              return { ...c, wpm, progress: Math.min(100, Math.round((currentIndex / words.length) * 100)) };
-            }
-            // opposing candidates increase progress
-            const speed = c.wpm;
-            const newProg = Math.min(100, c.progress + Math.round(speed / 15));
-            return { ...c, progress: newProg };
-          })
-          .sort((a, b) => b.progress - a.progress || b.wpm - a.wpm)
-          .map((c, idx) => ({ ...c, rank: idx + 1 }));
-      });
-    }, 1000);
+      if (remainingMs <= 0) {
+        clearInterval(interval);
+        targetEndTimeRef.current = null;
+        remainingMsRef.current = 0;
+        setFailed(true);
+        return;
+      }
+
+      // Update mock opponent stats slowly (every ~1000ms) without causing keystroke re-renders
+      if (now - lastOpponentTick >= 1000) {
+        lastOpponentTick = now;
+        const curIdx = currentIndexRef.current;
+        const totalWords = wordsLengthRef.current;
+        const curWpm = wpmRef.current;
+
+        setCandidates((prev) => {
+          return prev
+            .map((c) => {
+              if (c.isSelf) {
+                return { ...c, wpm: curWpm, progress: Math.min(100, Math.round((curIdx / totalWords) * 100)) };
+              }
+              // opposing candidates increase progress
+              const speed = c.wpm;
+              const newProg = Math.min(100, c.progress + Math.round(speed / 15));
+              return { ...c, progress: newProg };
+            })
+            .sort((a, b) => b.progress - a.progress || b.wpm - a.wpm)
+            .map((c, idx) => ({ ...c, rank: idx + 1 }));
+        });
+      }
+    }, 100);
 
     return () => clearInterval(interval);
-  }, [isActive, isCompleted, failed, wpm, currentIndex, words]);
+  }, [isActive, isCompleted, failed, isPaused]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab' || e.key === 'Escape') {
@@ -188,6 +224,8 @@ export default function InterviewRoom() {
     setFailed(false);
     setTimeLeft(60);
     setIsPaused(false);
+    remainingMsRef.current = 60000;
+    targetEndTimeRef.current = null;
     setCandidates(INITIAL_CANDIDATES);
     setTimeout(() => inputRef.current?.focus(), 50);
   };

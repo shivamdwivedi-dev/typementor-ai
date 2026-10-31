@@ -71,21 +71,28 @@ export const ConquestCombatPanel: React.FC<ConquestCombatPanelProps> = ({
     setIsFocused(true);
   };
 
-  // 75-second countdown timer interval (guards against duplicate submit and negative times)
+  const typedTextRef = useRef(typedText);
+  typedTextRef.current = typedText;
+  const onSubmitRef = useRef(onSubmit);
+  onSubmitRef.current = onSubmit;
+
+  // 75-second countdown timer interval (decoupled from keystroke changes)
   useEffect(() => {
+    if (isSubmitted) return;
+
     const timer = setInterval(() => {
       const remaining = Math.max(0, challenge.deadlineAt - Date.now());
       setTimeLeftMs(remaining);
 
-      if (remaining <= 0 && !isSubmitted) {
+      if (remaining <= 0) {
         clearInterval(timer);
         setIsSubmitted(true);
-        onSubmit(typedText);
+        onSubmitRef.current(typedTextRef.current);
       }
     }, 100);
 
     return () => clearInterval(timer);
-  }, [challenge.deadlineAt, isSubmitted, onSubmit, typedText]);
+  }, [challenge.deadlineAt, isSubmitted]);
 
   // Handle typing input
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
