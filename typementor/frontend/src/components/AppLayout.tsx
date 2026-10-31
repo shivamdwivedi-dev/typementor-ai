@@ -54,8 +54,9 @@ export default function AppLayout() {
 
   const navItems: LiquidNavItem[] = useMemo(() => {
     const baseItems: LiquidNavItem[] = [
-      { label: 'Academy', href: '/academy', icon: NimbusIcons.academy, fx: 'glow' },
       { label: 'Practice', href: '/practice', icon: NimbusIcons.practice, fx: 'wave' },
+      { label: 'Speed Test', href: '/typing-test', icon: NimbusIcons.test, fx: 'glow' },
+      { label: 'Academy', href: '/academy', icon: NimbusIcons.academy, fx: 'pop' },
       { label: 'Guides', href: '/guides', icon: NimbusIcons.guides, fx: 'drop' },
     ];
 
@@ -76,6 +77,7 @@ export default function AppLayout() {
     const idx = navItems.findIndex((it) => {
       if (!it.href) return false;
       if (it.href === '/practice') return p === '/practice' || p === '/';
+      if (it.href === '/typing-test') return p === '/typing-test' || p === '/test';
       if (it.href === '/guides') return p.startsWith('/guides') || p.startsWith('/blog');
       if (it.href === '/arena') return p.startsWith('/arena');
       return p === it.href;

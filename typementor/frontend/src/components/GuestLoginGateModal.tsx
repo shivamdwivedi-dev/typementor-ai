@@ -84,7 +84,7 @@ export default function GuestLoginGateModal({
           aria-modal="true"
           aria-labelledby="guest-gate-title"
           onClick={onClose}
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xl select-none"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-2xl select-none overflow-y-auto"
         >
           {/* Glass Card Container with Royal Aesthetic */}
           <motion.div
@@ -93,7 +93,7 @@ export default function GuestLoginGateModal({
             exit={{ opacity: 0, scale: 0.94, y: 14 }}
             transition={{ type: 'spring', damping: 28, stiffness: 380 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg bg-zinc-950/90 backdrop-blur-3xl border border-zinc-800/90 rounded-3xl p-6 sm:p-8 shadow-[0_25px_90px_rgba(0,0,0,0.9),0_0_60px_rgba(6,182,212,0.18)] text-zinc-100 overflow-hidden"
+            className="relative w-full max-w-lg my-auto max-h-[92vh] overflow-y-auto bg-zinc-950/95 backdrop-blur-3xl border border-zinc-800/90 rounded-3xl p-5 sm:p-7 shadow-[0_25px_90px_rgba(0,0,0,0.9),0_0_60px_rgba(6,182,212,0.18)] text-zinc-100"
           >
             {/* Top Border Regal Neon Highlight */}
             <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />

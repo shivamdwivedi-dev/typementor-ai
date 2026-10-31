@@ -26,6 +26,7 @@ export const routeLoaders = {
   loadConquestPreview: () => import('./pages/ConquestPreview'),
   loadConquestPage: () => import('./pages/ConquestPage'),
   loadGuidesHub: () => import('./pages/GuidesHub'),
+  loadTypingTest: () => import('./pages/TypingTest'),
 };
 
 // ── Lazy-loaded pages (code splitting by route) ────────────────────────────
@@ -48,6 +49,7 @@ const ArenaPage       = React.lazy(() => routeLoaders.loadArenaPage());
 const ConquestPreview = React.lazy(() => routeLoaders.loadConquestPreview());
 const ConquestPage    = React.lazy(() => routeLoaders.loadConquestPage());
 const GuidesHub       = React.lazy(() => routeLoaders.loadGuidesHub());
+const TypingTest      = React.lazy(() => routeLoaders.loadTypingTest());
 
 let hasPreloadedCoreRoutes = false;
 
@@ -219,6 +221,8 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           {/* Guest OR Authenticated (Publicly accessible for SEO, Googlebot & direct speed testers) */}
           <Route path="/practice" element={<PracticeBoard />} />
+          <Route path="/typing-test" element={<TypingTest />} />
+          <Route path="/test" element={<Navigate to="/typing-test" replace />} />
           <Route path="/academy" element={<ProtectedRoute><TypingAcademy /></ProtectedRoute>} />
           <Route path="/about" element={<AboutUs onBack={() => navigate(-1)} />} />
           <Route path="/contact" element={<ContactUs onBack={() => navigate(-1)} />} />

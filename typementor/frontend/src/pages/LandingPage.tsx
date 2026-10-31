@@ -2,7 +2,7 @@ import { Brain, Award, Activity, Flame, ShieldCheck, BookOpen, ChevronRight, Zap
 import SEOMeta from '../components/SEOMeta';
 import TubesBackground from '../components/ui/neon-flow';
 import { ShinyButton } from '../components/ui/shiny-button';
-import GlassCard from '../components/ui/glass-card';
+import { GlowCard, Typewriter } from '../components/ui';
 import DoodleCrewFooter from '../components/DoodleCrewFooter';
 
 interface LandingPageProps {
@@ -118,6 +118,24 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
               A typing coach that notices where you slow down, gives you the right practice, and helps you build speed without losing accuracy.
             </p>
 
+            {/* Dynamic Typewriter Experience Badge */}
+            <div className="h-9 flex items-center justify-center text-xs sm:text-sm font-mono text-cyan-300 font-semibold tracking-wide">
+              <span className="text-zinc-500 mr-2">&gt;</span>
+              <Typewriter
+                text={[
+                  "Certified 1-minute & 5-minute speed examinations.",
+                  "Infinite passages from literature, cosmos, and philosophy.",
+                  "Pinpoint weak keys with 120 FPS keystroke telemetry.",
+                  "Earn verifiable digital speed certificates.",
+                ]}
+                speed={50}
+                deleteSpeed={30}
+                delay={2000}
+                loop={true}
+                cursor="▋"
+              />
+            </div>
+
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 pointer-events-auto">
               <ShinyButton
                 onClick={onGetStarted}
@@ -151,46 +169,71 @@ export default function LandingPage({ onGetStarted, onTryAcademy, onNavigateToPa
               title: 'Typing Academy',
               description: 'Structured pathways from home-row basics to coding syntax, with one focused lesson at a time.',
               icon: <BookOpen className="h-5 w-5" aria-hidden="true" />,
-              accentClassName: 'text-brand-primary',
+              accentClassName: 'text-cyan-400',
+              glowColor: 'blue' as const,
               onClick: onTryAcademy,
             },
             {
               title: 'Weak-key recovery',
               description: 'Notice the keys that slow you down and get short drills built around your actual mistakes.',
               icon: <Brain className="h-5 w-5" aria-hidden="true" />,
-              accentClassName: 'text-brand-danger',
+              accentClassName: 'text-purple-400',
+              glowColor: 'purple' as const,
               onClick: onGetStarted,
             },
             {
               title: 'Endurance practice',
               description: 'Build consistency with longer sessions that show how your speed holds up over time.',
               icon: <Activity className="h-5 w-5" aria-hidden="true" />,
-              accentClassName: 'text-brand-success',
+              accentClassName: 'text-emerald-400',
+              glowColor: 'green' as const,
               onClick: onGetStarted,
             },
             {
               title: 'Streaks that help',
               description: 'Keep a steady rhythm with simple goals, milestones, and progress you can actually see.',
               icon: <Flame className="h-5 w-5" aria-hidden="true" />,
-              accentClassName: 'text-brand-warning',
+              accentClassName: 'text-amber-400',
+              glowColor: 'orange' as const,
               onClick: onGetStarted,
             },
             {
               title: 'Save your progress',
               description: 'Sign in to keep your practice history and pick up your training on another device.',
               icon: <ShieldCheck className="h-5 w-5" aria-hidden="true" />,
-              accentClassName: 'text-brand-success',
+              accentClassName: 'text-cyan-400',
+              glowColor: 'blue' as const,
               onClick: onGetStarted,
             },
             {
               title: 'Celebrate milestones',
               description: 'Mark meaningful improvements as your speed, accuracy, and confidence grow.',
               icon: <Award className="h-5 w-5" aria-hidden="true" />,
-              accentClassName: 'text-brand-primary',
+              accentClassName: 'text-purple-400',
+              glowColor: 'purple' as const,
               onClick: onGetStarted,
             },
           ].map((card) => (
-            <GlassCard key={card.title} {...card} actionLabel="Explore feature" className="cursor-pointer" />
+            <GlowCard
+              key={card.title}
+              glowColor={card.glowColor}
+              customSize
+              className="group h-[280px] w-full max-w-[290px] cursor-pointer flex flex-col justify-between p-6 transition-all duration-300 hover:scale-[1.02] border border-white/10"
+              onClick={card.onClick}
+            >
+              <div>
+                <div className={`mb-4 grid h-11 w-11 place-content-center rounded-2xl border border-white/10 bg-white/5 ${card.accentClassName}`}>
+                  {card.icon}
+                </div>
+                <h3 className="text-lg font-black text-white group-hover:text-cyan-300 transition-colors">{card.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">{card.description}</p>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs font-bold text-white transition-transform duration-200 group-hover:translate-x-1 pt-2">
+                <span>Explore feature</span>
+                <ChevronRight className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" />
+              </div>
+            </GlowCard>
           ))}
         </div>
       </section>

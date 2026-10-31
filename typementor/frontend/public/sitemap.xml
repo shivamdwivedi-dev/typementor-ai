@@ -12,10 +12,18 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- Practice Board & Typing Speed Test — primary interactive entry point -->
+  <!-- Practice Board & Typing Drills — primary interactive entry point -->
   <url>
     <loc>https://www.typementor.in/practice</loc>
-    <lastmod>2026-10-30</lastmod>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Official Typing Speed Test (1m, 2m, 3m, 5m) with Certificate -->
+  <url>
+    <loc>https://www.typementor.in/typing-test</loc>
+    <lastmod>2026-10-31</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>

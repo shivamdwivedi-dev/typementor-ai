@@ -119,6 +119,13 @@ export const NimbusIcons = {
       <line x1="6" y1="20" x2="6" y2="14" />
     </>
   ),
+  test: I(
+    <>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2.5 2.5" />
+      <path d="M10 2h4" />
+    </>
+  ),
 };
 
 const DEFAULT_ITEMS: LiquidNavItem[] = [

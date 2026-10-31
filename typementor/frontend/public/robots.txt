@@ -4,6 +4,8 @@
 User-agent: *
 Allow: /
 Allow: /practice
+Allow: /typing-test
+Allow: /test
 Allow: /academy
 Allow: /guides
 Allow: /blog
