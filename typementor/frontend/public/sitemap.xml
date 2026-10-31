@@ -20,7 +20,7 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- Official Typing Speed Test (1m, 2m, 3m, 5m) with Certificate -->
+  <!-- Official Typing Speed Test (1m, 2m, 3m, 5m) with Certificate & Dedicated SEO Slugs -->
   <url>
     <loc>https://www.typementor.in/typing-test</loc>
     <lastmod>2026-10-31</lastmod>
@@ -28,13 +28,37 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.typementor.in/typing-test?time=1m</loc>
+    <loc>https://www.typementor.in/1-minute-typing-test</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.typementor.in/2-minute-typing-test</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.typementor.in/typing-test?time=5m</loc>
+    <loc>https://www.typementor.in/3-minute-typing-test</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.typementor.in/5-minute-typing-test</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.typementor.in/typing-speed-test</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://www.typementor.in/typing-certificate</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>

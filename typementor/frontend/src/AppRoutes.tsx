@@ -223,6 +223,12 @@ export function AppRoutes() {
           <Route path="/practice" element={<PracticeBoard />} />
           <Route path="/typing-test" element={<TypingTest />} />
           <Route path="/test" element={<Navigate to="/typing-test" replace />} />
+          <Route path="/typing-speed-test" element={<TypingTest />} />
+          <Route path="/1-minute-typing-test" element={<TypingTest defaultDuration={1} />} />
+          <Route path="/2-minute-typing-test" element={<TypingTest defaultDuration={2} />} />
+          <Route path="/3-minute-typing-test" element={<TypingTest defaultDuration={3} />} />
+          <Route path="/5-minute-typing-test" element={<TypingTest defaultDuration={5} />} />
+          <Route path="/typing-certificate" element={<TypingTest />} />
           <Route path="/verify" element={<TypingTest />} />
           <Route path="/academy" element={<ProtectedRoute><TypingAcademy /></ProtectedRoute>} />
           <Route path="/about" element={<AboutUs onBack={() => navigate(-1)} />} />

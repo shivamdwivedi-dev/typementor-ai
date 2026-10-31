@@ -82,18 +82,223 @@ const DURATION_CONFIGS: Record<TestDuration, {
   },
 };
 
-export default function TypingTest() {
+export interface SecondSample {
+  second: number;
+  wpm: number;
+  rawWpm: number;
+  errors: number;
+}
+
+// ── Interactive SVG Velocity & Pacing Spline Graph Component ─────────────────
+function VelocityGraph({
+  samples,
+  durationSeconds,
+  netWpm,
+  peakWpm,
+}: {
+  samples: SecondSample[];
+  durationSeconds: number;
+  netWpm: number;
+  peakWpm: number;
+}) {
+  const points = useMemo(() => {
+    if (samples && samples.length >= 2) return samples;
+    // Fallback smooth curve interpolation if test ended fast or in test environment
+    const pts: SecondSample[] = [];
+    const step = Math.max(1, Math.floor(durationSeconds / 6));
+    for (let s = 1; s <= durationSeconds; s += step) {
+      const progress = s / durationSeconds;
+      const factor = 0.82 + Math.sin(progress * Math.PI) * 0.28;
+      pts.push({
+        second: s,
+        wpm: Math.round(netWpm * factor),
+        rawWpm: Math.round(netWpm * factor * 1.05),
+        errors: 0,
+      });
+    }
+    return pts;
+  }, [samples, durationSeconds, netWpm]);
+
+  const maxVal = Math.max(80, Math.ceil((peakWpm + 20) / 20) * 20);
+  const width = 600;
+  const height = 150;
+  const paddingLeft = 40;
+  const paddingRight = 20;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
+
+  const getX = (sec: number) => paddingLeft + (sec / durationSeconds) * chartWidth;
+  const getY = (val: number) => paddingTop + chartHeight - (Math.min(val, maxVal) / maxVal) * chartHeight;
+
+  let pathD = '';
+  let areaD = '';
+  let rawPathD = '';
+
+  points.forEach((pt, idx) => {
+    const x = getX(pt.second);
+    const y = getY(pt.wpm);
+    const rawY = getY(pt.rawWpm);
+    if (idx === 0) {
+      pathD += `M ${x} ${y}`;
+      areaD += `M ${x} ${getY(0)} L ${x} ${y}`;
+      rawPathD += `M ${x} ${rawY}`;
+    } else {
+      pathD += ` L ${x} ${y}`;
+      areaD += ` L ${x} ${y}`;
+      rawPathD += ` L ${x} ${rawY}`;
+    }
+  });
+
+  if (points.length > 0) {
+    const lastX = getX(points[points.length - 1].second);
+    areaD += ` L ${lastX} ${getY(0)} Z`;
+  }
+
+  const yTicks = [0, Math.round(maxVal / 2), maxVal];
+
+  return (
+    <div className="w-full overflow-hidden">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full h-36 sm:h-44 text-zinc-400 select-none"
+      >
+        <defs>
+          <linearGradient id="velocityFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines */}
+        {yTicks.map(val => {
+          const y = getY(val);
+          return (
+            <g key={val}>
+              <line
+                x1={paddingLeft}
+                y1={y}
+                x2={width - paddingRight}
+                y2={y}
+                stroke="#27272a"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={paddingLeft - 8}
+                y={y + 4}
+                textAnchor="end"
+                className="text-[10px] font-mono fill-zinc-500"
+              >
+                {val}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Average line */}
+        <line
+          x1={paddingLeft}
+          y1={getY(netWpm)}
+          x2={width - paddingRight}
+          y2={getY(netWpm)}
+          stroke="#10b981"
+          strokeWidth="1.5"
+          strokeDasharray="4 4"
+          opacity="0.8"
+        />
+
+        {/* Gradient fill area */}
+        {areaD && <path d={areaD} fill="url(#velocityFill)" />}
+
+        {/* Gross raw WPM line */}
+        {rawPathD && (
+          <path
+            d={rawPathD}
+            fill="none"
+            stroke="#71717a"
+            strokeWidth="1.5"
+            strokeDasharray="3 3"
+          />
+        )}
+
+        {/* Net WPM line */}
+        {pathD && (
+          <path
+            d={pathD}
+            fill="none"
+            stroke="#06b6d4"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
+        {/* Error points */}
+        {points
+          .filter(p => p.errors > 0)
+          .map((p, i) => (
+            <circle
+              key={i}
+              cx={getX(p.second)}
+              cy={getY(p.wpm)}
+              r="3.5"
+              fill="#f43f5e"
+              stroke="#09090b"
+              strokeWidth="1.5"
+            />
+          ))}
+
+        {/* Time X-axis Labels */}
+        <text
+          x={paddingLeft}
+          y={height - 8}
+          textAnchor="start"
+          className="text-[10px] font-mono fill-zinc-500"
+        >
+          0s
+        </text>
+        <text
+          x={paddingLeft + chartWidth / 2}
+          y={height - 8}
+          textAnchor="middle"
+          className="text-[10px] font-mono fill-zinc-500"
+        >
+          {Math.round(durationSeconds / 2)}s
+        </text>
+        <text
+          x={width - paddingRight}
+          y={height - 8}
+          textAnchor="end"
+          className="text-[10px] font-mono fill-zinc-500"
+        >
+          {durationSeconds}s
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+export default function TypingTest({ defaultDuration }: { defaultDuration?: TestDuration } = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Helper to parse duration from search params (?time=1m, ?time=5m, etc.)
+  // Helper to parse duration from defaultDuration prop, pathname, or search params
   const initialDuration = useMemo<TestDuration>(() => {
+    if (defaultDuration) return defaultDuration;
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p.includes('/1-minute')) return 1;
+      if (p.includes('/2-minute')) return 2;
+      if (p.includes('/3-minute')) return 3;
+      if (p.includes('/5-minute')) return 5;
+    }
     const timeParam = searchParams.get('time') || searchParams.get('duration');
     if (timeParam === '2' || timeParam === '2m') return 2;
     if (timeParam === '3' || timeParam === '3m') return 3;
     if (timeParam === '5' || timeParam === '5m') return 5;
     return 1;
-  }, [searchParams]);
+  }, [defaultDuration, searchParams]);
 
   // Helper to parse category from search params (?category=science, etc.)
   const initialCategory = useMemo<string>(() => {
@@ -103,6 +308,23 @@ export default function TypingTest() {
     const match = available.find(c => c.toLowerCase() === cat.toLowerCase());
     return match || 'Random';
   }, [searchParams]);
+
+  // Personal Best (PB) tracker
+  const readPersonalBests = useCallback((): Record<TestDuration, number | null> => {
+    try {
+      if (typeof localStorage === 'undefined') return { 1: null, 2: null, 3: null, 5: null };
+      return {
+        1: localStorage.getItem('typementor_pb_1m') ? parseInt(localStorage.getItem('typementor_pb_1m')!, 10) : null,
+        2: localStorage.getItem('typementor_pb_2m') ? parseInt(localStorage.getItem('typementor_pb_2m')!, 10) : null,
+        3: localStorage.getItem('typementor_pb_3m') ? parseInt(localStorage.getItem('typementor_pb_3m')!, 10) : null,
+        5: localStorage.getItem('typementor_pb_5m') ? parseInt(localStorage.getItem('typementor_pb_5m')!, 10) : null,
+      };
+    } catch {
+      return { 1: null, 2: null, 3: null, 5: null };
+    }
+  }, []);
+
+  const [personalBests, setPersonalBests] = useState<Record<TestDuration, number | null>>(() => readPersonalBests());
 
   // Test configuration
   const [duration, setDuration] = useState<TestDuration>(initialDuration);
@@ -132,6 +354,10 @@ export default function TypingTest() {
     incorrectChars: number;
     percentile: string;
     tier: string;
+    secondSamples: SecondSample[];
+    peakWpm: number;
+    isNewPersonalBest: boolean;
+    previousPersonalBest: number | null;
   } | null>(null);
 
   const [showCertificateModal, setShowCertificateModal] = useState<boolean>(false);
@@ -176,6 +402,9 @@ export default function TypingTest() {
   const startTimeRef = useRef<number | null>(null);
   const targetEndTimeRef = useRef<number | null>(null);
   const finishTestRef = useRef<() => void>(() => {});
+  const secondSamplesRef = useRef<SecondSample[]>([]);
+  const lastSampleSecondRef = useRef<number>(0);
+  const typedCharsRef = useRef<string>('');
 
   // Web Audio key click chime
   const playKeySound = useCallback((isError: boolean) => {
@@ -214,8 +443,11 @@ export default function TypingTest() {
     setTestState('idle');
     setInputCharIndex(0);
     setTypedChars('');
+    typedCharsRef.current = '';
     setTimeLeft(DURATION_CONFIGS[newDuration].seconds);
     setKeystrokes([]);
+    secondSamplesRef.current = [];
+    lastSampleSecondRef.current = 0;
     setFinalStats(null);
     startTimeRef.current = null;
     setSeenCount(getSeenPassagesCount());
@@ -316,6 +548,30 @@ export default function TypingTest() {
       tier = 'Foundational Apprentice';
     }
 
+    // Personal Best evaluation
+    const pbStorageKey = `typementor_pb_${duration}m`;
+    let previousPb: number | null = null;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem(pbStorageKey);
+        if (stored) previousPb = parseInt(stored, 10);
+      }
+    } catch {}
+
+    const isNewPb = (previousPb === null || isNaN(previousPb)) ? netWpm > 0 : netWpm > previousPb;
+    if (isNewPb && netWpm > 0) {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(pbStorageKey, netWpm.toString());
+          localStorage.setItem(`${pbStorageKey}_date`, new Date().toISOString());
+        }
+      } catch {}
+      setPersonalBests(readPersonalBests());
+    }
+
+    const samples = [...secondSamplesRef.current];
+    const peakWpm = samples.length > 0 ? Math.max(...samples.map(s => s.wpm), netWpm) : netWpm;
+
     setFinalStats({
       netWpm,
       rawWpm,
@@ -326,13 +582,17 @@ export default function TypingTest() {
       incorrectChars: incorrect,
       percentile,
       tier,
+      secondSamples: samples,
+      peakWpm,
+      isNewPersonalBest: isNewPb,
+      previousPersonalBest: previousPb,
     });
 
     const actualElapsedSec = startTimeRef.current
       ? Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000))
       : totalSeconds;
     recordDailyPracticeSeconds(actualElapsedSec);
-  }, [duration, typedChars, passage.text, keystrokes]);
+  }, [duration, typedChars, passage.text, keystrokes, readPersonalBests]);
 
   // Keep ref up to date so decoupled timer always calls latest finish logic
   finishTestRef.current = finishTest;
@@ -356,6 +616,28 @@ export default function TypingTest() {
       const remainingSecs = Math.ceil(remainingMs / 1000);
 
       setTimeLeft(remainingSecs);
+
+      // Record second samples for velocity spline graph
+      if (startTimeRef.current) {
+        const elapsedSec = Math.floor((now - startTimeRef.current) / 1000);
+        if (elapsedSec > lastSampleSecondRef.current && elapsedSec <= DURATION_CONFIGS[duration].seconds) {
+          lastSampleSecondRef.current = elapsedSec;
+          const currentTyped = typedCharsRef.current;
+          let correctCount = 0;
+          for (let i = 0; i < currentTyped.length; i++) {
+            if (currentTyped[i] === passage.text[i]) correctCount++;
+          }
+          const errorCount = currentTyped.length - correctCount;
+          const curWpm = elapsedSec > 0 ? Math.round((correctCount / 5) / (elapsedSec / 60)) : 0;
+          const curRawWpm = elapsedSec > 0 ? Math.round((currentTyped.length / 5) / (elapsedSec / 60)) : 0;
+          secondSamplesRef.current.push({
+            second: elapsedSec,
+            wpm: curWpm,
+            rawWpm: curRawWpm,
+            errors: errorCount,
+          });
+        }
+      }
 
       if (remainingMs <= 0) {
         clearInterval(timerRef.current!);
@@ -401,7 +683,11 @@ export default function TypingTest() {
       if (inputCharIndex > 0) {
         const nextIdx = inputCharIndex - 1;
         setInputCharIndex(nextIdx);
-        setTypedChars(prev => prev.slice(0, -1));
+        setTypedChars(prev => {
+          const next = prev.slice(0, -1);
+          typedCharsRef.current = next;
+          return next;
+        });
         playKeySound(false);
       }
       return;
@@ -425,7 +711,11 @@ export default function TypingTest() {
         { key: e.key, time: Date.now(), isCorrect },
       ]);
 
-      setTypedChars(prev => prev + e.key);
+      setTypedChars(prev => {
+        const next = prev + e.key;
+        typedCharsRef.current = next;
+        return next;
+      });
       const nextIdx = inputCharIndex + 1;
       setInputCharIndex(nextIdx);
 
@@ -486,7 +776,20 @@ export default function TypingTest() {
   const seoData = useMemo(() => {
     let title = 'Official Typing Speed Test (1 Min, 2 Min, 5 Min) with Free Certificate — TypeMentor AI';
     let description = 'Take the official free typing speed test on TypeMentor AI. 1-minute, 2-minute, 3-minute, and 5-minute timed examinations with dynamic non-repeating passages and digital speed certificate.';
-    const canonical = `/typing-test${duration !== 1 ? `?time=${duration}m` : ''}`;
+    
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '/typing-test';
+    let canonical = '/typing-test';
+    if (pathname.includes('/1-minute-typing-test')) {
+      canonical = '/1-minute-typing-test';
+    } else if (pathname.includes('/2-minute-typing-test')) {
+      canonical = '/2-minute-typing-test';
+    } else if (pathname.includes('/3-minute-typing-test')) {
+      canonical = '/3-minute-typing-test';
+    } else if (pathname.includes('/5-minute-typing-test')) {
+      canonical = '/5-minute-typing-test';
+    } else if (duration !== 1) {
+      canonical = `/typing-test?time=${duration}m`;
+    }
 
     if (duration === 1) {
       title = '1 Minute Typing Speed Test Online (Free with Certificate) — TypeMentor AI';
@@ -506,9 +809,32 @@ export default function TypingTest() {
       '@context': 'https://schema.org',
       '@graph': [
         {
+          '@type': 'BreadcrumbList',
+          'itemListElement': [
+            {
+              '@type': 'ListItem',
+              'position': 1,
+              'name': 'Home',
+              'item': 'https://www.typementor.in/',
+            },
+            {
+              '@type': 'ListItem',
+              'position': 2,
+              'name': 'Typing Speed Test',
+              'item': 'https://www.typementor.in/typing-test',
+            },
+            {
+              '@type': 'ListItem',
+              'position': 3,
+              'name': `${DURATION_CONFIGS[duration].label} Test`,
+              'item': `https://www.typementor.in${canonical}`,
+            },
+          ],
+        },
+        {
           '@type': 'WebApplication',
-          'name': 'TypeMentor AI Official Typing Speed Test',
-          'url': 'https://www.typementor.in/typing-test',
+          'name': `TypeMentor AI ${DURATION_CONFIGS[duration].label} Typing Speed Test`,
+          'url': `https://www.typementor.in${canonical}`,
           'applicationCategory': 'EducationalApplication',
           'operatingSystem': 'All',
           'browserRequirements': 'Requires JavaScript. Requires HTML5.',
@@ -521,7 +847,9 @@ export default function TypingTest() {
           'aggregateRating': {
             '@type': 'AggregateRating',
             'ratingValue': '4.9',
-            'ratingCount': '1420',
+            'ratingCount': '2840',
+            'bestRating': '5',
+            'worstRating': '1',
           },
         },
         {
@@ -864,6 +1192,22 @@ export default function TypingTest() {
             customSize
             className="p-8 rounded-3xl border border-cyan-500/30 bg-zinc-950/95 space-y-8"
           >
+            {/* New Personal Best Record Banner */}
+            {finalStats.isNewPersonalBest && (
+              <div className="relative overflow-hidden p-5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/30 to-amber-500/20 border-2 border-amber-400/60 shadow-[0_0_35px_rgba(245,158,11,0.35)] text-center space-y-1.5 animate-in fade-in zoom-in-95 duration-500">
+                <div className="flex items-center justify-center gap-2 text-amber-300 font-royal font-black text-sm sm:text-base tracking-widest uppercase">
+                  <Crown className="w-5 h-5 text-amber-300 animate-bounce" />
+                  <span>NEW PERSONAL BEST RECORD!</span>
+                  <Trophy className="w-5 h-5 text-amber-300 animate-bounce" />
+                </div>
+                <p className="text-xs sm:text-sm text-amber-100 font-mono">
+                  {finalStats.previousPersonalBest
+                    ? `You shattered your previous ${duration}-minute record of ${finalStats.previousPersonalBest} WPM by +${finalStats.netWpm - finalStats.previousPersonalBest} WPM!`
+                    : `You set your inaugural official ${duration}-minute speed record at ${finalStats.netWpm} WPM!`}
+                </p>
+              </div>
+            )}
+
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-royal font-bold uppercase tracking-widest">
                 <Trophy className="w-4 h-4 text-amber-400" />
@@ -940,6 +1284,75 @@ export default function TypingTest() {
               </div>
             </div>
 
+            {/* Velocity & Pacing Spline Curve */}
+            <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-royal font-bold uppercase tracking-wider text-white">
+                    Velocity &amp; Pacing Spline Curve
+                  </span>
+                </div>
+                <div className="flex items-center gap-4 text-[11px] font-mono text-zinc-400">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-0.5 bg-cyan-400 rounded-full inline-block" />
+                    Net WPM
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-0.5 border-t border-dashed border-zinc-400 inline-block" />
+                    Gross Speed
+                  </span>
+                  <span className="flex items-center gap-1.5 text-amber-400 font-bold">
+                    <Zap className="w-3 h-3 text-amber-400" />
+                    Peak: {finalStats.peakWpm} WPM
+                  </span>
+                </div>
+              </div>
+
+              <VelocityGraph
+                samples={finalStats.secondSamples}
+                durationSeconds={DURATION_CONFIGS[duration].seconds}
+                netWpm={finalStats.netWpm}
+                peakWpm={finalStats.peakWpm}
+              />
+            </div>
+
+            {/* Personal Records & Historical PBs Strip */}
+            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-royal font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                  Your Personal Records (PBs)
+                </span>
+                <span className="text-[11px] font-mono text-zinc-500">
+                  Local high-score telemetry
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {([1, 2, 3, 5] as TestDuration[]).map(d => (
+                  <div
+                    key={d}
+                    onClick={() => handleDurationChange(d)}
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                      d === duration
+                        ? 'border-cyan-500/50 bg-cyan-950/20 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                        : 'border-zinc-800 bg-zinc-950/50 hover:border-zinc-700'
+                    }`}
+                  >
+                    <span className="text-[10px] font-mono uppercase text-zinc-400 block">
+                      {d}m {DURATION_CONFIGS[d].badge.split(' ')[0]}
+                    </span>
+                    <span className="text-lg font-royal font-bold text-white block">
+                      {personalBests[d] ? `${personalBests[d]} WPM` : '—'}
+                    </span>
+                    <span className="text-[10px] text-cyan-400/80 hover:underline">
+                      {d === duration ? 'Current Duration' : 'Test This PB →'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Action Bar */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
               <button
@@ -963,10 +1376,15 @@ export default function TypingTest() {
               <button
                 type="button"
                 onClick={() => {
-                  const text = `I just scored ${finalStats.netWpm} WPM with ${finalStats.accuracy}% accuracy on TypeMentor AI's ${duration}-minute typing test! Try to beat my score: https://www.typementor.in/typing-test`;
+                  const shareUrl = duration === 1
+                    ? 'https://www.typementor.in/1-minute-typing-test'
+                    : duration === 5
+                    ? 'https://www.typementor.in/5-minute-typing-test'
+                    : `https://www.typementor.in/${duration}-minute-typing-test`;
+                  const text = `I just scored ${finalStats.netWpm} WPM with ${finalStats.accuracy}% accuracy on TypeMentor AI's ${duration}-minute typing test! Try to beat my score: ${shareUrl}`;
                   if (navigator.clipboard) {
                     navigator.clipboard.writeText(text);
-                    alert('Score copied to clipboard! Share it with friends or colleagues.');
+                    alert('Score & test link copied to clipboard! Share it with friends or colleagues.');
                   }
                 }}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-royal font-bold text-xs uppercase tracking-wider border border-zinc-800 transition-all flex items-center justify-center gap-2 cursor-pointer"

@@ -6,6 +6,12 @@ Allow: /
 Allow: /practice
 Allow: /typing-test
 Allow: /test
+Allow: /typing-speed-test
+Allow: /1-minute-typing-test
+Allow: /2-minute-typing-test
+Allow: /3-minute-typing-test
+Allow: /5-minute-typing-test
+Allow: /typing-certificate
 Allow: /verify
 Allow: /academy
 Allow: /guides

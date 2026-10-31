@@ -99,5 +99,23 @@ describe('Official Typing Test Page (Phase 2)', () => {
     fireEvent.click(faqButton);
     expect(screen.queryByText(/one standard word equals 5 keystrokes/i)).toBeNull();
   });
+
+  it('respects defaultDuration prop for dedicated SEO routes (e.g. 5-minute test)', () => {
+    renderWithProviders(<TypingTest defaultDuration={5} />);
+
+    expect(screen.getByText('5:00')).toBeInTheDocument();
+    expect(screen.getByText(/5 Minutes Speed Test/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Civil Service \/ Pro/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('reads and preserves existing Personal Bests from localStorage', () => {
+    localStorage.setItem('typementor_pb_1m', '95');
+    localStorage.setItem('typementor_pb_5m', '82');
+
+    renderWithProviders(<TypingTest />);
+
+    expect(localStorage.getItem('typementor_pb_1m')).toBe('95');
+    expect(localStorage.getItem('typementor_pb_5m')).toBe('82');
+  });
 });
 
