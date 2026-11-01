@@ -6,9 +6,15 @@ import { prisma } from '../app';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { getStreakOnLogin, resolveStreakTransition, getLevelFromCumulativeXp } from '../services/gamification.service';
 import { profileCache, invalidateUserCaches } from '../utils/cache';
+import { emailService } from '../services/email.service';
+import { emailOtpService } from '../services/email-otp.service';
 
 import { JWT_SECRET } from '../config/env';
 
+/**
+ * Initiates user registration by verifying email format, ensuring uniqueness,
+ * filtering disposable emails, and sending a secure 6-digit OTP to the email address.
+ */
 export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, name } = req.body;
@@ -25,6 +31,13 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Please provide a valid email address.' });
     }
 
+    // Block disposable / temporary emails to prevent database pollution & bot registrations
+    if (emailOtpService.isDisposableEmail(normalizedEmail)) {
+      return res.status(400).json({
+        error: 'Temporary or disposable email services are not permitted. Please register with a permanent email address.',
+      });
+    }
+
     // Validate name length
     if (name.trim().length < 2) {
       return res.status(400).json({ error: 'Name must be at least 2 characters.' });
@@ -34,7 +47,7 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters.' });
     }
 
-    // Check if user exists
+    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail }
     });
@@ -43,36 +56,94 @@ export const register = async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'A user with this email already exists.' });
     }
 
-    // Hash password
+    // Pre-hash password before staging in memory
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create user
+    // Staging registration in secure memory with HMAC-hashed OTP
+    const { code, resendCooldownSeconds } = emailOtpService.createPendingRegistration(
+      normalizedEmail,
+      name.trim(),
+      passwordHash
+    );
+
+    // Send OTP email (or log to dev console if SMTP is not configured)
+    const emailResult = await emailService.sendOtpEmail(normalizedEmail, code, name.trim());
+
+    return res.status(200).json({
+      status: 'OTP_REQUIRED',
+      message: 'A 6-digit verification code has been sent to your email address.',
+      email: normalizedEmail,
+      resendCooldownSeconds,
+      devMode: emailResult.devMode,
+      previewCode: (process.env.NODE_ENV !== 'production' && emailResult.devMode) ? code : undefined,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Registration error:', message, error);
+    return res.status(500).json({ error: `Registration error: ${message}` });
+  }
+};
+
+/**
+ * Completes registration by verifying the submitted 6-digit OTP.
+ * On success, creates the User record, seeds active challenges, and returns a 7-day JWT.
+ */
+export const verifyOtp = async (req: Request, res: Response) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and 6-digit verification code are required.' });
+    }
+
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    const result = emailOtpService.verifyOtp(normalizedEmail, String(code));
+
+    if (!result.success || !result.registration) {
+      return res.status(400).json({ error: result.error || 'Invalid or expired verification code.' });
+    }
+
+    // Double-check if user was created concurrently
+    const existingUser = await prisma.user.findUnique({
+      where: { email: result.registration.email },
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ error: 'A user with this email already exists.' });
+    }
+
+    // Create user in database
     const newUser = await prisma.user.create({
       data: {
-        email: normalizedEmail,
-        passwordHash,
-        name: name.trim(),
+        email: result.registration.email,
+        passwordHash: result.registration.passwordHash,
+        name: result.registration.name,
         streak: 0,
         lastActiveAt: new Date(0),
-      }
+        arenaPoints: 100,
+      },
     });
 
-    // Create initial challenge progress entries
-    const activeChallenges = await prisma.challenge.findMany({
-      where: { expiresAt: { gt: new Date() } }
-    });
-
-    if (activeChallenges.length > 0) {
-      await prisma.userChallengeProgress.createMany({
-        data: activeChallenges.map((ch: Challenge) => ({
-          userId: newUser.id,
-          challengeId: ch.id,
-          currentValue: 0,
-          isCompleted: false
-        })),
-        skipDuplicates: true
+    // Create initial challenge progress entries (non-blocking)
+    try {
+      const activeChallenges = await prisma.challenge.findMany({
+        where: { expiresAt: { gt: new Date() } },
       });
+
+      if (activeChallenges.length > 0) {
+        await prisma.userChallengeProgress.createMany({
+          data: activeChallenges.map((ch: Challenge) => ({
+            userId: newUser.id,
+            challengeId: ch.id,
+            currentValue: 0,
+            isCompleted: false,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    } catch (chErr) {
+      console.warn('[Verify OTP] Challenge seed error:', chErr);
     }
 
     // Sign token
@@ -97,13 +168,57 @@ export const register = async (req: Request, res: Response) => {
         lifetimeWpm: newUser.lifetimeWpm,
         lifetimeAccuracy: newUser.lifetimeAccuracy,
         practiceHours: newUser.practiceHours,
-        academyProgress: newUser.academyProgress
-      }
+        academyProgress: newUser.academyProgress,
+        arenaPoints: newUser.arenaPoints,
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('Registration error:', message, error);
-    return res.status(500).json({ error: `Registration error: ${message}` });
+    console.error('Verify OTP error:', message, error);
+    return res.status(500).json({ error: `Verification error: ${message}` });
+  }
+};
+
+/**
+ * Resends a fresh 6-digit OTP code to the staged user if cooldown has elapsed.
+ */
+export const resendOtp = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required.' });
+    }
+
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    const result = emailOtpService.resendOtp(normalizedEmail);
+
+    if (!result.success || !result.code) {
+      const statusCode = result.resendCooldownSeconds ? 429 : 400;
+      return res.status(statusCode).json({
+        error: result.error || 'Could not resend verification code.',
+        resendCooldownSeconds: result.resendCooldownSeconds,
+      });
+    }
+
+    const pending = emailOtpService.getPending(normalizedEmail);
+    const emailResult = await emailService.sendOtpEmail(
+      normalizedEmail,
+      result.code,
+      pending?.name || 'Typist'
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'A new 6-digit verification code has been sent to your email.',
+      resendCooldownSeconds: result.resendCooldownSeconds,
+      devMode: emailResult.devMode,
+      previewCode: (process.env.NODE_ENV !== 'production' && emailResult.devMode) ? result.code : undefined,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Resend OTP error:', message, error);
+    return res.status(500).json({ error: `Resend error: ${message}` });
   }
 };
 

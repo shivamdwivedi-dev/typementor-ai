@@ -273,6 +273,14 @@ export async function syncOfflineSessions(token: string, userId: string) {
 
 
 
+export interface RegisterResult {
+  success: boolean;
+  otpRequired?: boolean;
+  email?: string;
+  previewCode?: string;
+  error?: string;
+}
+
 interface AuthState {
   user: UserProfile | null;
   token: string | null;
@@ -282,9 +290,15 @@ interface AuthState {
   isBootstrapping: boolean;
   isLoading: boolean;
   error: string | null;
+  pendingOtpEmail: string | null;
+  otpCooldown: number;
+  previewOtpCode: string | null;
 
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<RegisterResult>;
+  verifyOtp: (email: string, code: string) => Promise<boolean>;
+  resendOtp: (email: string) => Promise<{ success: boolean; previewCode?: string; error?: string }>;
+  cancelOtp: () => void;
   loginWithGoogle: (idToken: string) => Promise<boolean>;
   logout: () => void;
   // Called once on app mount to validate any stored token
@@ -345,8 +359,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isBootstrapping: !!initialCachedToken && !initialCachedUser,
   isLoading: false,
   error: null,
+  pendingOtpEmail: null,
+  otpCooldown: 0,
+  previewOtpCode: null,
 
   clearError: () => set({ error: null }),
+  cancelOtp: () => set({ pendingOtpEmail: null, previewOtpCode: null, error: null }),
   setOffline: (offline: boolean) => set({ isOffline: offline }),
   updateUserStats: (partialUser: Partial<UserProfile>) => {
     set((state) => {
@@ -480,6 +498,75 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         throw new Error(data.error || 'Registration failed.');
       }
 
+      // Check if backend requires OTP verification
+      if (data.status === 'OTP_REQUIRED') {
+        set({
+          pendingOtpEmail: data.email,
+          otpCooldown: data.resendCooldownSeconds || 60,
+          previewOtpCode: data.previewCode || null,
+          isLoading: false,
+          error: null,
+        });
+        return {
+          success: true,
+          otpRequired: true,
+          email: data.email,
+          previewCode: data.previewCode,
+        };
+      }
+
+      // Direct registration (fallback or immediate)
+      if (data.token && data.user) {
+        safeStorage.setItem(TOKEN_KEY, data.token);
+        safeStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
+        set({
+          token: data.token,
+          user: data.user,
+          isAuthenticated: true,
+          isLoading: false,
+          isOffline: false,
+          error: null,
+          pendingOtpEmail: null,
+          previewOtpCode: null,
+        });
+
+        get().fetchProfile();
+        syncOfflineSessions(data.token, data.user.id);
+        return { success: true, otpRequired: false };
+      }
+
+      return { success: true, otpRequired: false };
+    } catch (err: unknown) {
+      const isNetwork = err instanceof TypeError || (err instanceof Error && err.message.toLowerCase().includes('failed to fetch'));
+      if (isNetwork) {
+        set({ isOffline: true });
+      }
+      const message = err instanceof Error ? err.message : 'Registration failed.';
+      set({ error: message, isLoading: false });
+      return { success: false, error: message };
+    }
+  },
+
+  // ── Verify OTP ────────────────────────────────────────────────────────────
+  verifyOtp: async (email: string, code: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await safeFetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Verification failed. Please check your 6-digit code.');
+      }
+
       safeStorage.setItem(TOKEN_KEY, data.token);
       safeStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
       set({
@@ -489,6 +576,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         isOffline: false,
         error: null,
+        pendingOtpEmail: null,
+        previewOtpCode: null,
       });
 
       get().fetchProfile();
@@ -499,9 +588,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (isNetwork) {
         set({ isOffline: true });
       }
-      const message = err instanceof Error ? err.message : 'Registration failed.';
+      const message = err instanceof Error ? err.message : 'Verification failed.';
       set({ error: message, isLoading: false });
       return false;
+    }
+  },
+
+  // ── Resend OTP ────────────────────────────────────────────────────────────
+  resendOtp: async (email: string) => {
+    try {
+      const response = await safeFetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
+
+      if (!response.ok) {
+        set({ error: data.error || 'Failed to resend verification code.' });
+        return { success: false, error: data.error };
+      }
+
+      set({
+        otpCooldown: data.resendCooldownSeconds || 60,
+        previewOtpCode: data.previewCode || null,
+        error: null,
+      });
+
+      return {
+        success: true,
+        previewCode: data.previewCode,
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to resend verification code.';
+      set({ error: message });
+      return { success: false, error: message };
     }
   },
 

@@ -24,6 +24,13 @@ export const AI_MODEL = process.env.AI_MODEL || '';
 export const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '10000', 10) || 10000;
 export const AI_MAX_RETRIES = parseInt(process.env.AI_MAX_RETRIES || '2', 10) || 2;
 
+export const SMTP_HOST = process.env.SMTP_HOST || '';
+export const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
+export const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
+export const SMTP_USER = process.env.SMTP_USER || '';
+export const SMTP_PASS = process.env.SMTP_PASS || '';
+export const SMTP_FROM = process.env.SMTP_FROM || 'TypeMentor AI <noreply@typementor.ai>';
+
 if (process.env.NODE_ENV === 'production') {
   if (!process.env.JWT_SECRET) {
     console.warn('⚠️  SECURITY WARNING: JWT_SECRET environment variable is missing in production!');

@@ -1,5 +1,15 @@
 import { Router, RequestHandler, Request, Response, NextFunction } from 'express';
-import { register, login, getProfile, googleLogin, updateLastActivity, updateAcademyProgress, spendXp } from '../controllers/auth.controller';
+import {
+  register,
+  verifyOtp,
+  resendOtp,
+  login,
+  getProfile,
+  googleLogin,
+  updateLastActivity,
+  updateAcademyProgress,
+  spendXp,
+} from '../controllers/auth.controller';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { authLimiter } from '../app';
 
@@ -16,9 +26,15 @@ function authHandler(
 
 const applyAuthLimiter: RequestHandler = (req, res, next) => authLimiter(req, res, next);
 
-// Apply strict rate limiter to login and register (brute-force protection)
+// Apply strict rate limiter to login, register, OTP verification, and resend (brute-force protection)
 router.post('/register', applyAuthLimiter, (req, res, next) => {
   Promise.resolve(register(req, res)).catch(next);
+});
+router.post('/verify-otp', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(verifyOtp(req, res)).catch(next);
+});
+router.post('/resend-otp', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(resendOtp(req, res)).catch(next);
 });
 router.post('/login', applyAuthLimiter, (req, res, next) => {
   Promise.resolve(login(req, res)).catch(next);

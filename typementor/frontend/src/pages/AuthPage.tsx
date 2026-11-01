@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/AuthStore';
-import { Mail, Lock, User, Key, Brain, Code, Cpu, Keyboard, Zap, Sparkles } from 'lucide-react';
+import {
+  Mail,
+  Lock,
+  User,
+  Key,
+  Brain,
+  Code,
+  Cpu,
+  Keyboard,
+  Zap,
+  Sparkles,
+  ShieldCheck,
+  ArrowLeft,
+  RefreshCw,
+  CheckCircle2,
+} from 'lucide-react';
 import { BoxReveal, Input, Label, BottomGradient, Ripple, OrbitingCircles } from '../components/ui/animated-form';
 
 interface AuthPageProps {
@@ -26,34 +41,103 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [countdown, setCountdown] = useState(60);
+  const [isResending, setIsResending] = useState(false);
+  const [resendNotice, setResendNotice] = useState<string | null>(null);
   const [googleClientError, setGoogleClientError] = useState<string | null>(null);
   const [isGoogleConfigured, setIsGoogleConfigured] = useState(true);
 
-  const { login, register, loginWithGoogle, error, isLoading, clearError } = useAuthStore();
+  const {
+    login,
+    register,
+    verifyOtp,
+    resendOtp,
+    cancelOtp,
+    pendingOtpEmail,
+    otpCooldown,
+    previewOtpCode,
+    loginWithGoogle,
+    error,
+    isLoading,
+    clearError,
+  } = useAuthStore();
 
   const handleToggle = () => {
     setIsLogin(!isLogin);
     setEmail('');
     setPassword('');
     setName('');
+    setOtpCode('');
+    setResendNotice(null);
     clearError();
+    cancelOtp();
     setGoogleClientError(null);
   };
+
+  // Cooldown countdown timer for OTP resend
+  useEffect(() => {
+    if (!pendingOtpEmail) return;
+    setCountdown(otpCooldown || 60);
+    const interval = setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [pendingOtpEmail, otpCooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password || (!isLogin && !name)) return;
 
-    let success = false;
     if (isLogin) {
-      success = await login(email, password);
+      const success = await login(email, password);
+      if (success) {
+        onSuccess();
+      }
     } else {
-      success = await register(email, password, name);
+      const res = await register(email, password, name);
+      if (res.otpRequired) {
+        // Transition to OTP verification state
+        setOtpCode(res.previewCode || '');
+        setResendNotice(null);
+      } else if (res.success) {
+        onSuccess();
+      }
     }
+  };
 
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingOtpEmail || otpCode.trim().length !== 6) return;
+
+    const success = await verifyOtp(pendingOtpEmail, otpCode.trim());
     if (success) {
       onSuccess();
     }
+  };
+
+  const handleResendOtp = async () => {
+    if (!pendingOtpEmail || countdown > 0 || isResending) return;
+    setIsResending(true);
+    setResendNotice(null);
+    clearError();
+
+    const res = await resendOtp(pendingOtpEmail);
+    setIsResending(false);
+    if (res.success) {
+      setCountdown(60);
+      setResendNotice('A new verification code has been dispatched.');
+      if (res.previewCode) {
+        setOtpCode(res.previewCode);
+      }
+    }
+  };
+
+  const handleBackFromOtp = () => {
+    cancelOtp();
+    setOtpCode('');
+    setResendNotice(null);
+    clearError();
   };
 
   const handleGoogleCallback = async (response: any) => {
@@ -110,7 +194,7 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
     script.defer = true;
     script.onload = loadGoogleScript;
     document.body.appendChild(script);
-  }, [isLogin]);
+  }, [isLogin, pendingOtpEmail]);
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)] flex items-center justify-center py-10 px-4 overflow-hidden bg-[#0b0f19]">
@@ -121,157 +205,291 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
         
         {/* Left Side: Animated Form */}
         <div className="flex flex-col justify-center space-y-6 w-full max-w-md mx-auto">
-          <BoxReveal boxColor="#3b82f6" duration={0.4}>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                <Brain className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-400">TypeMentor AI</span>
-            </div>
-          </BoxReveal>
-
-          <BoxReveal boxColor="#3b82f6" duration={0.4}>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">
-              {isLogin ? 'Welcome Back!' : 'Create Account'}
-            </h1>
-          </BoxReveal>
-
-          <BoxReveal boxColor="#3b82f6" duration={0.4}>
-            <p className="text-sm text-zinc-400">
-              {isLogin
-                ? 'Sign in to access your AI-powered typing telemetry and dashboard.'
-                : 'Join TypeMentor AI to boost your speed and master touch typing.'}
-            </p>
-          </BoxReveal>
-
-          {(error || googleClientError) && (
-            <BoxReveal boxColor="#ef4444" duration={0.3} width="100%">
-              <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-semibold">
-                {error || googleClientError}
-              </div>
-            </BoxReveal>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-zinc-300 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-blue-400" /> Full Name
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    required
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+          {pendingOtpEmail ? (
+            /* ── OTP Verification View ────────────────────────────────────────── */
+            <>
+              <BoxReveal boxColor="#3b82f6" duration={0.4}>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Security Verification</span>
                 </div>
               </BoxReveal>
-            )}
 
-            <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-zinc-300 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-blue-400" /> Email Address
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+              <BoxReveal boxColor="#3b82f6" duration={0.4}>
+                <h1 className="text-3xl font-extrabold text-white tracking-tight">
+                  Verify Your Email
+                </h1>
+              </BoxReveal>
+
+              <BoxReveal boxColor="#3b82f6" duration={0.4}>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  We've sent a 6-digit confirmation code to{' '}
+                  <span className="font-semibold text-blue-400 break-all">{pendingOtpEmail}</span>.
+                  Enter the code below to finish activating your account.
+                </p>
+              </BoxReveal>
+
+              {error && (
+                <BoxReveal boxColor="#ef4444" duration={0.3} width="100%">
+                  <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-semibold">
+                    {error}
+                  </div>
+                </BoxReveal>
+              )}
+
+              {resendNotice && (
+                <BoxReveal boxColor="#10b981" duration={0.3} width="100%">
+                  <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    {resendNotice}
+                  </div>
+                </BoxReveal>
+              )}
+
+              {/* Dev Mode Banner (allows 1-click test fill if in sandbox) */}
+              {previewOtpCode && (
+                <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs flex items-center justify-between">
+                  <span>
+                    ⚡ <strong>Dev Sandbox Code:</strong> <code className="bg-blue-900/40 px-1.5 py-0.5 rounded font-mono font-bold text-white">{previewOtpCode}</code>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOtpCode(previewOtpCode)}
+                    className="text-[11px] underline font-semibold text-blue-400 hover:text-blue-200 cursor-pointer"
+                  >
+                    Auto-Fill
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="otp" className="text-zinc-300 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-blue-400" /> 6-Digit Code
+                    </Label>
+                    <Input
+                      id="otp"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      autoFocus
+                      required
+                      placeholder="• • • • • •"
+                      value={otpCode}
+                      onChange={(e) => {
+                        const numeric = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setOtpCode(numeric);
+                      }}
+                      className="text-center font-mono text-2xl tracking-[0.4em] h-13"
+                    />
+                  </div>
+                </BoxReveal>
+
+                <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%" overflow="visible">
+                  <button
+                    type="submit"
+                    disabled={isLoading || otpCode.trim().length !== 6}
+                    className="relative group/btn w-full h-11 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50 hover:cursor-pointer text-sm"
+                  >
+                    {isLoading ? (
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        Verify &amp; Continue &rarr;
+                      </>
+                    )}
+                    <BottomGradient />
+                  </button>
+                </BoxReveal>
+              </form>
+
+              {/* Resend and Change Email options */}
+              <div className="flex flex-col items-center space-y-3 pt-2 text-xs">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={countdown > 0 || isResending}
+                  className="text-zinc-400 hover:text-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors font-medium cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
+                  {countdown > 0 ? (
+                    <span>Resend code in <strong className="text-blue-400">{countdown}s</strong></span>
+                  ) : (
+                    <span className="text-blue-400 underline hover:text-blue-300">Resend verification code</span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBackFromOtp}
+                  className="text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Use a different email address
+                </button>
               </div>
-            </BoxReveal>
+            </>
+          ) : (
+            /* ── Normal Login / Register View ─────────────────────────────────── */
+            <>
+              <BoxReveal boxColor="#3b82f6" duration={0.4}>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <Brain className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400">TypeMentor AI</span>
+                </div>
+              </BoxReveal>
 
-            <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-zinc-300 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-blue-400" /> Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </BoxReveal>
+              <BoxReveal boxColor="#3b82f6" duration={0.4}>
+                <h1 className="text-3xl font-extrabold text-white tracking-tight">
+                  {isLogin ? 'Welcome Back!' : 'Create Account'}
+                </h1>
+              </BoxReveal>
 
-            <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%" overflow="visible">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="relative group/btn w-full h-11 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50 hover:cursor-pointer text-sm"
-              >
-                {isLoading ? (
-                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                ) : (
-                  <>
-                    <Key className="w-4 h-4" />
-                    {isLogin ? 'Sign In' : 'Create Account'} &rarr;
-                  </>
+              <BoxReveal boxColor="#3b82f6" duration={0.4}>
+                <p className="text-sm text-zinc-400">
+                  {isLogin
+                    ? 'Sign in to access your AI-powered typing telemetry and dashboard.'
+                    : 'Join TypeMentor AI to boost your speed and master touch typing.'}
+                </p>
+              </BoxReveal>
+
+              {(error || googleClientError) && (
+                <BoxReveal boxColor="#ef4444" duration={0.3} width="100%">
+                  <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-xs font-semibold">
+                    {error || googleClientError}
+                  </div>
+                </BoxReveal>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name" className="text-zinc-300 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-blue-400" /> Full Name
+                      </Label>
+                      <Input
+                        id="name"
+                        type="text"
+                        required
+                        placeholder="John Doe"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </div>
+                  </BoxReveal>
                 )}
-                <BottomGradient />
-              </button>
-            </BoxReveal>
-          </form>
 
-          {/* Divider */}
-          <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
-            <div className="relative flex items-center justify-center my-2">
-              <div className="w-full border-t border-zinc-800"></div>
-              <span className="absolute bg-zinc-900 px-3 text-[10px] uppercase font-bold text-zinc-500 tracking-widest">
-                or
-              </span>
-            </div>
-          </BoxReveal>
+                <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-zinc-300 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-blue-400" /> Email Address
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                </BoxReveal>
 
-          {/* Google Sign-in */}
-          <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%" overflow="visible">
-            {isGoogleConfigured ? (
-              <div
-                id="google-signin-btn"
-                className="w-full flex justify-center focus:ring-2 focus:ring-blue-500 rounded-xl overflow-hidden"
-                role="button"
-                aria-label="Continue with Google"
-                tabIndex={0}
-              ></div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setGoogleClientError('Google Client ID is not configured. Please add VITE_GOOGLE_CLIENT_ID to your frontend .env file.')}
-                className="w-full flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 font-medium py-2.5 px-4 rounded-xl transition-colors text-sm"
-              >
-                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-                </svg>
-                Google Sign-In not configured
-              </button>
-            )}
-          </BoxReveal>
+                <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-zinc-300 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-blue-400" /> Password
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </BoxReveal>
 
-          {/* Toggle Login/Register */}
-          <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
-            <div className="pt-2 text-center text-xs text-zinc-400">
-              {isLogin ? "Don't have an account?" : 'Already registered?'}
-              <button
-                type="button"
-                onClick={handleToggle}
-                className="ml-2 font-semibold text-blue-400 hover:text-blue-300 hover:underline transition-colors"
-              >
-                {isLogin ? 'Create one now' : 'Sign In instead'}
-              </button>
-            </div>
-          </BoxReveal>
+                <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%" overflow="visible">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="relative group/btn w-full h-11 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 disabled:opacity-50 hover:cursor-pointer text-sm"
+                  >
+                    {isLoading ? (
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      <>
+                        <Key className="w-4 h-4" />
+                        {isLogin ? 'Sign In' : 'Create Account'} &rarr;
+                      </>
+                    )}
+                    <BottomGradient />
+                  </button>
+                </BoxReveal>
+              </form>
+
+              {/* Divider */}
+              <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
+                <div className="relative flex items-center justify-center my-2">
+                  <div className="w-full border-t border-zinc-800"></div>
+                  <span className="absolute bg-zinc-900 px-3 text-[10px] uppercase font-bold text-zinc-500 tracking-widest">
+                    or
+                  </span>
+                </div>
+              </BoxReveal>
+
+              {/* Google Sign-in */}
+              <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%" overflow="visible">
+                {isGoogleConfigured ? (
+                  <div
+                    id="google-signin-btn"
+                    className="w-full flex justify-center focus:ring-2 focus:ring-blue-500 rounded-xl overflow-hidden"
+                    role="button"
+                    aria-label="Continue with Google"
+                    tabIndex={0}
+                  ></div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setGoogleClientError('Google Client ID is not configured. Please add VITE_GOOGLE_CLIENT_ID to your frontend .env file.')}
+                    className="w-full flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 font-medium py-2.5 px-4 rounded-xl transition-colors text-sm"
+                  >
+                    <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                    </svg>
+                    Google Sign-In not configured
+                  </button>
+                )}
+              </BoxReveal>
+
+              {/* Toggle Login/Register */}
+              <BoxReveal boxColor="#3b82f6" duration={0.4} width="100%">
+                <div className="pt-2 text-center text-xs text-zinc-400">
+                  {isLogin ? "Don't have an account?" : 'Already registered?'}
+                  <button
+                    type="button"
+                    onClick={handleToggle}
+                    className="ml-2 font-semibold text-blue-400 hover:text-blue-300 hover:underline transition-colors cursor-pointer"
+                  >
+                    {isLogin ? 'Create one now' : 'Sign In instead'}
+                  </button>
+                </div>
+              </BoxReveal>
+            </>
+          )}
         </div>
 
         {/* Right Side: Orbiting Tech Graphic (Visible on Desktop) */}
