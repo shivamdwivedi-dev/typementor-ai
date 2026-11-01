@@ -7,6 +7,7 @@ import {
   getLevelFromCumulativeXp,
   resolveStreakTransition,
 } from '../services/gamification.service';
+import { validateTypingTelemetry } from '../services/anti-cheat.service';
 import { invalidateUserCaches } from '../utils/cache';
 
 // Local types matching Prisma select shapes
@@ -183,6 +184,25 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Invalid session data.' });
     }
 
+    // Anti-Cheat & Ground-Truth Cadence Verification
+    const antiCheat = validateTypingTelemetry({
+      mode,
+      duration: durationVal,
+      wpm: wpmVal,
+      accuracy: accuracyVal,
+      keystrokes,
+    });
+
+    if (!antiCheat.isValid) {
+      return res.status(400).json({
+        error: antiCheat.reason || 'Session telemetry failed anti-cheat verification.',
+        flags: antiCheat.flags,
+      });
+    }
+
+    const finalWpm = antiCheat.verifiedWpm;
+    const finalAccuracy = antiCheat.verifiedAccuracy;
+
     const nowMs = Date.now();
     pruneExpiredIdempotencyEntries(nowMs);
 
@@ -221,9 +241,9 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
             userId,
             mode,
             difficulty: difficulty || 1,
-            wpm: wpmVal,
-            rawWpm: parseFloat(rawWpm ?? wpm),
-            accuracy: accuracyVal,
+            wpm: finalWpm,
+            rawWpm: parseFloat(rawWpm ?? finalWpm),
+            accuracy: finalAccuracy,
             consistency: parseFloat(consistency ?? 100),
             focusScore: parseFloat(focusScore ?? 100),
             duration: durationVal,
@@ -312,9 +332,9 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
           } else if (ch.criteriaType === 'CHARS') {
             addedVal = keystrokes.length;
           } else if (ch.criteriaType === 'WPM') {
-            addedVal = wpmVal >= ch.targetValue ? ch.targetValue : 0;
+            addedVal = finalWpm >= ch.targetValue ? ch.targetValue : 0;
           } else if (ch.criteriaType === 'ACCURACY') {
-            addedVal = accuracyVal >= ch.targetValue ? ch.targetValue : 0;
+            addedVal = finalAccuracy >= ch.targetValue ? ch.targetValue : 0;
           }
 
           const currentVal = Math.min(ch.targetValue, prog.currentValue + addedVal);
@@ -334,7 +354,7 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
         }
 
         // 4. Calculate XP, Streak, and Lifetime Stats
-        const gainedXp = calculateSessionXp(accuracyVal, wpmVal, difficulty || 1);
+        const gainedXp = calculateSessionXp(finalAccuracy, finalWpm, difficulty || 1);
         const sessionCompletedAt = new Date();
         const clientTzOffset = typeof req.body?.timezoneOffset === 'number'
           ? req.body.timezoneOffset
@@ -346,8 +366,8 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
 
         // 4. Calculate XP, Streak, and Lifetime Stats (Optimized O(1) DB aggregation)
         let totalSessionsCount = 1;
-        let avgWpm = wpmVal;
-        let avgAccuracy = accuracyVal;
+        let avgWpm = finalWpm;
+        let avgAccuracy = finalAccuracy;
 
         if (typeof (tx.typingSession as any).aggregate === 'function') {
           const stats = await (tx.typingSession as any).aggregate({
@@ -398,17 +418,17 @@ export const submitSession = async (req: AuthRequest, res: Response) => {
             meetsCriteria = true;
           } else if (ach.code === 'STREAK_7' && newStreak >= 7) {
             meetsCriteria = true;
-          } else if (ach.code === 'WPM_60' && wpmVal >= 60) {
+          } else if (ach.code === 'WPM_60' && finalWpm >= 60) {
             meetsCriteria = true;
-          } else if (ach.code === 'WPM_80' && wpmVal >= 80) {
+          } else if (ach.code === 'WPM_80' && finalWpm >= 80) {
             meetsCriteria = true;
-          } else if (ach.code === 'WPM_100' && wpmVal >= 100) {
+          } else if (ach.code === 'WPM_100' && finalWpm >= 100) {
             meetsCriteria = true;
-          } else if (ach.code === 'ACC_95' && accuracyVal >= 95) {
+          } else if (ach.code === 'ACC_95' && finalAccuracy >= 95) {
             meetsCriteria = true;
-          } else if (ach.code === 'ACC_98' && accuracyVal >= 98) {
+          } else if (ach.code === 'ACC_98' && finalAccuracy >= 98) {
             meetsCriteria = true;
-          } else if (ach.code === 'ACC_99' && accuracyVal >= 99) {
+          } else if (ach.code === 'ACC_99' && finalAccuracy >= 99) {
             meetsCriteria = true;
           } else if (ach.code === 'CHARS_10000' && projectedTotalCharacters >= 10000) {
             meetsCriteria = true;

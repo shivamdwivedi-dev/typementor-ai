@@ -56,15 +56,18 @@ export default function AdminDashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await safeFetch('/api/admin/stats?adminSecret=typementor_feedback_secret_key_2026', {
+      if (!token) {
+        throw new Error('Access denied. Administrator credentials required. Please sign in with an administrator account.');
+      }
+
+      const response = await safeFetch('/api/admin/stats', {
         headers: {
-          Authorization: `Bearer ${token || ''}`,
-          'x-admin-secret': 'typementor_feedback_secret_key_2026',
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        if (response.status === 403) {
+        if (response.status === 401 || response.status === 403) {
           throw new Error('Access denied. Administrator credentials required.');
         }
         throw new Error('Failed to retrieve administrator metrics.');
@@ -75,10 +78,9 @@ export default function AdminDashboard() {
 
       // Fetch feedback / contact inquiries
       try {
-        const feedbackRes = await safeFetch('/api/feedback?adminSecret=typementor_feedback_secret_key_2026', {
+        const feedbackRes = await safeFetch('/api/feedback', {
           headers: {
-            Authorization: `Bearer ${token || ''}`,
-            'x-admin-secret': 'typementor_feedback_secret_key_2026',
+            Authorization: `Bearer ${token}`,
           },
         });
         if (feedbackRes.ok) {

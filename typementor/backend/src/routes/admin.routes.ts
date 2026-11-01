@@ -16,12 +16,14 @@ const PERMANENT_ADMIN_EMAILS = [
  * Middleware to restrict route to designated admin email addresses or X-Admin-Secret header.
  */
 function requireAdmin(req: Request & { user?: any }, res: Response, next: NextFunction) {
-  // 1. Secret header or query parameter check (strictly matching non-empty configured ADMIN_SECRET)
-  const secretHeader = req.headers['x-admin-secret'] || req.query.adminSecret;
+  // 1. Strict X-Admin-Secret header check (matching non-empty configured ADMIN_SECRET)
+  // Query parameters are strictly disallowed to prevent logging secrets in CDN/proxy access logs
+  const secretHeader = req.headers['x-admin-secret'];
   if (
-    secretHeader &&
     typeof secretHeader === 'string' &&
+    secretHeader.trim().length > 0 &&
     ADMIN_SECRET &&
+    ADMIN_SECRET.trim().length > 0 &&
     secretHeader === ADMIN_SECRET
   ) {
     return next();

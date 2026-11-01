@@ -71,11 +71,15 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     let isAuthorized = false;
 
-    // Check 1: Fallback Secret Key Header (very useful for CLI scripts or owner override)
-    const secretHeader = req.headers['x-admin-secret'] || req.query.adminSecret;
+    // Check 1: Strict X-Admin-Secret header check (matching non-empty configured ADMIN_SECRET)
+    // Query parameters are strictly disallowed to prevent credential exposure in access logs
+    const secretHeader = req.headers['x-admin-secret'];
     if (
-      secretHeader &&
-      (secretHeader === ADMIN_SECRET || secretHeader === 'typementor_feedback_secret_key_2026')
+      typeof secretHeader === 'string' &&
+      secretHeader.trim().length > 0 &&
+      ADMIN_SECRET &&
+      ADMIN_SECRET.trim().length > 0 &&
+      secretHeader === ADMIN_SECRET
     ) {
       isAuthorized = true;
     }
