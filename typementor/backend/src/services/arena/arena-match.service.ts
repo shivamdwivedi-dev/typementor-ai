@@ -192,6 +192,12 @@ export class ArenaMatchService {
       throw new Error('You cannot join your own match as an opponent.');
     }
 
+    // If user is already seated in this match, return it idempotently (avoids reload failure)
+    const alreadySeated = match.participants.some((p) => p.userId === userId);
+    if (alreadySeated) {
+      return this.formatPublicMatch(match, userId);
+    }
+
     if (match.participants.length >= 2) {
       throw new Error('This match already has two participants.');
     }
@@ -208,8 +214,8 @@ export class ArenaMatchService {
       }
     }
 
-    // 4. Verify user is not in another active match
-    const activeMatch = await this.prisma.arenaParticipant.findFirst({
+    // 4. Verify user is not in another active match, auto-cleaning stale/solitary waiting matches
+    const activeParticipation = await this.prisma.arenaParticipant.findFirst({
       where: {
         userId,
         matchId: { not: match.id },
@@ -217,10 +223,35 @@ export class ArenaMatchService {
           status: { in: ['WAITING', 'READY', 'COUNTDOWN', 'ACTIVE'] },
         },
       },
+      include: {
+        match: {
+          include: { participants: true },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
 
-    if (activeMatch) {
-      throw new Error('You are already participating in another active Arena match.');
+    if (activeParticipation) {
+      const prevMatch = activeParticipation.match;
+      const isExpired = prevMatch.expiresAt && prevMatch.expiresAt.getTime() < Date.now();
+      const isLoneWaiting = prevMatch.status === 'WAITING' && prevMatch.participants.length <= 1;
+      const isStaleWaiting = prevMatch.status === 'WAITING' && (Date.now() - prevMatch.createdAt.getTime() > 60 * 1000);
+      const isAbandonedActive = prevMatch.status === 'ACTIVE' && (Date.now() - (prevMatch.startedAt?.getTime() || prevMatch.createdAt.getTime()) > (prevMatch.maxDuration + 30) * 1000);
+
+      if (isExpired || isLoneWaiting || isStaleWaiting || isAbandonedActive) {
+        await this.prisma.arenaMatch.update({
+          where: { id: prevMatch.id },
+          data: {
+            status: 'CANCELLED',
+            cancellationReason: isExpired ? 'Expired before joining new match' : 'Abandoned when joining new match',
+          },
+        });
+        await this.pointsService.refundMatchStakes(prevMatch.id, 'CANCELLED');
+      } else {
+        throw new Error('You are already participating in another active Arena match. Complete or cancel it first.');
+      }
     }
 
     // 5. Atomically seat participant and lock status
@@ -306,6 +337,9 @@ export class ArenaMatchService {
         match: {
           status: { in: ['WAITING', 'READY', 'COUNTDOWN', 'ACTIVE'] },
         },
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
       include: {
         match: {

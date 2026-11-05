@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, Swords, User, Clock, AlertTriangle, ShieldCheck, Loader2, Sparkles } from 'lucide-react';
+import { Copy, Check, Swords, User, Clock, AlertTriangle, ShieldCheck, Link2, Sparkles, Loader2 } from 'lucide-react';
 import { PublicArenaMatch } from '../../types/arena';
 import { playOpponentJoinedSound, playReadySound } from '../../utils/soundEffects';
 
@@ -16,7 +16,8 @@ export const ArenaWaitingRoom: React.FC<ArenaWaitingRoomProps> = ({
   onCancel,
   onReady,
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [isReadyPending, setIsReadyPending] = useState(false);
   const prevOpponentRef = useRef<boolean>(false);
 
@@ -42,8 +43,16 @@ export const ArenaWaitingRoom: React.FC<ArenaWaitingRoomProps> = ({
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(match.matchCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleCopyInviteLink = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const inviteUrl = `${origin}/arena/duel?join=${match.matchCode}`;
+    navigator.clipboard.writeText(inviteUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const handleReadyClick = () => {
@@ -62,22 +71,34 @@ export const ArenaWaitingRoom: React.FC<ArenaWaitingRoomProps> = ({
         </div>
 
         <div>
-          <p className="text-xs text-zinc-400 font-semibold mb-1">Share this match code with your friend:</p>
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-zinc-950/80 border border-zinc-700/80 shadow-inner group">
-            <span className="font-mono text-3xl sm:text-4xl font-black text-amber-400 tracking-[0.25em]">
-              {match.matchCode}
-            </span>
+          <p className="text-xs text-zinc-400 font-semibold mb-2">Share match code or 1-click invite link with your friend:</p>
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-700/80 shadow-inner group">
+              <span className="font-mono text-2xl sm:text-3xl font-black text-amber-400 tracking-[0.25em]">
+                {match.matchCode}
+              </span>
+              <button
+                onClick={handleCopyCode}
+                title="Copy Match Code"
+                className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold px-2.5"
+              >
+                {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedCode ? 'Copied' : 'Code'}</span>
+              </button>
+            </div>
+
             <button
-              onClick={handleCopyCode}
-              title="Copy Match Code"
-              className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all"
+              onClick={handleCopyInviteLink}
+              title="Copy Direct Invite Link"
+              className="px-4 py-2.5 rounded-2xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-blue-500/10"
             >
-              {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+              {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Link2 className="w-4 h-4" />}
+              <span>{copiedLink ? 'Link Copied!' : 'Copy Invite Link'}</span>
             </button>
           </div>
-          {copied && (
-            <p className="text-xs text-emerald-400 font-bold mt-1.5 animate-in fade-in">
-              Code copied to clipboard!
+          {(copiedCode || copiedLink) && (
+            <p className="text-xs text-emerald-400 font-bold mt-2 animate-in fade-in">
+              {copiedLink ? '1-Click Invite link copied to clipboard!' : 'Match code copied to clipboard!'}
             </p>
           )}
         </div>

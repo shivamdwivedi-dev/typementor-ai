@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTypingStore } from '../store/TypingStore';
 import { useAuthStore } from '../store/AuthStore';
 import { getApiUrl } from '../utils/api';
 import { MessageSquare, X, Download, Sparkles, CheckCircle2 } from 'lucide-react';
+import { useBodyScrollLock } from '../utils/scrollLock';
 
 export default function BetaFeedback() {
   const isTypingActive = useTypingStore((state) => state.isActive);
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  useBodyScrollLock(isOpen);
   const { user, token } = useAuthStore();
 
   const isDevAdmin = user && (
@@ -184,9 +187,9 @@ export default function BetaFeedback() {
       </button>
 
       {/* Feedback Modal Overlay */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg bg-brand-bg/95 border border-brand-border/80 glass-panel rounded-2xl p-6 md:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-xl overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-brand-bg/95 border border-brand-border/80 glass-panel rounded-2xl p-6 md:p-8 max-h-[90vh] overflow-y-auto shadow-2xl my-auto">
             <button
               onClick={() => setIsOpen(false)}
               className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-brand-card/80 text-brand-muted hover:text-white transition-colors"
@@ -350,7 +353,8 @@ export default function BetaFeedback() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

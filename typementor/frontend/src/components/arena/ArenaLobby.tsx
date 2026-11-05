@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Swords,
   Coins,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PublicArenaMatch, MatchHistoryItem } from '../../types/arena';
 import { SocketStatus } from '../../utils/arenaSocket';
+import { useBodyScrollLock } from '../../utils/scrollLock';
 
 interface ArenaLobbyProps {
   userBalance: number;
@@ -37,6 +39,7 @@ export const ArenaLobby: React.FC<ArenaLobbyProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'open' | 'history'>('open');
   const [showInfoModal, setShowInfoModal] = useState(false);
+  useBodyScrollLock(showInfoModal);
   const connectionState = socketStatus === 'connected'
     ? { label: 'Connected', dotClass: 'bg-emerald-400', textClass: 'text-emerald-300', pulse: false }
     : socketStatus === 'disconnected'
@@ -283,9 +286,9 @@ export const ArenaLobby: React.FC<ArenaLobbyProps> = ({
       </div>
 
       {/* Info Modal */}
-      {showInfoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl text-white">
+      {showInfoModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-xl animate-in fade-in overflow-y-auto">
+          <div className="relative w-full max-w-md bg-zinc-950/95 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl text-white my-auto ring-1 ring-white/10">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
                 <Coins className="w-5 h-5" />
@@ -310,12 +313,13 @@ export const ArenaLobby: React.FC<ArenaLobbyProps> = ({
 
             <button
               onClick={() => setShowInfoModal(false)}
-              className="w-full py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors"
+              className="w-full py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer"
             >
               Got it!
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

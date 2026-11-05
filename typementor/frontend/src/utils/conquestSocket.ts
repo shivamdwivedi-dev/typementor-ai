@@ -1,3 +1,4 @@
+import { io, Socket } from 'socket.io-client';
 import { getApiUrl, safeFetch } from './api';
 import { ConquestClientEvent, ConquestServerEvent } from '../types/conquest';
 
@@ -6,16 +7,12 @@ export type SocketStatus = 'connecting' | 'connected' | 'reconnecting' | 'discon
 type SocketEventHandler = (payload: any) => void;
 
 class ConquestSocketClient {
-  private ws: WebSocket | null = null;
-  private token: string | null = null;
+  private socket: Socket | null = null;
   private status: SocketStatus = 'disconnected';
   private listeners = new Map<string, Set<SocketEventHandler>>();
   private statusListeners = new Set<(status: SocketStatus) => void>();
-  private reconnectAttempts = 0;
-  private reconnectTimer: any = null;
-  private heartbeatInterval: any = null;
   private intentionalClose = false;
-  private sendQueue: Array<{ type: ConquestClientEvent; payload?: any; reqId?: string }> = [];
+  private sendQueue: Array<{ type: ConquestClientEvent; payload?: any; ack?: (res: any) => void }> = [];
   private currentMatchId: string | null = null;
 
   public getStatus(): SocketStatus {
@@ -42,14 +39,13 @@ class ConquestSocketClient {
 
   public async connect(token: string): Promise<void> {
     if (!token) return;
-    this.token = token;
     this.intentionalClose = false;
 
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (this.socket && this.socket.connected) {
       return;
     }
 
-    this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
+    this.setStatus('connecting');
 
     try {
       // 1. Fetch single-use connection ticket to avoid exposing long-lived JWT in query strings
@@ -72,82 +68,68 @@ class ConquestSocketClient {
         console.warn('[Conquest Socket] Could not obtain ticket, falling back to legacy token:', ticketErr);
       }
 
-      const httpUrl = getApiUrl('/conquest-ws');
-      let wsBaseUrl = httpUrl;
-      if (httpUrl.startsWith('/')) {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        wsBaseUrl = `${protocol}//${window.location.host}${httpUrl}`;
-      } else {
-        wsBaseUrl = httpUrl.replace(/^http/, 'ws');
+      // Compute server base origin
+      let hostUrl = getApiUrl('/');
+      if (hostUrl.endsWith('/')) hostUrl = hostUrl.slice(0, -1);
+      if (!hostUrl.startsWith('http')) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000';
+        hostUrl = origin;
       }
 
-      const wsUrl = ticket
-        ? `${wsBaseUrl}?ticket=${encodeURIComponent(ticket)}`
-        : `${wsBaseUrl}?token=${encodeURIComponent(token)}`;
+      // Initialize Socket.io client with Connection State Recovery & HTTP Long-Polling fallback
+      this.socket = io(`${hostUrl}/conquest`, {
+        path: '/socket.io',
+        transports: ['websocket', 'polling'], // Fallback for mobile networks & strict firewalls
+        auth: {
+          token,
+          ticket: ticket || undefined,
+        },
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
+      });
 
-      this.ws = new WebSocket(wsUrl);
+      this.socket.on('connect', () => {
+        this.setStatus('connected');
 
-      return new Promise<void>((resolve) => {
-        this.ws!.onopen = () => {
-          this.reconnectAttempts = 0;
-          this.setStatus('connected');
-          this.startHeartbeat();
+        // Automatically re-join current match on reconnect or Wi-Fi state recovery
+        if (this.currentMatchId) {
+          this.send('CONQUEST_JOIN_ROOM', { matchId: this.currentMatchId });
+        }
 
-          // If subscribed to a match and CONQUEST_JOIN_ROOM is not queued, auto-resubscribe on reconnect
-          if (this.currentMatchId && !this.sendQueue.some(item => item.type === 'CONQUEST_JOIN_ROOM' && item.payload?.matchId === this.currentMatchId)) {
-            this.send('CONQUEST_JOIN_ROOM', { matchId: this.currentMatchId });
+        // Flush any buffered messages from offline period
+        while (this.sendQueue.length > 0) {
+          const item = this.sendQueue.shift();
+          if (item) {
+            this.send(item.type, item.payload, item.ack);
           }
+        }
+      });
 
-          // Flush queued messages once connected
-          while (this.sendQueue.length > 0) {
-            const item = this.sendQueue.shift();
-            if (item) {
-              this.send(item.type, item.payload, item.reqId);
-            }
-          }
-          resolve();
-        };
+      this.socket.on('connect_error', (err) => {
+        console.warn('[Conquest Socket] Connection error:', err.message);
+        if (!this.intentionalClose) {
+          this.setStatus('reconnecting');
+        }
+      });
 
-        this.ws!.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data && data.type) {
-              this.dispatch(data.type, data.payload);
-            }
-          } catch (err) {
-            console.warn('[Conquest Socket] Message parse error:', err);
-          }
-        };
+      this.socket.on('disconnect', (reason) => {
+        if (this.intentionalClose || reason === 'io client disconnect') {
+          this.setStatus('disconnected');
+        } else {
+          this.setStatus('reconnecting');
+        }
+      });
 
-        this.ws!.onclose = (event) => {
-          this.stopHeartbeat();
-          this.ws = null;
-
-          if (this.intentionalClose) {
-            this.setStatus('disconnected');
-            resolve();
-            return;
-          }
-
-          // Invalid or expired credentials
-          if (event.code === 4001 || event.code === 4003 || event.code === 1008) {
-            this.setStatus('disconnected');
-            resolve();
-            return;
-          }
-
-          this.scheduleReconnect();
-          resolve();
-        };
-
-        this.ws!.onerror = (err) => {
-          console.warn('[Conquest Socket] Connection error:', err);
-          resolve();
-        };
+      // Capture all incoming real-time server events via Socket.io onAny dispatcher
+      this.socket.onAny((event: string, payload: any) => {
+        this.dispatch(event as ConquestServerEvent, payload);
       });
     } catch (err) {
-      console.error('[Conquest Socket] Failed to initialize WebSocket:', err);
-      this.scheduleReconnect();
+      console.error('[Conquest Socket] Failed to initialize Socket.io client:', err);
+      this.setStatus('disconnected');
     }
   }
 
@@ -155,37 +137,59 @@ class ConquestSocketClient {
     this.intentionalClose = true;
     this.currentMatchId = null;
     this.sendQueue = [];
-    this.stopHeartbeat();
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    if (this.ws) {
-      try {
-        this.ws.close(1000, 'User left match');
-      } catch {}
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     this.setStatus('disconnected');
   }
 
-  public send(type: ConquestClientEvent, payload?: any, reqId?: string): void {
+  /**
+   * Sends an action to the server. If the socket is temporarily offline,
+   * buffers the message and automatically flushes the moment the socket recovers.
+   * Supports client acknowledgements: pass a callback function to verify server acceptance.
+   */
+  public send(type: ConquestClientEvent, payload?: any, reqIdOrAck?: any): boolean {
     if (type === 'CONQUEST_JOIN_ROOM' && payload?.matchId) {
       this.currentMatchId = payload.matchId;
     }
 
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      // Buffer outgoing messages even during ticket fetch or reconnect
-      this.sendQueue.push({ type, payload, reqId });
-      return;
+    const ackCallback = typeof reqIdOrAck === 'function' ? reqIdOrAck : undefined;
+
+    if (!this.socket || !this.socket.connected) {
+      this.sendQueue.push({ type, payload, ack: ackCallback });
+      return true;
     }
 
     try {
-      this.ws.send(JSON.stringify({ type, payload, reqId }));
+      if (ackCallback) {
+        this.socket.emit(type, payload, ackCallback);
+      } else {
+        this.socket.emit(type, payload);
+      }
+      return true;
     } catch (err) {
-      console.error(`[Conquest Socket] Error sending ${type}:`, err);
-      this.sendQueue.push({ type, payload, reqId });
+      console.warn(`[Conquest Socket] Error sending ${type}:`, err);
+      this.sendQueue.push({ type, payload, ack: ackCallback });
+      return false;
     }
+  }
+
+  /**
+   * Promise-based acknowledgement emitter. Guarantees that the server verified
+   * and processed the action before proceeding.
+   */
+  public emitWithAck<T = any>(type: ConquestClientEvent, payload?: any, timeoutMs = 8000): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Timeout waiting for server acknowledgement on ${type}`));
+      }, timeoutMs);
+
+      this.send(type, payload, (response: any) => {
+        clearTimeout(timer);
+        resolve(response as T);
+      });
+    });
   }
 
   public on(event: ConquestServerEvent, handler: SocketEventHandler): () => void {
@@ -193,56 +197,26 @@ class ConquestSocketClient {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event)!.add(handler);
+
     return () => {
       const set = this.listeners.get(event);
       if (set) {
         set.delete(handler);
-        if (set.size === 0) {
-          this.listeners.delete(event);
-        }
+        if (set.size === 0) this.listeners.delete(event);
       }
     };
   }
 
-  private dispatch(event: string, payload: any): void {
-    const handlers = this.listeners.get(event);
-    if (!handlers) return;
-    for (const handler of handlers) {
+  private dispatch(event: ConquestServerEvent, payload: any): void {
+    const set = this.listeners.get(event);
+    if (!set) return;
+
+    for (const handler of set) {
       try {
         handler(payload);
       } catch (err) {
-        console.error(`[Conquest Socket] Handler error for ${event}:`, err);
+        console.error(`[Conquest Socket] Handler error on ${event}:`, err);
       }
-    }
-  }
-
-  private scheduleReconnect(): void {
-    if (this.intentionalClose || this.reconnectTimer) return;
-    this.setStatus('reconnecting');
-    this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), 10000);
-
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      if (this.token && !this.intentionalClose) {
-        this.connect(this.token);
-      }
-    }, delay);
-  }
-
-  private startHeartbeat(): void {
-    this.stopHeartbeat();
-    this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.send('CONQUEST_PING', { timestamp: Date.now() });
-      }
-    }, 25000);
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
     }
   }
 }

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ShieldAlert } from 'lucide-react';
 import { playCountdownTickSound } from '../../utils/soundEffects';
 
@@ -11,8 +12,8 @@ export const ConquestCountdown: React.FC<ConquestCountdownProps> = ({ secondsRem
     playCountdownTickSound(secondsRemaining);
   }, [secondsRemaining]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-2xl animate-in fade-in duration-200">
+  const countdownContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-2xl animate-in fade-in duration-200">
       <div className="text-center space-y-5 max-w-md mx-auto px-6">
         <div className="inline-flex p-4 rounded-3xl bg-purple-600/20 border border-purple-500/40 text-purple-400 mb-1 shadow-lg shadow-purple-500/20">
           <ShieldAlert className="w-12 h-12 animate-pulse text-purple-400" />
@@ -39,4 +40,6 @@ export const ConquestCountdown: React.FC<ConquestCountdownProps> = ({ secondsRem
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(countdownContent, document.body) : null;
 };

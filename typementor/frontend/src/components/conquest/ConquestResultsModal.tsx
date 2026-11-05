@@ -1,6 +1,8 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Trophy, Skull, RotateCcw } from 'lucide-react';
 import { PublicConquestMatch } from '../../types/conquest';
+import { useBodyScrollLock } from '../../utils/scrollLock';
 
 interface ConquestResultsModalProps {
   match: PublicConquestMatch;
@@ -17,6 +19,8 @@ export const ConquestResultsModal: React.FC<ConquestResultsModalProps> = ({
   onReturnToHub,
   onNewMatch,
 }) => {
+  useBodyScrollLock(true);
+
   const isWinner = match.winnerId === currentUserId;
   const p1 = match.participants.find((p) => p.seat === 1);
   const p2 = match.participants.find((p) => p.seat === 2);
@@ -31,9 +35,14 @@ export const ConquestResultsModal: React.FC<ConquestResultsModalProps> = ({
     reasonDescription = 'The enemy Capital Citadel has fallen to typing supremacy!';
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="w-full max-w-lg rounded-3xl bg-zinc-950 border border-zinc-800 p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden text-center">
+  const modalContent = (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="conquest-results-title"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-xl animate-in fade-in duration-300 overflow-y-auto"
+    >
+      <div className="w-full max-w-lg rounded-3xl bg-zinc-950/95 border border-zinc-800 p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden text-center my-auto ring-1 ring-white/10">
         {/* Glow backdrop */}
         <div
           className={`absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full blur-3xl pointer-events-none ${
@@ -53,7 +62,7 @@ export const ConquestResultsModal: React.FC<ConquestResultsModalProps> = ({
             {isWinner ? <Trophy className="w-12 h-12 animate-bounce" /> : <Skull className="w-12 h-12" />}
           </div>
 
-          <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+          <h2 id="conquest-results-title" className="text-3xl sm:text-4xl font-black text-white tracking-tight">
             {isWinner ? 'VICTORY' : 'DEFEAT'}
           </h2>
 
@@ -95,14 +104,14 @@ export const ConquestResultsModal: React.FC<ConquestResultsModalProps> = ({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 relative z-10">
           <button
             onClick={onReturnToHub}
-            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Arena Hub</span>
           </button>
 
           <button
             onClick={onNewMatch}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Play Again</span>
@@ -111,4 +120,6 @@ export const ConquestResultsModal: React.FC<ConquestResultsModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 };

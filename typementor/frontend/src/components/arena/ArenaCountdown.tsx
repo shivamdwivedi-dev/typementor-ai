@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Swords } from 'lucide-react';
 import { playCountdownTickSound } from '../../utils/soundEffects';
 
@@ -10,8 +11,9 @@ export const ArenaCountdown: React.FC<ArenaCountdownProps> = ({ secondsRemaining
   useEffect(() => {
     playCountdownTickSound(secondsRemaining);
   }, [secondsRemaining]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
+
+  const countdownContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
       <div className="text-center space-y-4">
         <div className="inline-flex p-4 rounded-3xl bg-blue-600/20 border border-blue-500/40 text-blue-400 mb-2">
           <Swords className="w-10 h-10 animate-bounce" />
@@ -30,4 +32,6 @@ export const ArenaCountdown: React.FC<ArenaCountdownProps> = ({ secondsRemaining
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(countdownContent, document.body) : null;
 };

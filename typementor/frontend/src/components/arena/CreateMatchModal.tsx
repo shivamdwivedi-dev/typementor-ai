@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Swords, X, Coins, Sparkles, AlertCircle } from 'lucide-react';
 import { safeFetch } from '../../utils/api';
 import { useAuthStore } from '../../store/AuthStore';
 import { PublicArenaMatch } from '../../types/arena';
+import { useBodyScrollLock } from '../../utils/scrollLock';
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
   onCreated,
   userBalance,
 }) => {
+  useBodyScrollLock(isOpen);
   const { token } = useAuthStore();
   const [stake, setStake] = useState<number>(0);
   const [passageCategory, setPassageCategory] = useState<'Short' | 'Standard' | 'Long'>('Standard');
@@ -72,9 +75,9 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden text-white">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-zinc-950/95 border border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden text-white my-auto ring-1 ring-white/10">
         {/* Glow ambient highlight */}
         <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
@@ -234,4 +237,6 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 };

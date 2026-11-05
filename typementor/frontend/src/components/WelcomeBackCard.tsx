@@ -1,5 +1,7 @@
+import { createPortal } from 'react-dom';
 import { BookOpen, Activity, Compass, Clock, Play, X, Star } from 'lucide-react';
 import { ResumeTarget, LastActivity } from '../utils/ResumeTracker';
+import { useBodyScrollLock } from '../utils/scrollLock';
 
 interface WelcomeBackCardProps {
   userName: string;
@@ -20,6 +22,7 @@ export default function WelcomeBackCard({
   onContinue,
   onClose,
 }: WelcomeBackCardProps) {
+  useBodyScrollLock(true);
   // Format last seen timestamp
   const formatLastSeen = (ts?: number) => {
     if (!ts) return 'recently';
@@ -52,9 +55,9 @@ export default function WelcomeBackCard({
   const meta = getActivityMeta(resumeTarget.type);
   const progressPercent = Math.min(100, Math.round((completedCount / totalLessons) * 100));
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md bg-brand-bg/95 border border-brand-border/90 glass-panel rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 text-left transform scale-100 transition-transform duration-300">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-md bg-brand-bg/95 border border-brand-border/90 glass-panel rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 text-left transform scale-100 transition-transform duration-300 my-auto">
         
         {/* Close Button */}
         <button
@@ -146,4 +149,6 @@ export default function WelcomeBackCard({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 }

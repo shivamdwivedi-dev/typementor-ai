@@ -54,11 +54,18 @@ export class ConquestSocketService {
   async notifyMatchUpdated(matchId: string): Promise<void> {
     try {
       const room = this.matchRooms.get(matchId);
-      if (!room || room.size === 0) return;
+      if (room && room.size > 0) {
+        const match = await this.matchService.getMatchDetails(matchId);
+        this.broadcastToRoom(matchId, 'CONQUEST_ROOM_JOINED', { match });
+        this.broadcastToRoom(matchId, 'CONQUEST_PLAYER_JOINED', { match });
+      }
 
-      const match = await this.matchService.getMatchDetails(matchId);
-      this.broadcastToRoom(matchId, 'CONQUEST_ROOM_JOINED', { match });
-      this.broadcastToRoom(matchId, 'CONQUEST_PLAYER_JOINED', { match });
+      // Proactively notify Socket.io subscribers
+      const { getSocketIOService } = await import('../realtime/socketio.service');
+      const socketIOService = getSocketIOService();
+      if (socketIOService) {
+        await socketIOService.notifyConquestMatchUpdated(matchId);
+      }
     } catch (err: any) {
       console.warn(`[Conquest WS] notifyMatchUpdated error for ${matchId}:`, err?.message);
     }

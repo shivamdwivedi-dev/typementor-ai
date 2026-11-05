@@ -1,3 +1,4 @@
+import { io, Socket } from 'socket.io-client';
 import { getApiUrl, safeFetch } from './api';
 
 export type SocketStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
@@ -5,16 +6,12 @@ export type SocketStatus = 'connecting' | 'connected' | 'reconnecting' | 'discon
 type SocketEventHandler = (payload: any) => void;
 
 class ArenaSocketClient {
-  private ws: WebSocket | null = null;
-  private token: string | null = null;
+  private socket: Socket | null = null;
   private status: SocketStatus = 'disconnected';
   private listeners = new Map<string, Set<SocketEventHandler>>();
   private statusListeners = new Set<(status: SocketStatus) => void>();
-  private reconnectAttempts = 0;
-  private reconnectTimer: any = null;
-  private heartbeatInterval: any = null;
   private intentionalClose = false;
-  private sendQueue: Array<{ event: string; payload?: any; reqId?: string }> = [];
+  private sendQueue: Array<{ event: string; payload?: any; ack?: (res: any) => void }> = [];
   private currentMatchId: string | null = null;
 
   public getStatus(): SocketStatus {
@@ -41,17 +38,16 @@ class ArenaSocketClient {
 
   public async connect(token: string): Promise<void> {
     if (!token) return;
-    this.token = token;
     this.intentionalClose = false;
 
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (this.socket && this.socket.connected) {
       return;
     }
 
-    this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
+    this.setStatus('connecting');
 
     try {
-      // 1. Fetch single-use connection ticket to avoid exposing long-lived JWT in query strings (Audit A)
+      // 1. Fetch single-use connection ticket to avoid exposing long-lived JWT
       let ticket: string | null = null;
       try {
         const ticketRes = await safeFetch('/api/arena/ws-ticket', {
@@ -68,79 +64,71 @@ class ArenaSocketClient {
           }
         }
       } catch (ticketErr) {
-        console.warn('[Arena Socket] Could not obtain ticket, falling back to legacy connect:', ticketErr);
+        console.warn('[Arena Socket] Ticket retrieval fallback to token:', ticketErr);
       }
 
-      const httpUrl = getApiUrl('/arena-ws');
-      let wsBaseUrl = httpUrl;
-      if (httpUrl.startsWith('/')) {
-        const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = typeof window !== 'undefined' ? window.location.host : 'localhost:5000';
-        wsBaseUrl = `${protocol}//${host}${httpUrl}`;
-      } else {
-        wsBaseUrl = httpUrl.replace(/^http/, 'ws');
+      // Compute server base origin
+      let hostUrl = getApiUrl('/');
+      if (hostUrl.endsWith('/')) hostUrl = hostUrl.slice(0, -1);
+      if (!hostUrl.startsWith('http')) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000';
+        hostUrl = origin;
       }
 
-      const wsUrl = ticket
-        ? `${wsBaseUrl}?ticket=${encodeURIComponent(ticket)}`
-        : `${wsBaseUrl}?token=${encodeURIComponent(token)}`;
+      // Initialize Socket.io client with Connection State Recovery & HTTP Long-Polling fallback
+      this.socket = io(`${hostUrl}/arena`, {
+        path: '/socket.io',
+        transports: ['websocket', 'polling'], // Enterprise fallback for mobile & strict firewalls
+        auth: {
+          token,
+          ticket: ticket || undefined,
+        },
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
+      });
 
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.onopen = () => {
-        this.reconnectAttempts = 0;
+      this.socket.on('connect', () => {
         this.setStatus('connected');
-        this.startHeartbeat();
 
-        // If subscribed to a match and JOIN_MATCH is not already queued, ensure it's sent on reconnect
-        if (this.currentMatchId && !this.sendQueue.some(item => item.event === 'JOIN_MATCH' && item.payload?.matchId === this.currentMatchId)) {
+        // Automatically re-join current match on reconnect or Wi-Fi state recovery
+        if (this.currentMatchId) {
           this.send('JOIN_MATCH', { matchId: this.currentMatchId });
         }
 
-        // Flush all queued messages once socket opens
+        // Flush any buffered messages from offline period
         while (this.sendQueue.length > 0) {
           const item = this.sendQueue.shift();
           if (item) {
-            this.send(item.event, item.payload, item.reqId);
+            this.send(item.event, item.payload, item.ack);
           }
         }
-      };
+      });
 
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data && data.event) {
-            this.dispatch(data.event, data.payload);
-          }
-        } catch (err) {
-          console.warn('[Arena Socket] Message parse error:', err);
+      this.socket.on('connect_error', (err) => {
+        console.warn('[Arena Socket] Connection error:', err.message);
+        if (!this.intentionalClose) {
+          this.setStatus('reconnecting');
         }
-      };
+      });
 
-      this.ws.onclose = (event) => {
-        this.stopHeartbeat();
-        this.ws = null;
-
-        if (this.intentionalClose) {
+      this.socket.on('disconnect', (reason) => {
+        if (this.intentionalClose || reason === 'io client disconnect') {
           this.setStatus('disconnected');
-          return;
+        } else {
+          this.setStatus('reconnecting');
         }
+      });
 
-        // Ticket or token expired/invalid
-        if (event.code === 4001 || event.code === 4003 || event.code === 1008) {
-          this.setStatus('disconnected');
-          return;
-        }
-
-        this.scheduleReconnect();
-      };
-
-      this.ws.onerror = (err) => {
-        console.warn('[Arena Socket] Connection error:', err);
-      };
+      // Capture all incoming real-time server events via Socket.io onAny dispatcher
+      this.socket.onAny((event: string, payload: any) => {
+        this.dispatch(event, payload);
+      });
     } catch (err) {
-      console.error('[Arena Socket] Failed to initialize WebSocket:', err);
-      this.scheduleReconnect();
+      console.error('[Arena Socket] Failed to initialize Socket.io client:', err);
+      this.setStatus('disconnected');
     }
   }
 
@@ -148,73 +136,61 @@ class ArenaSocketClient {
     this.intentionalClose = true;
     this.currentMatchId = null;
     this.sendQueue = [];
-    this.stopHeartbeat();
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    if (this.ws) {
-      this.ws.close(1000, 'Intentional disconnect');
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     this.setStatus('disconnected');
   }
 
-  private scheduleReconnect(): void {
-    if (this.intentionalClose || !this.token) return;
-    this.setStatus('reconnecting');
-
-    const maxWait = 10000;
-    const baseWait = Math.min(maxWait, Math.pow(1.5, this.reconnectAttempts) * 1000);
-    const jitter = Math.random() * 500;
-    const delay = baseWait + jitter;
-
-    this.reconnectAttempts++;
-
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = setTimeout(() => {
-      if (this.token && !this.intentionalClose) {
-        this.connect(this.token);
-      }
-    }, delay);
-  }
-
-  private startHeartbeat(): void {
-    this.stopHeartbeat();
-    this.heartbeatInterval = setInterval(() => {
-      this.send('PING', { time: Date.now() });
-    }, 20000);
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
-  }
-
-  public send(event: string, payload?: any, reqId?: string): boolean {
+  /**
+   * Sends an event to the server. If the socket is temporarily offline,
+   * buffers the message and automatically flushes the moment the socket recovers.
+   * Supports client acknowledgements: pass a callback function to verify server acceptance.
+   */
+  public send(event: string, payload?: any, reqIdOrAck?: any): boolean {
     if (event === 'JOIN_MATCH' && payload?.matchId) {
       this.currentMatchId = payload.matchId;
     } else if (event === 'LEAVE_MATCH') {
       this.currentMatchId = null;
     }
 
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      // Buffer the outgoing event so it is dispatched the instant the socket connects
-      this.sendQueue.push({ event, payload, reqId });
+    const ackCallback = typeof reqIdOrAck === 'function' ? reqIdOrAck : undefined;
+
+    if (!this.socket || !this.socket.connected) {
+      this.sendQueue.push({ event, payload, ack: ackCallback });
       return true;
     }
 
     try {
-      const msg = JSON.stringify({ event, payload, reqId });
-      this.ws.send(msg);
+      if (ackCallback) {
+        this.socket.emit(event, payload, ackCallback);
+      } else {
+        this.socket.emit(event, payload);
+      }
       return true;
     } catch (err) {
       console.warn(`[Arena Socket] Error sending ${event}:`, err);
-      this.sendQueue.push({ event, payload, reqId });
+      this.sendQueue.push({ event, payload, ack: ackCallback });
       return false;
     }
+  }
+
+  /**
+   * Promise-based acknowledgement emitter. Guarantees that the server verified
+   * and processed the action before proceeding.
+   */
+  public emitWithAck<T = any>(event: string, payload?: any, timeoutMs = 8000): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Timeout waiting for server acknowledgement on ${event}`));
+      }, timeoutMs);
+
+      this.send(event, payload, (response: any) => {
+        clearTimeout(timer);
+        resolve(response as T);
+      });
+    });
   }
 
   public on(event: string, handler: SocketEventHandler): () => void {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../store/AuthStore';
 import { safeFetch } from '../utils/api';
@@ -17,6 +17,9 @@ import { ArenaResults } from '../components/arena/ArenaResults';
 
 export const ArenaPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const joinParam = searchParams.get('join');
+  const hasAutoJoinedRef = useRef(false);
   const { user, token, isAuthenticated } = useAuthStore();
 
   const [activeMatch, setActiveMatch] = useState<PublicArenaMatch | null>(null);
@@ -197,18 +200,41 @@ export const ArenaPage: React.FC = () => {
     };
   }, [token, fetchBalance, fetchHistory, fetchOpenMatches, fetchActiveMatch]);
 
-  // Fail-safe waiting room polling to ensure 100% sync if socket packets drop
+  // Fail-safe waiting room polling to ensure 100% sync even if socket packets drop
   useEffect(() => {
     if (!activeMatch || (activeMatch.status !== 'WAITING' && activeMatch.status !== 'READY')) {
       return;
     }
 
-    const interval = setInterval(() => {
-      fetchActiveMatch();
-    }, 2500);
+    const syncCurrentMatch = async () => {
+      if (!token || !activeMatch?.id) return;
+      try {
+        const res = await safeFetch(`/api/arena/matches/${activeMatch.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.match) {
+            setActiveMatch((prev) => {
+              if (!prev) return data.match;
+              // If opponent was not previously in the match and is now present, trigger sound
+              const prevOpponent = prev.participants.find((p) => p.userId !== user?.id);
+              const newOpponent = data.match.participants.find((p: any) => p.userId !== user?.id);
+              if (!prevOpponent && newOpponent) {
+                playOpponentJoinedSound();
+              }
+              return data.match;
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[Arena] Waiting room sync poll warning:', err);
+      }
+    };
 
+    const interval = setInterval(syncCurrentMatch, 1200);
     return () => clearInterval(interval);
-  }, [activeMatch?.id, activeMatch?.status, fetchActiveMatch]);
+  }, [activeMatch?.id, activeMatch?.status, token, user?.id]);
 
   // Initial data loading
   useEffect(() => {
@@ -221,10 +247,10 @@ export const ArenaPage: React.FC = () => {
   }, [isAuthenticated, fetchBalance, fetchOpenMatches, fetchHistory, fetchActiveMatch]);
 
   // Handle joining a match room via WebSocket
-  const enterMatchRoom = (match: PublicArenaMatch) => {
+  const enterMatchRoom = useCallback((match: PublicArenaMatch) => {
     setActiveMatch(match);
     arenaSocket.send('JOIN_MATCH', { matchId: match.id });
-  };
+  }, []);
 
   const handleCancelMatch = async () => {
     if (!activeMatch) return;
@@ -249,7 +275,7 @@ export const ArenaPage: React.FC = () => {
     arenaSocket.send('READY_UP', { matchId: activeMatch.id });
   };
 
-  const handleJoinOpenMatch = async (matchCode: string) => {
+  const handleJoinOpenMatch = useCallback(async (matchCode: string) => {
     try {
       const res = await safeFetch('/api/arena/matches/join', {
         method: 'POST',
@@ -262,10 +288,25 @@ export const ArenaPage: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       enterMatchRoom(data.match);
+      return true;
     } catch (err: any) {
       alert(err.message || 'Unable to join match');
+      return false;
     }
-  };
+  }, [token, enterMatchRoom]);
+
+  // Auto-join from URL invite link (e.g. /arena/duel?join=CODE)
+  useEffect(() => {
+    if (joinParam && isAuthenticated && !hasAutoJoinedRef.current && !activeMatch) {
+      hasAutoJoinedRef.current = true;
+      const cleanCode = joinParam.trim().toUpperCase();
+      handleJoinOpenMatch(cleanCode).then((success) => {
+        if (success) {
+          setSearchParams({}, { replace: true });
+        }
+      });
+    }
+  }, [joinParam, isAuthenticated, activeMatch, handleJoinOpenMatch, setSearchParams]);
 
   const handleReturnToLobby = () => {
     if (activeMatch) {

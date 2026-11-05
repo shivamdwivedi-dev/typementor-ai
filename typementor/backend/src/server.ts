@@ -4,6 +4,7 @@ import { ArenaMatchService } from './services/arena/arena-match.service';
 import { ArenaSocketService } from './services/arena/arena-socket.service';
 import { ConquestMatchService } from './services/conquest/conquest-match.service';
 import { ConquestSocketService } from './services/conquest/conquest-socket.service';
+import { SocketIOService } from './services/realtime/socketio.service';
 
 const PORT = process.env.PORT || 5000;
 
@@ -33,6 +34,15 @@ const conquestMatchService = new ConquestMatchService(prisma);
 export const conquestSocketService = new ConquestSocketService(prisma, conquestMatchService);
 conquestSocketService.init(server);
 
+// Initialize Enterprise Socket.io Realtime Engine with Connection State Recovery & Redis Adapter
+export const socketIOService = new SocketIOService(
+  prisma,
+  arenaPointsService,
+  arenaMatchService,
+  conquestMatchService
+);
+export const io = socketIOService.init(server);
+
 // Graceful shutdown handling with 10s hard timeout
 let isShuttingDown = false;
 
@@ -60,6 +70,12 @@ const shutdown = async (signal: string) => {
     conquestSocketService.shutdown();
   } catch (err) {
     console.warn('Error during Conquest WebSocket shutdown:', err);
+  }
+
+  try {
+    await socketIOService.shutdown();
+  } catch (err) {
+    console.warn('Error during Socket.io shutdown:', err);
   }
 
   server.close(async () => {

@@ -67,21 +67,27 @@ export const register = async (req: Request, res: Response) => {
       passwordHash
     );
 
-    // Send OTP email (or log to dev console if SMTP is not configured)
+    // Send OTP email
     const emailResult = await emailService.sendOtpEmail(normalizedEmail, code, name.trim());
+    if (!emailResult.delivered) {
+      emailOtpService.clearPending(normalizedEmail);
+      return res.status(503).json({
+        error: emailResult.error
+          ? `Failed to deliver verification email: ${emailResult.error}`
+          : 'Failed to deliver verification email. Please check your email address or try again shortly.',
+      });
+    }
 
     return res.status(200).json({
       status: 'OTP_REQUIRED',
       message: 'A 6-digit verification code has been sent to your email address.',
       email: normalizedEmail,
       resendCooldownSeconds,
-      devMode: emailResult.devMode,
-      previewCode: (process.env.NODE_ENV !== 'production' && emailResult.devMode) ? code : undefined,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Registration error:', message, error);
-    return res.status(500).json({ error: `Registration error: ${message}` });
+    return res.status(500).json({ error: 'Failed to process registration. Please try again shortly.' });
   }
 };
 
@@ -175,7 +181,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Verify OTP error:', message, error);
-    return res.status(500).json({ error: `Verification error: ${message}` });
+    return res.status(500).json({ error: 'Failed to verify account. Please try again.' });
   }
 };
 
@@ -207,18 +213,23 @@ export const resendOtp = async (req: Request, res: Response) => {
       result.code,
       pending?.name || 'Typist'
     );
+    if (!emailResult.delivered) {
+      return res.status(503).json({
+        error: emailResult.error
+          ? `Failed to deliver verification email: ${emailResult.error}`
+          : 'Failed to deliver verification email. Please check your email address or try again shortly.',
+      });
+    }
 
     return res.status(200).json({
       success: true,
       message: 'A new 6-digit verification code has been sent to your email.',
       resendCooldownSeconds: result.resendCooldownSeconds,
-      devMode: emailResult.devMode,
-      previewCode: (process.env.NODE_ENV !== 'production' && emailResult.devMode) ? result.code : undefined,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Resend OTP error:', message, error);
-    return res.status(500).json({ error: `Resend error: ${message}` });
+    return res.status(500).json({ error: 'Failed to resend verification code. Please try again shortly.' });
   }
 };
 
@@ -559,7 +570,7 @@ export const googleLogin = async (req: Request, res: Response) => {
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : String(error);
     console.error('[Backend Google Auth] CRITICAL UNHANDLED ERROR:', errMessage, error);
-    return res.status(500).json({ error: `Google login failed: ${errMessage}` });
+    return res.status(500).json({ error: 'Google authentication failed. Please try again or sign in with your email.' });
   }
 };
 
@@ -672,6 +683,191 @@ export const spendXp = async (req: AuthRequest, res: Response) => {
   } catch (error: unknown) {
     console.error('Spend XP error:', error);
     return res.status(500).json({ error: 'An error occurred spending XP.' });
+  }
+};
+
+/**
+ * Initiates password reset by sending a 6-digit confirmation OTP to the registered email.
+ */
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
+    }
+
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({ error: 'Please provide a valid email address.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    // If user does not exist, return generic success to prevent user enumeration
+    if (!user) {
+      return res.status(200).json({
+        status: 'OTP_SENT',
+        message: 'If an account exists with this email, a 6-digit verification code has been dispatched.',
+        resendCooldownSeconds: 60,
+      });
+    }
+
+    const { code, resendCooldownSeconds } = emailOtpService.createPasswordResetRequest(
+      normalizedEmail,
+      user.name || 'Typist'
+    );
+
+    const emailResult = await emailService.sendPasswordResetEmail(normalizedEmail, code, user.name || 'Typist');
+    if (!emailResult.delivered) {
+      emailOtpService.clearPasswordReset(normalizedEmail);
+      return res.status(503).json({
+        error: emailResult.error
+          ? `Failed to deliver password reset email: ${emailResult.error}`
+          : 'Failed to deliver password reset email. Please try again shortly.',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'OTP_SENT',
+      message: 'A 6-digit password reset code has been sent to your email address.',
+      email: normalizedEmail,
+      resendCooldownSeconds,
+    });
+  } catch (error: unknown) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({ error: 'Failed to process password reset request. Please try again shortly.' });
+  }
+};
+
+/**
+ * Verifies the 6-digit OTP code for a password reset request and issues a 15-minute reset token.
+ */
+export const verifyResetOtp = async (req: Request, res: Response) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and 6-digit verification code are required.' });
+    }
+
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    const result = emailOtpService.verifyPasswordResetOtp(normalizedEmail, String(code));
+
+    if (!result.success || !result.resetToken) {
+      return res.status(400).json({ error: result.error || 'Invalid or expired verification code.' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Verification code confirmed. You may now set your new password.',
+      resetToken: result.resetToken,
+    });
+  } catch (error: unknown) {
+    console.error('Verify reset OTP error:', error);
+    return res.status(500).json({ error: 'Failed to verify confirmation code. Please try again.' });
+  }
+};
+
+/**
+ * Resends a fresh 6-digit OTP code for an active password reset request.
+ */
+export const resendResetOtp = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
+    }
+
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    const result = emailOtpService.resendPasswordResetOtp(normalizedEmail);
+
+    if (!result.success || !result.code) {
+      return res.status(400).json({
+        error: result.error || 'Failed to resend password reset code.',
+        resendCooldownSeconds: result.resendCooldownSeconds,
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    const emailResult = await emailService.sendPasswordResetEmail(
+      normalizedEmail,
+      result.code,
+      user?.name || 'Typist'
+    );
+
+    if (!emailResult.delivered) {
+      return res.status(503).json({
+        error: emailResult.error
+          ? `Failed to deliver verification email: ${emailResult.error}`
+          : 'Failed to deliver verification email. Please try again shortly.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'A new 6-digit verification code has been dispatched to your email.',
+      resendCooldownSeconds: result.resendCooldownSeconds || 60,
+    });
+  } catch (error: unknown) {
+    console.error('Resend reset OTP error:', error);
+    return res.status(500).json({ error: 'Failed to resend confirmation code. Please try again.' });
+  }
+};
+
+/**
+ * Sets a new password for the user, verifying the cryptographically signed resetToken.
+ */
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, resetToken, newPassword } = req.body;
+
+    if (!email || !resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Email, reset token, and new password are required.' });
+    }
+
+    const normalizedEmail = (email || '').trim().toLowerCase();
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    }
+
+    const isValidToken = emailOtpService.verifyResetToken(normalizedEmail, resetToken);
+    if (!isValidToken) {
+      return res.status(401).json({
+        error: 'Invalid or expired password reset session. Please request a new verification code.',
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { email: normalizedEmail },
+      data: {
+        passwordHash: passwordHash,
+      },
+    });
+
+    invalidateUserCaches(user.id);
+    emailOtpService.clearPasswordReset(normalizedEmail);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Your password has been successfully updated. You may now sign in.',
+    });
+  } catch (error: unknown) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ error: 'Failed to update password. Please try again shortly.' });
   }
 };
 

@@ -277,7 +277,6 @@ export interface RegisterResult {
   success: boolean;
   otpRequired?: boolean;
   email?: string;
-  previewCode?: string;
   error?: string;
 }
 
@@ -292,13 +291,16 @@ interface AuthState {
   error: string | null;
   pendingOtpEmail: string | null;
   otpCooldown: number;
-  previewOtpCode: string | null;
 
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<RegisterResult>;
   verifyOtp: (email: string, code: string) => Promise<boolean>;
-  resendOtp: (email: string) => Promise<{ success: boolean; previewCode?: string; error?: string }>;
+  resendOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
   cancelOtp: () => void;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  verifyPasswordResetOtp: (email: string, code: string) => Promise<{ success: boolean; resetToken?: string; error?: string }>;
+  resendPasswordResetOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string, resetToken: string, newPassword: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   loginWithGoogle: (idToken: string) => Promise<boolean>;
   logout: () => void;
   // Called once on app mount to validate any stored token
@@ -361,10 +363,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
   pendingOtpEmail: null,
   otpCooldown: 0,
-  previewOtpCode: null,
 
   clearError: () => set({ error: null }),
-  cancelOtp: () => set({ pendingOtpEmail: null, previewOtpCode: null, error: null }),
+  cancelOtp: () => set({ pendingOtpEmail: null, error: null }),
   setOffline: (offline: boolean) => set({ isOffline: offline }),
   updateUserStats: (partialUser: Partial<UserProfile>) => {
     set((state) => {
@@ -503,7 +504,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({
           pendingOtpEmail: data.email,
           otpCooldown: data.resendCooldownSeconds || 60,
-          previewOtpCode: data.previewCode || null,
           isLoading: false,
           error: null,
         });
@@ -511,7 +511,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           success: true,
           otpRequired: true,
           email: data.email,
-          previewCode: data.previewCode,
         };
       }
 
@@ -527,7 +526,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isOffline: false,
           error: null,
           pendingOtpEmail: null,
-          previewOtpCode: null,
         });
 
         get().fetchProfile();
@@ -577,7 +575,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isOffline: false,
         error: null,
         pendingOtpEmail: null,
-        previewOtpCode: null,
       });
 
       get().fetchProfile();
@@ -616,17 +613,155 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({
         otpCooldown: data.resendCooldownSeconds || 60,
-        previewOtpCode: data.previewCode || null,
         error: null,
       });
 
       return {
         success: true,
-        previewCode: data.previewCode,
       };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to resend verification code.';
       set({ error: message });
+      return { success: false, error: message };
+    }
+  },
+
+  // ── Password Reset: Request OTP ───────────────────────────────────────────
+  requestPasswordReset: async (email: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await safeFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to request password reset code.');
+      }
+
+      set({
+        pendingOtpEmail: data.email || email.trim().toLowerCase(),
+        otpCooldown: data.resendCooldownSeconds || 60,
+        isLoading: false,
+        error: null,
+      });
+
+      return {
+        success: true,
+        message: data.message,
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to request password reset code.';
+      set({ error: message, isLoading: false });
+      return { success: false, error: message };
+    }
+  },
+
+  // ── Password Reset: Verify OTP ───────────────────────────────────────────
+  verifyPasswordResetOtp: async (email: string, code: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await safeFetch('/api/auth/verify-reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid or expired confirmation code.');
+      }
+
+      set({ isLoading: false, error: null });
+      return {
+        success: true,
+        resetToken: data.resetToken,
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to verify reset code.';
+      set({ error: message, isLoading: false });
+      return { success: false, error: message };
+    }
+  },
+
+  // ── Password Reset: Resend OTP ───────────────────────────────────────────
+  resendPasswordResetOtp: async (email: string) => {
+    try {
+      const response = await safeFetch('/api/auth/resend-reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
+
+      if (!response.ok) {
+        set({ error: data.error || 'Failed to resend confirmation code.' });
+        return { success: false, error: data.error };
+      }
+
+      set({
+        otpCooldown: data.resendCooldownSeconds || 60,
+        error: null,
+      });
+
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to resend confirmation code.';
+      set({ error: message });
+      return { success: false, error: message };
+    }
+  },
+
+  // ── Password Reset: Update Password ───────────────────────────────────────
+  resetPassword: async (email: string, resetToken: string, newPassword: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await safeFetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, resetToken, newPassword }),
+      });
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        data = { error: `Server error (${response.status} ${response.statusText})` };
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update password.');
+      }
+
+      set({
+        isLoading: false,
+        error: null,
+        pendingOtpEmail: null,
+      });
+
+      return {
+        success: true,
+        message: data.message || 'Password has been successfully updated.',
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update password.';
+      set({ error: message, isLoading: false });
       return { success: false, error: message };
     }
   },

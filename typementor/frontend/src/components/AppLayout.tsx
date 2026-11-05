@@ -182,6 +182,7 @@ export default function AppLayout() {
   };
 
   const currentPage = location.pathname.substring(1) || 'practice';
+  const isImmersivePlayRoute = location.pathname.startsWith('/arena/conquest/play') || location.pathname.startsWith('/arena/duel');
 
   return (
     <div className="relative min-h-screen bg-transparent flex flex-col font-sans select-none text-brand-text overflow-x-hidden">
@@ -432,9 +433,12 @@ export default function AppLayout() {
           </motion.main>
         </AnimatePresence>
 
-        <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_BOTTOM_SLOT} className="mx-auto w-full max-w-5xl px-4" />
-
-        <DoodleCrewFooter preset="typementor" className="relative z-10 border-t border-zinc-800/80 mt-12" />
+        {!isImmersivePlayRoute && (
+          <>
+            <AdSenseSlot slot={import.meta.env.VITE_ADSENSE_BOTTOM_SLOT} className="mx-auto w-full max-w-5xl px-4" />
+            <DoodleCrewFooter preset="typementor" className="relative z-10 border-t border-zinc-800/80 mt-12" />
+          </>
+        )}
 
         {isAuthenticated && (
           <Suspense fallback={null}>

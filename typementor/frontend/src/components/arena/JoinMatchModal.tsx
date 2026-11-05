@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ArrowRight, AlertCircle, KeyRound } from 'lucide-react';
 import { safeFetch } from '../../utils/api';
 import { useAuthStore } from '../../store/AuthStore';
 import { PublicArenaMatch } from '../../types/arena';
+import { useBodyScrollLock } from '../../utils/scrollLock';
 
 interface JoinMatchModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ export const JoinMatchModal: React.FC<JoinMatchModalProps> = ({
   onClose,
   onJoined,
 }) => {
+  useBodyScrollLock(isOpen);
   const { token } = useAuthStore();
   const [matchCode, setMatchCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,9 +66,9 @@ export const JoinMatchModal: React.FC<JoinMatchModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden text-white">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-md bg-zinc-950/95 border border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden text-white my-auto ring-1 ring-white/10">
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400">
@@ -141,4 +144,6 @@ export const JoinMatchModal: React.FC<JoinMatchModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 };

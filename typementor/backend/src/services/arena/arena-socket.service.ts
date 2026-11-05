@@ -118,11 +118,18 @@ export class ArenaSocketService {
   async notifyMatchUpdated(matchId: string): Promise<void> {
     try {
       const room = this.matchRooms.get(matchId);
-      if (!room || room.size === 0) return;
+      if (room && room.size > 0) {
+        const fullMatch = await this.matchService.getMatchDetails(matchId, '');
+        this.broadcastToRoom(matchId, 'MATCH_STATE', fullMatch);
+        this.broadcastToRoom(matchId, 'OPPONENT_JOINED', { match: fullMatch });
+      }
 
-      const fullMatch = await this.matchService.getMatchDetails(matchId);
-      this.broadcastToRoom(matchId, 'MATCH_STATE', fullMatch);
-      this.broadcastToRoom(matchId, 'OPPONENT_JOINED', { match: fullMatch });
+      // Proactively notify Socket.io subscribers in the room
+      const { getSocketIOService } = await import('../realtime/socketio.service');
+      const socketIOService = getSocketIOService();
+      if (socketIOService) {
+        await socketIOService.notifyArenaMatchUpdated(matchId);
+      }
     } catch (err: any) {
       console.warn(`[Arena WS] notifyMatchUpdated error for ${matchId}:`, err?.message);
     }

@@ -26,7 +26,15 @@ vi.mock('../app', () => ({
 
 import { emailOtpService } from '../services/email-otp.service';
 import { emailService } from '../services/email.service';
-import { register, verifyOtp, resendOtp } from '../controllers/auth.controller';
+import {
+  register,
+  verifyOtp,
+  resendOtp,
+  forgotPassword,
+  verifyResetOtp,
+  resendResetOtp,
+  resetPassword,
+} from '../controllers/auth.controller';
 
 function createMockRes() {
   const res: any = { statusCode: 200, body: null };
@@ -138,13 +146,18 @@ describe('Email OTP Service & Registration Hardening Suite', () => {
 
   describe('Email Service Fallback', () => {
     it('uses dev console fallback when SMTP credentials are not configured', async () => {
+      const isConfiguredSpy = vi.spyOn(emailService, 'isConfigured').mockReturnValue(false);
       const result = await emailService.sendOtpEmail('tester@example.com', '654321', 'Tester');
       expect(result.delivered).toBe(true);
       expect(result.devMode).toBe(true);
+      isConfiguredSpy.mockRestore();
     });
   });
 
   describe('Auth Controller End-to-End Registration Flow', () => {
+    beforeEach(() => {
+      vi.spyOn(emailService, 'sendOtpEmail').mockResolvedValue({ delivered: true, devMode: false });
+    });
     it('rejects registration with disposable email address', async () => {
       const req: any = {
         body: {
@@ -282,6 +295,164 @@ describe('Email OTP Service & Registration Hardening Suite', () => {
       await resendOtp(req, res);
       expect(res.statusCode).toBe(429);
       expect(res.body.error).toContain('Please wait');
+    });
+  });
+
+  describe('Password Reset Life-cycle Suite', () => {
+    it('creates password reset request and generates 6-digit OTP code', () => {
+      const { code, resendCooldownSeconds } = emailOtpService.createPasswordResetRequest(
+        'user@example.com',
+        'John'
+      );
+
+      expect(code).toMatch(/^\d{6}$/);
+      expect(resendCooldownSeconds).toBe(60);
+
+      const pending = emailOtpService.getPendingPasswordReset('user@example.com');
+      expect(pending).toBeDefined();
+      expect(pending?.email).toBe('user@example.com');
+      expect(pending?.attemptsRemaining).toBe(5);
+    });
+
+    it('verifies valid reset code and issues 15-minute JWT reset token', () => {
+      const { code } = emailOtpService.createPasswordResetRequest('user@example.com', 'John');
+
+      const result = emailOtpService.verifyPasswordResetOtp('user@example.com', code);
+      expect(result.success).toBe(true);
+      expect(result.resetToken).toBeDefined();
+      expect(typeof result.resetToken).toBe('string');
+
+      // OTP should be consumed
+      expect(emailOtpService.getPendingPasswordReset('user@example.com')).toBeUndefined();
+
+      // Token verification succeeds
+      const isValid = emailOtpService.verifyResetToken('user@example.com', result.resetToken!);
+      expect(isValid).toBe(true);
+
+      // Wrong email fails verification
+      const isWrongEmail = emailOtpService.verifyResetToken('other@example.com', result.resetToken!);
+      expect(isWrongEmail).toBe(false);
+    });
+
+    it('forgotPassword controller sends reset email when user exists', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: 'user@example.com',
+        name: 'John Doe',
+      });
+      vi.spyOn(emailService, 'sendPasswordResetEmail').mockResolvedValue({
+        delivered: true,
+        devMode: true,
+      });
+
+      const req: any = { body: { email: 'user@example.com' } };
+      const res = createMockRes();
+
+      await forgotPassword(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.status).toBe('OTP_SENT');
+      expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.any(String),
+        'John Doe'
+      );
+    });
+
+    it('forgotPassword controller returns generic success if user does not exist (enumeration protection)', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+
+      const req: any = { body: { email: 'nonexistent@example.com' } };
+      const res = createMockRes();
+
+      await forgotPassword(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.status).toBe('OTP_SENT');
+    });
+
+    it('completes full end-to-end reset password flow', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        email: 'resetme@example.com',
+        name: 'Reset Typist',
+      });
+      mockPrisma.user.update.mockResolvedValue({
+        id: 'user-123',
+        email: 'resetme@example.com',
+      });
+
+      // 1. Stage reset request
+      const { code } = emailOtpService.createPasswordResetRequest('resetme@example.com', 'Reset Typist');
+
+      // 2. Verify OTP via controller
+      const verifyReq: any = {
+        body: {
+          email: 'resetme@example.com',
+          code,
+        },
+      };
+      const verifyRes = createMockRes();
+      await verifyResetOtp(verifyReq, verifyRes);
+
+      expect(verifyRes.statusCode).toBe(200);
+      expect(verifyRes.body.resetToken).toBeDefined();
+
+      const { resetToken } = verifyRes.body;
+
+      // 3. Update password with resetToken
+      const resetReq: any = {
+        body: {
+          email: 'resetme@example.com',
+          resetToken,
+          newPassword: 'BrandNewSecurePassword2026!',
+        },
+      };
+      const resetRes = createMockRes();
+      await resetPassword(resetReq, resetRes);
+
+      expect(resetRes.statusCode).toBe(200);
+      expect(resetRes.body.success).toBe(true);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { email: 'resetme@example.com' },
+          data: expect.objectContaining({
+            passwordHash: expect.any(String),
+          }),
+        })
+      );
+    });
+
+    it('rejects password update if new password is too short', async () => {
+      const req: any = {
+        body: {
+          email: 'resetme@example.com',
+          resetToken: 'some_token',
+          newPassword: 'short',
+        },
+      };
+      const res = createMockRes();
+
+      await resetPassword(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toContain('at least 8 characters');
+    });
+
+    it('rejects password update if resetToken is invalid or tampered', async () => {
+      const req: any = {
+        body: {
+          email: 'resetme@example.com',
+          resetToken: 'invalid.tampered.token',
+          newPassword: 'ValidPassword123!',
+        },
+      };
+      const res = createMockRes();
+
+      await resetPassword(req, res);
+
+      expect(res.statusCode).toBe(401);
+      expect(res.body.error).toContain('Invalid or expired password reset session');
     });
   });
 });

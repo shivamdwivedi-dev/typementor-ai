@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   ChevronLeft,
@@ -12,6 +13,7 @@ import {
   Zap,
   CheckCircle2,
 } from 'lucide-react';
+import { useBodyScrollLock } from '../../utils/scrollLock';
 
 interface ConquestTutorialModalProps {
   isOpen: boolean;
@@ -31,6 +33,7 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  useBodyScrollLock(isOpen);
   const [currentStep, setCurrentStep] = useState(0);
 
   const steps: TutorialStep[] = [
@@ -284,14 +287,14 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
 
   const step = steps[currentStep];
 
-  return (
+  const modalContent = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200 overflow-y-auto"
     >
-      <div className="relative w-full max-w-xl rounded-3xl bg-zinc-950 border border-zinc-800 p-6 sm:p-8 shadow-2xl space-y-6 overflow-hidden">
+      <div className="relative w-full max-w-xl rounded-3xl bg-zinc-950/95 border border-zinc-800 p-6 sm:p-8 shadow-2xl space-y-6 overflow-hidden my-auto ring-1 ring-white/10">
         {/* Ambient background glow */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-52 h-52 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-52 h-52 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -315,7 +318,7 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close tutorial"
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-800"
+            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-800 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -352,7 +355,7 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
               key={idx}
               onClick={() => setCurrentStep(idx)}
               aria-label={`Go to step ${idx + 1}`}
-              className={`h-1.5 rounded-full transition-all ${
+              className={`h-1.5 rounded-full transition-all cursor-pointer ${
                 idx === currentStep
                   ? 'w-6 bg-purple-500'
                   : 'w-1.5 bg-zinc-800 hover:bg-zinc-700'
@@ -365,7 +368,7 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
         <div className="flex items-center justify-between gap-3 pt-2 border-t border-zinc-900 relative z-10">
           <button
             onClick={onClose}
-            className="text-xs font-semibold text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1.5"
+            className="text-xs font-semibold text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1.5 cursor-pointer"
           >
             Skip Tutorial
           </button>
@@ -374,7 +377,7 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
             {currentStep > 0 && (
               <button
                 onClick={handlePrev}
-                className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-xs flex items-center gap-1 border border-zinc-800 transition-colors"
+                className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-xs flex items-center gap-1 border border-zinc-800 transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Prev</span>
@@ -383,7 +386,7 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
 
             <button
               onClick={handleNext}
-              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-lg shadow-purple-600/30"
+              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-lg shadow-purple-600/30 cursor-pointer"
             >
               <span>{currentStep === steps.length - 1 ? 'Got it — Enter Battle' : 'Next'}</span>
               {currentStep < steps.length - 1 && <ChevronRight className="w-4 h-4" />}
@@ -393,4 +396,6 @@ export const ConquestTutorialModal: React.FC<ConquestTutorialModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : null;
 };

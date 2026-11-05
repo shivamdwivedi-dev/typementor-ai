@@ -9,6 +9,10 @@ import {
   updateLastActivity,
   updateAcademyProgress,
   spendXp,
+  forgotPassword,
+  verifyResetOtp,
+  resendResetOtp,
+  resetPassword,
 } from '../controllers/auth.controller';
 import { authenticateToken, AuthRequest } from '../middleware/auth.middleware';
 import { authLimiter } from '../app';
@@ -41,6 +45,18 @@ router.post('/login', applyAuthLimiter, (req, res, next) => {
 });
 router.post('/google', applyAuthLimiter, (req, res, next) => {
   Promise.resolve(googleLogin(req, res)).catch(next);
+});
+router.post('/forgot-password', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(forgotPassword(req, res)).catch(next);
+});
+router.post('/verify-reset-otp', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(verifyResetOtp(req, res)).catch(next);
+});
+router.post('/resend-reset-otp', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(resendResetOtp(req, res)).catch(next);
+});
+router.post('/reset-password', applyAuthLimiter, (req, res, next) => {
+  Promise.resolve(resetPassword(req, res)).catch(next);
 });
 
 // Profile requires valid JWT
